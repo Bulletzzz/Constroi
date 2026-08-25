@@ -1,0 +1,15 @@
+.git
+.gitignore
+.dart_tool
+.idea
+*.iml
+build
+coverage
+android
+ios
+windows
+linux
+macos
+test
+Dockerfile
+.dockerignore

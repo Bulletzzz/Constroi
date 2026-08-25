@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      context: ./constroi_app
+      target: producao
+    image: constroi-app
+    container_name: constroi-app
+    ports:
+      - "8090:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  dev:
+    build:
+      context: ./constroi_app
+      target: build
+    image: constroi-app-dev
+    container_name: constroi-app-dev
+    profiles: ["dev"]
+    stdin_open: true
+    tty: true
+    working_dir: /app
+    volumes:
+      - ./constroi_app:/app
+      - pub_cache:/root/.pub-cache
+    ports:
+      - "5000:5000"
+    command: >
+      sh -c "flutter pub get &&
+             flutter run -d web-server --web-hostname 0.0.0.0 --web-port 5000"
+
+volumes:
+  pub_cache:
