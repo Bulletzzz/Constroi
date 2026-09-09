@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
-final _ambiente = DotEnv(includePlatformEnvironment: true)..load();
+final _ambiente = DotEnv(includePlatformEnvironment: true)
+  ..load(File('.env').existsSync() ? ['.env'] : []);
 
 Pool<void>? _pool;
 

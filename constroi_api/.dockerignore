@@ -1,0 +1,11 @@
+.git
+.gitignore
+.dart_tool
+.dart_frog
+build
+coverage
+test
+.env
+.env.example
+Dockerfile
+.dockerignore

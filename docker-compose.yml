@@ -14,6 +14,23 @@ services:
       timeout: 5s
       retries: 3
 
+  api:
+    build:
+      context: ./constroi_api
+      target: producao
+    image: constroi-api
+    container_name: constroi-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./constroi_api/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   dev:
     build:
       context: ./constroi_app
