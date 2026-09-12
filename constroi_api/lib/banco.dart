@@ -1,17 +1,12 @@
-import 'dart:io';
-
-import 'package:dotenv/dotenv.dart';
+import 'package:constroi_api/ambiente.dart';
 import 'package:postgres/postgres.dart';
-
-final _ambiente = DotEnv(includePlatformEnvironment: true)
-  ..load(File('.env').existsSync() ? ['.env'] : []);
 
 Pool<void>? _pool;
 
 /// Pool de conexoes com o Neon, criado na primeira vez que e usado.
 Pool<void> get banco {
-  final url = _ambiente['DATABASE_URL'];
-  if (url == null || url.isEmpty) {
+  final url = variavel('DATABASE_URL');
+  if (url == null) {
     throw StateError('DATABASE_URL nao configurada. Confira o .env');
   }
   return _pool ??= Pool.withUrl(url);
