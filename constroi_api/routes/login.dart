@@ -36,7 +36,7 @@ Future<Response> onRequest(RequestContext context) async {
 
   final encontrados = await banco.execute(
     Sql.named('''
-      SELECT id, empresa_id, nome, email, tipo, senha_hash, ativo, bloqueado_ate
+      SELECT id, empresa_id, nome, email, tipo, senha_hash, ativo, bloqueado_ate, tentativas_login
       FROM usuario
       WHERE LOWER(email) = LOWER(@email)
       LIMIT 1
@@ -71,6 +71,30 @@ Future<Response> onRequest(RequestContext context) async {
   }
 
   if (!senhaConfere(senha, usuario['senha_hash'] as String)) {
+    final bloqueadoExpirou =
+        bloqueadoAte != null && !bloqueadoAte.isAfter(DateTime.now().toUtc());
+    final tentativas = bloqueadoExpirou
+        ? 1
+        : ((usuario['tentativas_login'] as int? ?? 0) + 1);
+    final bloquear = tentativas >= 5;
+
+    await banco.execute(
+      Sql.named('''
+        UPDATE usuario
+        SET tentativas_login = @tentativas,
+            bloqueado_ate = @bloqueadoAte,
+            atualizado_em = CURRENT_TIMESTAMP
+        WHERE id = @id
+      '''),
+      parameters: {
+        'id': usuarioId,
+        'tentativas': bloquear ? 0 : tentativas,
+        'bloqueadoAte': bloquear
+            ? DateTime.now().toUtc().add(const Duration(minutes: 10))
+            : null,
+      },
+    );
+
     await _registrarTentativa(banco, usuarioId, emailResumido, ip, false);
     return _credenciaisInvalidas();
   }
