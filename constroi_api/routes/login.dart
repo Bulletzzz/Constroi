@@ -31,8 +31,10 @@ Future<Response> onRequest(RequestContext context) async {
 
   final banco = context.read<Pool<void>>();
   final emailResumido = resumir(email.toLowerCase());
-  final ip =
-      context.request.headers['x-forwarded-for']?.split(',').first.trim();
+  final ip = context.request.headers['x-forwarded-for']
+      ?.split(',')
+      .first
+      .trim();
 
   final encontrados = await banco.execute(
     Sql.named('''
