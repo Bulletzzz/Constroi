@@ -70,7 +70,10 @@ Future<Response> _editar(RequestContext context, int id) async {
 
   final dados = corpo['produto'];
   if (dados is! Map<String, dynamic>) {
-    return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
+    return _erro(
+      HttpStatus.badRequest,
+      'Envie o objeto dentro da chave "produto".',
+    );
   }
 
   final nome = validarNomeProduto(dados['nome'] as String?);
