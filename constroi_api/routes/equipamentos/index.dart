@@ -67,7 +67,10 @@ Future<Response> _criar(RequestContext context) async {
 
   final dados = corpo['equipamento'];
   if (dados is! Map<String, dynamic>) {
-    return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
+    return _erro(
+      HttpStatus.badRequest,
+      'Envie o objeto dentro da chave "equipamento".',
+    );
   }
 
   final nome = validarNomeEquipamento(dados['nome'] as String?);

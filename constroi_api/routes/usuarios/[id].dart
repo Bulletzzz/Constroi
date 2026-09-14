@@ -73,7 +73,10 @@ Future<Response> _editar(RequestContext context, int id) async {
 
   final dados = corpo['usuario'];
   if (dados is! Map<String, dynamic>) {
-    return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
+    return _erro(
+      HttpStatus.badRequest,
+      'Envie o objeto dentro da chave "usuario".',
+    );
   }
 
   final nome = (dados['nome'] as String?)?.trim();
