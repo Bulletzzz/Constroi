@@ -6,14 +6,14 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
 Future<Response> onRequest(RequestContext context) async {
-  switch (context.request.method) {
-    case HttpMethod.get:
-      return _listar(context);
-    case HttpMethod.post:
-      return _criar(context);
-    default:
-      return Response(statusCode: HttpStatus.methodNotAllowed);
+  final metodo = context.request.method;
+  if (metodo == HttpMethod.get) {
+    return _listar(context);
   }
+  if (metodo == HttpMethod.post) {
+    return _criar(context);
+  }
+  return Response(statusCode: HttpStatus.methodNotAllowed);
 }
 
 Future<Response> _listar(RequestContext context) async {
@@ -30,20 +30,27 @@ Future<Response> _listar(RequestContext context) async {
     parameters: {'empresa': empresaId},
   );
 
-  final equipamentos = linhas
-      .map((linha) => linha.toColumnMap())
-      .map(
-        (equipamento) => {
-          'id': equipamento['id'],
-          'nome': equipamento['nome'],
-          'patrimonio': equipamento['patrimonio'],
-          'status': equipamento['status'],
-          'empresa_id': equipamento['empresa_id'],
-          'criado_em': equipamento['criado_em']?.toIso8601String(),
-          'atualizado_em': equipamento['atualizado_em']?.toIso8601String(),
-        },
-      )
-      .toList();
+  final equipamentos = linhas.map((linha) => linha.toColumnMap()).map((
+    equipamento,
+  ) {
+    final id = equipamento['id'] as int?;
+    final nome = equipamento['nome'] as String?;
+    final patrimonio = equipamento['patrimonio'] as String?;
+    final status = equipamento['status'] as String?;
+    final empresaId = equipamento['empresa_id'] as int?;
+    final criadoEm = equipamento['criado_em'] as DateTime?;
+    final atualizadoEm = equipamento['atualizado_em'] as DateTime?;
+
+    return {
+      'id': id,
+      'nome': nome,
+      'patrimonio': patrimonio,
+      'status': status,
+      'empresa_id': empresaId,
+      'criado_em': criadoEm?.toIso8601String(),
+      'atualizado_em': atualizadoEm?.toIso8601String(),
+    };
+  }).toList();
 
   return Response.json(body: {'equipamentos': equipamentos});
 }
@@ -58,9 +65,10 @@ Future<Response> _criar(RequestContext context) async {
     return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
   }
 
-  final dados = corpo['equipamento'] is Map<String, dynamic>
-      ? corpo['equipamento'] as Map<String, dynamic>
-      : corpo;
+  final dados = corpo['equipamento'];
+  if (dados is! Map<String, dynamic>) {
+    return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
+  }
 
   final nome = validarNomeEquipamento(dados['nome'] as String?);
   final patrimonio = validarPatrimonio(dados['patrimonio'] as String?);

@@ -34,13 +34,16 @@ Future<void> main(List<String> argumentos) async {
     final empresaId = empresas.isNotEmpty
         ? empresas.first[0]! as int
         : (await conexao.execute(
-            Sql.named(
-              'INSERT INTO empresa (nome, cnpj) VALUES (@nome, @cnpj)'
-              ' RETURNING id',
-            ),
-            parameters: {'nome': 'Constroi Teste', 'cnpj': '00.000.000/0001-00'},
-          ))
-            .first[0]! as int;
+                Sql.named(
+                  'INSERT INTO empresa (nome, cnpj) VALUES (@nome, @cnpj)'
+                  ' RETURNING id',
+                ),
+                parameters: {
+                  'nome': 'Constroi Teste',
+                  'cnpj': '00.000.000/0001-00',
+                },
+              )).first[0]!
+              as int;
 
     await conexao.execute(
       Sql.named('''

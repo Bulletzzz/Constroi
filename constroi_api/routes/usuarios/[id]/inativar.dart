@@ -4,20 +4,12 @@ import 'package:constroi_api/autenticacao.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
-Future<Response> onRequest(RequestContext context) async {
+Future<Response> onRequest(RequestContext context, String idDaRota) async {
   if (context.request.method != HttpMethod.patch) {
     return Response(statusCode: HttpStatus.methodNotAllowed);
   }
 
-  final segmentos = context.request.uri.pathSegments;
-  if (segmentos.length < 2) {
-    return Response(
-      statusCode: HttpStatus.badRequest,
-      body: 'Id do usuario ausente.',
-    );
-  }
-
-  final id = int.tryParse(segmentos[segmentos.length - 2]);
+  final id = int.tryParse(idDaRota);
   if (id == null) {
     return Response(
       statusCode: HttpStatus.badRequest,

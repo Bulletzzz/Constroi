@@ -6,14 +6,14 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
 Future<Response> onRequest(RequestContext context) async {
-  switch (context.request.method) {
-    case HttpMethod.get:
-      return _listar(context);
-    case HttpMethod.post:
-      return _criar(context);
-    default:
-      return Response(statusCode: HttpStatus.methodNotAllowed);
+  final metodo = context.request.method;
+  if (metodo == HttpMethod.get) {
+    return _listar(context);
   }
+  if (metodo == HttpMethod.post) {
+    return _criar(context);
+  }
+  return Response(statusCode: HttpStatus.methodNotAllowed);
 }
 
 Future<Response> _listar(RequestContext context) async {
@@ -30,19 +30,23 @@ Future<Response> _listar(RequestContext context) async {
     parameters: {'empresa': empresaId},
   );
 
-  final produtos = linhas
-      .map((linha) => linha.toColumnMap())
-      .map(
-        (produto) => {
-          'id': produto['id'],
-          'nome': produto['nome'],
-          'unidade': produto['unidade'],
-          'empresa_id': produto['empresa_id'],
-          'criado_em': produto['criado_em']?.toIso8601String(),
-          'atualizado_em': produto['atualizado_em']?.toIso8601String(),
-        },
-      )
-      .toList();
+  final produtos = linhas.map((linha) => linha.toColumnMap()).map((produto) {
+    final id = produto['id'] as int?;
+    final nome = produto['nome'] as String?;
+    final unidade = produto['unidade'] as String?;
+    final empresaId = produto['empresa_id'] as int?;
+    final criadoEm = produto['criado_em'] as DateTime?;
+    final atualizadoEm = produto['atualizado_em'] as DateTime?;
+
+    return {
+      'id': id,
+      'nome': nome,
+      'unidade': unidade,
+      'empresa_id': empresaId,
+      'criado_em': criadoEm?.toIso8601String(),
+      'atualizado_em': atualizadoEm?.toIso8601String(),
+    };
+  }).toList();
 
   return Response.json(body: {'produtos': produtos});
 }
@@ -57,9 +61,10 @@ Future<Response> _criar(RequestContext context) async {
     return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
   }
 
-  final dados = corpo['produto'] is Map<String, dynamic>
-      ? corpo['produto'] as Map<String, dynamic>
-      : corpo;
+  final dados = corpo['produto'];
+  if (dados is! Map<String, dynamic>) {
+    return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
+  }
 
   final nome = validarNomeProduto(dados['nome'] as String?);
   final unidade = validarUnidadeProduto(dados['unidade'] as String?);

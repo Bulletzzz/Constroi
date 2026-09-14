@@ -7,14 +7,14 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
 Future<Response> onRequest(RequestContext context) async {
-  switch (context.request.method) {
-    case HttpMethod.get:
-      return _listar(context);
-    case HttpMethod.post:
-      return _criar(context);
-    default:
-      return Response(statusCode: HttpStatus.methodNotAllowed);
+  final metodo = context.request.method;
+  if (metodo == HttpMethod.get) {
+    return _listar(context);
   }
+  if (metodo == HttpMethod.post) {
+    return _criar(context);
+  }
+  return Response(statusCode: HttpStatus.methodNotAllowed);
 }
 
 Future<Response> _listar(RequestContext context) async {
@@ -31,20 +31,25 @@ Future<Response> _listar(RequestContext context) async {
     parameters: {'empresa': empresaId},
   );
 
-  final usuarios = linhas
-      .map((linha) => linha.toColumnMap())
-      .map(
-        (usuario) => {
-          'id': usuario['id'],
-          'nome': usuario['nome'],
-          'email': usuario['email'],
-          'tipo': usuario['tipo'],
-          'ativo': usuario['ativo'],
-          'criado_em': usuario['criado_em']?.toIso8601String(),
-          'atualizado_em': usuario['atualizado_em']?.toIso8601String(),
-        },
-      )
-      .toList();
+  final usuarios = linhas.map((linha) => linha.toColumnMap()).map((usuario) {
+    final id = usuario['id'] as int?;
+    final nome = usuario['nome'] as String?;
+    final email = usuario['email'] as String?;
+    final tipo = usuario['tipo'] as String?;
+    final ativo = usuario['ativo'] as bool?;
+    final criadoEm = usuario['criado_em'] as DateTime?;
+    final atualizadoEm = usuario['atualizado_em'] as DateTime?;
+
+    return {
+      'id': id,
+      'nome': nome,
+      'email': email,
+      'tipo': tipo,
+      'ativo': ativo,
+      'criado_em': criadoEm?.toIso8601String(),
+      'atualizado_em': atualizadoEm?.toIso8601String(),
+    };
+  }).toList();
 
   return Response.json(body: {'usuarios': usuarios});
 }
@@ -59,9 +64,10 @@ Future<Response> _criar(RequestContext context) async {
     return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
   }
 
-  final dados = corpo['usuario'] is Map<String, dynamic>
-      ? corpo['usuario'] as Map<String, dynamic>
-      : corpo;
+  final dados = corpo['usuario'];
+  if (dados is! Map<String, dynamic>) {
+    return _erro(HttpStatus.badRequest, 'Envie um JSON valido.');
+  }
 
   final nome = ((dados['nome'] as String?) ?? '').trim();
   final email = ((dados['email'] as String?) ?? '').trim();

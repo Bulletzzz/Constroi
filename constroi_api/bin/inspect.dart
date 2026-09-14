@@ -4,8 +4,8 @@ import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
 Future<void> main() async {
-  final envPath = Platform.environment['DATABASE_ENV_FILE'] ??
-      '../constroi_api/.env';
+  final envPath =
+      Platform.environment['DATABASE_ENV_FILE'] ?? '../constroi_api/.env';
   final ambiente = DotEnv(includePlatformEnvironment: true)
     ..load(File(envPath).existsSync() ? [envPath] : []);
   final databaseUrl = ambiente['DATABASE_URL']?.trim();
