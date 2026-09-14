@@ -86,11 +86,11 @@ void main() {
 
   group('leitura do token', () {
     String tokenDe(Nivel nivel, {String segredo = _segredo}) => gerarToken(
-          segredo: segredo,
-          usuarioId: 7,
-          empresaId: 3,
-          tipo: nivel.name,
-        );
+      segredo: segredo,
+      usuarioId: 7,
+      empresaId: 3,
+      tipo: nivel.name,
+    );
 
     test('token valido devolve o usuario', () {
       final usuario = autenticar(

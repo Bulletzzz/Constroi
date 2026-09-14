@@ -4,8 +4,8 @@ import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
 Future<void> main() async {
-  final envPath = Platform.environment['DATABASE_ENV_FILE'] ??
-      '../constroi_api/.env';
+  final envPath =
+      Platform.environment['DATABASE_ENV_FILE'] ?? '../constroi_api/.env';
   final envFile = File(envPath);
   final ambiente = DotEnv(includePlatformEnvironment: true)
     ..load(envFile.existsSync() ? [envPath] : []);
@@ -34,12 +34,13 @@ Future<void> main() async {
       )
     ''');
 
-    final arquivos = Directory('migrations')
-        .listSync()
-        .whereType<File>()
-        .where((arquivo) => arquivo.path.endsWith('.sql'))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final arquivos =
+        Directory('migrations')
+            .listSync()
+            .whereType<File>()
+            .where((arquivo) => arquivo.path.endsWith('.sql'))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
 
     for (final arquivo in arquivos) {
       final versao = arquivo.uri.pathSegments.last;
