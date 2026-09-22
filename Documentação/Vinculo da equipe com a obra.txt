@@ -1,0 +1,22 @@
+Vínculo da equipe com a obra
+
+Decisão uma pessoa pode participar de mais de uma obra da sua empresa. O vínculo fica na tabela usuario_obra, criada pela migration constroi_apimigrations004_usuario_obra.sql.
+
+Cada linha liga um usuario a uma obra e registra quando a participação começou (data_inicio) e terminou (data_fim). Enquanto data_fim estiver vazio, a pessoa faz parte da equipe ativa daquela obra. É possível encerrar um vínculo e criar outro para a mesma pessoa e obra mais tarde, preservando o histórico. Não é possível criar dois vínculos ativos iguais.
+
+O campo empresa_id é validado junto aos identificadores de usuário e obra. Assim, o banco impede que uma pessoa de uma empresa seja vinculada à obra de outra.
+
+Para listar a equipe ativa de uma obra
+
+sql
+SELECT u.id, u.nome, u.email, u.tipo, uo.data_inicio
+FROM usuario_obra AS uo
+JOIN usuario AS u ON u.id = uo.usuario_id
+WHERE uo.obra_id = 1 -- substitua 1 pelo ID da obra
+  AND uo.data_fim IS NULL
+ORDER BY u.nome;
+
+
+Para retirar uma pessoa da equipe, preencha data_fim no vínculo ativo, em vez de apagar a linha. O backend deve conferir as permissões do usuário que faz essa alteração.
+
+Aplicação a migration deve ser executada depois da 003_catalogo_timestamps.sql pelo executor existente em constroi_apibinmigrate.dart. As migrations anteriores não devem ser alteradas. O banco do Neon só muda quando a nova migration for executada nele; fazer o commit dos arquivos não a aplica automaticamente.
