@@ -102,11 +102,9 @@ Future<Response> _criar(RequestContext context) async {
     return _erro(HttpStatus.badRequest, 'Email invalido.');
   }
 
-  if (senha.length < 6) {
-    return _erro(
-      HttpStatus.badRequest,
-      'A senha deve ter no minimo 6 caracteres.',
-    );
+  final erroSenha = erroDaSenha(senha);
+  if (erroSenha != null) {
+    return _erro(HttpStatus.badRequest, erroSenha);
   }
 
   final emailExistente = await banco.execute(

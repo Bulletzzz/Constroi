@@ -145,11 +145,9 @@ Future<Response> _editar(RequestContext context, int id) async {
   }
 
   if (senha != null) {
-    if (senha.length < 6) {
-      return _erro(
-        HttpStatus.badRequest,
-        'A senha deve ter no minimo 6 caracteres.',
-      );
+    final erroSenha = erroDaSenha(senha);
+    if (erroSenha != null) {
+      return _erro(HttpStatus.badRequest, erroSenha);
     }
     campos['senhaHash'] = gerarHash(senha);
     partes.add('senha_hash = @senhaHash');
