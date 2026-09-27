@@ -17,24 +17,49 @@ Future<Response> onRequest(RequestContext context, String idDaRota) async {
 
 Future<Response> _buscar(RequestContext context, int id) async {
   final banco = context.read<Pool<void>>();
+  final usuario = context.usuario;
+  final todas = usuario.nivel.alcanca(Nivel.engenheiro);
+
   final encontrados = await banco.execute(
     Sql.named('''
-      SELECT id, nome, endereco, status, empresa_id
-      FROM obra
-      WHERE id = @id AND empresa_id = @empresa
+      SELECT o.id, o.nome, o.endereco, o.status, o.orcamento_total, o.empresa_id
+      FROM obra o
+      WHERE o.id = @id
+        AND o.empresa_id = @empresa
+        AND (
+          @todas
+          OR EXISTS (
+            SELECT 1 FROM usuario_obra uo
+            WHERE uo.obra_id = o.id
+              AND uo.usuario_id = @usuario
+              AND uo.data_fim IS NULL
+          )
+        )
       LIMIT 1
     '''),
-    parameters: {'id': id, 'empresa': context.usuario.empresaId},
+    parameters: {
+      'id': id,
+      'empresa': usuario.empresaId,
+      'usuario': usuario.id,
+      'todas': todas,
+    },
   );
 
   if (encontrados.isEmpty) {
     return _erro(HttpStatus.notFound, 'Obra nao encontrada.');
   }
 
-  return Response.json(body: _obra(encontrados.first.toColumnMap()));
+  return Response.json(body: dadosDaObra(encontrados.first.toColumnMap()));
 }
 
 Future<Response> _editar(RequestContext context, int id) async {
+  if (!context.usuario.nivel.alcanca(Nivel.engenheiro)) {
+    return _erro(
+      HttpStatus.forbidden,
+      'Esta acao e restrita ao perfil engenheiro ou superior.',
+    );
+  }
+
   final Map<String, dynamic> corpo;
   try {
     corpo = await context.request.json() as Map<String, dynamic>;
@@ -83,6 +108,18 @@ Future<Response> _editar(RequestContext context, int id) async {
     partes.add('status = @status');
   }
 
+  if (dados.containsKey('orcamento_total')) {
+    final orcamento = validarOrcamentoObra(dados['orcamento_total']);
+    if (!orcamento.valido) {
+      return _erro(
+        HttpStatus.badRequest,
+        'O orcamento total deve ser um numero maior ou igual a zero.',
+      );
+    }
+    campos['orcamento'] = orcamento.valor;
+    partes.add('orcamento_total = @orcamento');
+  }
+
   if (partes.isEmpty) {
     return _erro(
       HttpStatus.badRequest,
@@ -97,7 +134,7 @@ Future<Response> _editar(RequestContext context, int id) async {
       UPDATE obra
       SET ${partes.join(', ')}
       WHERE id = @id AND empresa_id = @empresa
-      RETURNING id, nome, endereco, status, empresa_id
+      RETURNING id, nome, endereco, status, orcamento_total, empresa_id
     '''),
     parameters: campos,
   );
@@ -106,16 +143,8 @@ Future<Response> _editar(RequestContext context, int id) async {
     return _erro(HttpStatus.notFound, 'Obra nao encontrada.');
   }
 
-  return Response.json(body: _obra(atualizado.first.toColumnMap()));
+  return Response.json(body: dadosDaObra(atualizado.first.toColumnMap()));
 }
-
-Map<String, dynamic> _obra(Map<String, dynamic> obra) => {
-  'id': obra['id'],
-  'nome': obra['nome'],
-  'endereco': obra['endereco'],
-  'status': obra['status'],
-  'empresa_id': obra['empresa_id'],
-};
 
 Response _erro(int status, String mensagem) =>
     Response.json(statusCode: status, body: {'erro': mensagem});

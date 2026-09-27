@@ -3,4 +3,4 @@ import 'package:constroi_api/permissao.dart';
 import 'package:dart_frog/dart_frog.dart';
 
 Handler middleware(Handler handler) =>
-    handler.use(exigirNivel(Nivel.engenheiro));
+    handler.use(exigirNivel(Nivel.pedreiro));

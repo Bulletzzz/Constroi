@@ -14,31 +14,47 @@ Future<Response> onRequest(RequestContext context) async {
 
 Future<Response> _listar(RequestContext context) async {
   final banco = context.read<Pool<void>>();
-  final empresaId = context.usuario.empresaId;
+  final usuario = context.usuario;
+  final apenasVinculadas = !usuario.nivel.alcanca(Nivel.engenheiro);
+
   final linhas = await banco.execute(
     Sql.named('''
-      SELECT id, nome, endereco, status, empresa_id
-      FROM obra
-      WHERE empresa_id = @empresa
-      ORDER BY nome, id
+      SELECT o.id, o.nome, o.endereco, o.status, o.orcamento_total, o.empresa_id
+      FROM obra o
+      WHERE o.empresa_id = @empresa
+        AND (
+          @todas
+          OR EXISTS (
+            SELECT 1 FROM usuario_obra uo
+            WHERE uo.obra_id = o.id
+              AND uo.usuario_id = @usuario
+              AND uo.data_fim IS NULL
+          )
+        )
+      ORDER BY o.nome, o.id
     '''),
-    parameters: {'empresa': empresaId},
+    parameters: {
+      'empresa': usuario.empresaId,
+      'usuario': usuario.id,
+      'todas': !apenasVinculadas,
+    },
   );
 
-  final obras = linhas.map((linha) => linha.toColumnMap()).map((obra) {
-    return {
-      'id': obra['id'],
-      'nome': obra['nome'],
-      'endereco': obra['endereco'],
-      'status': obra['status'],
-      'empresa_id': obra['empresa_id'],
-    };
-  }).toList();
+  final obras = linhas
+      .map((linha) => dadosDaObra(linha.toColumnMap()))
+      .toList();
 
   return Response.json(body: {'obras': obras});
 }
 
 Future<Response> _criar(RequestContext context) async {
+  if (!context.usuario.nivel.alcanca(Nivel.engenheiro)) {
+    return _erro(
+      HttpStatus.forbidden,
+      'Esta acao e restrita ao perfil engenheiro ou superior.',
+    );
+  }
+
   final Map<String, dynamic> corpo;
   try {
     corpo = await context.request.json() as Map<String, dynamic>;
@@ -64,32 +80,33 @@ Future<Response> _criar(RequestContext context) async {
     );
   }
 
-  final empresaId = context.usuario.empresaId;
+  final orcamento = validarOrcamentoObra(dados['orcamento_total']);
+  if (!orcamento.valido) {
+    return _erro(
+      HttpStatus.badRequest,
+      'O orcamento total deve ser um numero maior ou igual a zero.',
+    );
+  }
+
   final banco = context.read<Pool<void>>();
   final resultado = await banco.execute(
     Sql.named('''
-      INSERT INTO obra (empresa_id, nome, endereco, status)
-      VALUES (@empresa, @nome, @endereco, @status)
-      RETURNING id, nome, endereco, status, empresa_id
+      INSERT INTO obra (empresa_id, nome, endereco, status, orcamento_total)
+      VALUES (@empresa, @nome, @endereco, @status, @orcamento)
+      RETURNING id, nome, endereco, status, orcamento_total, empresa_id
     '''),
     parameters: {
-      'empresa': empresaId,
+      'empresa': context.usuario.empresaId,
       'nome': nome,
       'endereco': endereco,
       'status': status,
+      'orcamento': orcamento.valor,
     },
   );
 
-  final obra = resultado.first.toColumnMap();
   return Response.json(
     statusCode: HttpStatus.created,
-    body: {
-      'id': obra['id'],
-      'nome': obra['nome'],
-      'endereco': obra['endereco'],
-      'status': obra['status'],
-      'empresa_id': obra['empresa_id'],
-    },
+    body: dadosDaObra(resultado.first.toColumnMap()),
   );
 }
 
