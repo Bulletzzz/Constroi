@@ -3,13 +3,18 @@ services:
     build:
       context: ./constroi_app
       target: producao
+      args:
+        API_BASE_URL: http://localhost:8090/api
+        ALLOW_INSECURE_API: "true"
     image: constroi-app
     container_name: constroi-app
+    depends_on:
+      - api
     ports:
       - "8090:80"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
       interval: 30s
       timeout: 5s
       retries: 3

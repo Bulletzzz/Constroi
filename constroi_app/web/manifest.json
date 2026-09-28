@@ -1,11 +1,11 @@
 {
-    "name": "constroi_app",
-    "short_name": "constroi_app",
+    "name": "Constrói",
+    "short_name": "Constrói",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F2F2F2",
+    "theme_color": "#1A1C1C",
+    "description": "Controle de estoque, materiais e equipamentos de obra.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

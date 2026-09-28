@@ -13,6 +13,13 @@ class ApiConfig {
     ),
   );
 
+  static const _hostsLocais = {'localhost', '127.0.0.1', '::1'};
+
+  static bool _liberadoSemTls(Uri uri, bool allowInsecure) {
+    if (uri.scheme != 'http' || !allowInsecure) return false;
+    return !kReleaseMode || _hostsLocais.contains(uri.host);
+  }
+
   static Uri _parseBaseUrl(String value, bool allowInsecure) {
     final uri = Uri.tryParse(value);
     if (uri == null || !uri.hasAuthority || uri.host.isEmpty) {
@@ -22,8 +29,7 @@ class ApiConfig {
         'Informe uma URL base válida',
       );
     }
-    if (uri.scheme != 'https' &&
-        !(uri.scheme == 'http' && !kReleaseMode && allowInsecure)) {
+    if (uri.scheme != 'https' && !_liberadoSemTls(uri, allowInsecure)) {
       throw ArgumentError.value(value, 'baseUrl', 'A API deve usar HTTPS');
     }
     if (uri.hasQuery || uri.hasFragment || uri.userInfo.isNotEmpty) {
