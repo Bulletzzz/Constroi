@@ -29,10 +29,9 @@ class AuthService {
       throw const ApiException(500, 'O servidor não devolveu o token.');
     }
 
-    final dados = resposta['usuario'];
     final sessao = AppSession(
       accessToken: token,
-      user: dados is Map<String, dynamic> ? AppUser.fromJson(dados) : null,
+      user: AppUser.talvezDoJson(resposta['usuario']),
     );
 
     await _sessions.start(sessao, persistir: manterSessao);

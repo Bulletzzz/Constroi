@@ -101,7 +101,7 @@ void main() {
     expect(find.text('AUTORIZAÇÃO NECESSÁRIA'), findsOneWidget);
     expect(find.text('EMAIL DO OPERADOR'), findsOneWidget);
     expect(find.text('SENHA DE SEGURANÇA'), findsOneWidget);
-    expect(find.text('MANTER SESSÃO'), findsOneWidget);
+    expect(find.text('MANTER CONECTADO 8H'), findsOneWidget);
     expect(find.text('REDEFINIR SENHA'), findsOneWidget);
     expect(find.text('ENTRAR'), findsOneWidget);
     expect(
@@ -142,7 +142,7 @@ void main() {
     expect(tudo.sessoes.isSignedIn, isFalse);
   });
 
-  testWidgets('erro de servidor mostra a mensagem da API', (tester) async {
+  testWidgets('erro interno do servidor nao vaza para a tela', (tester) async {
     final tudo = montar(
       (_) => http.Response(
         jsonEncode({'erro': 'Servidor sem JWT_SECRET.'}),
@@ -154,7 +154,64 @@ void main() {
     await preencher(tester, email: 'a@b.com', senha: 'Senha#Forte123');
     await tocar(tester, find.text('ENTRAR'));
 
-    expect(find.text('Servidor sem JWT_SECRET.'), findsOneWidget);
+    expect(find.text('Servidor sem JWT_SECRET.'), findsNothing);
+    expect(find.textContaining('Não foi possível entrar agora'), findsOneWidget);
+  });
+
+  testWidgets('usuario inativo mostra o motivo real', (tester) async {
+    final tudo = montar(
+      (_) => http.Response(
+        jsonEncode({'erro': 'Usuario inativo. Procure o administrador.'}),
+        403,
+      ),
+    );
+    await abrir(tester, tudo.auth);
+
+    await preencher(tester, email: 'a@b.com', senha: 'Senha#Forte123');
+    await tocar(tester, find.text('ENTRAR'));
+
+    expect(
+      find.text('Usuario inativo. Procure o administrador.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('bloqueio por tentativas mostra o motivo real', (tester) async {
+    final tudo = montar(
+      (_) => http.Response(
+        jsonEncode({'erro': 'Muitas tentativas. Tente novamente mais tarde.'}),
+        429,
+      ),
+    );
+    await abrir(tester, tudo.auth);
+
+    await preencher(tester, email: 'a@b.com', senha: 'Senha#Forte123');
+    await tocar(tester, find.text('ENTRAR'));
+
+    expect(
+      find.text('Muitas tentativas. Tente novamente mais tarde.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('perfil malformado nao derruba o login', (tester) async {
+    final tudo = montar(
+      (_) => http.Response(
+        jsonEncode({
+          'token': 'jwt-de-teste',
+          'usuario': {'id': null, 'empresa_id': 'abc'},
+        }),
+        200,
+      ),
+    );
+    await abrir(tester, tudo.auth);
+
+    await preencher(tester, email: 'a@b.com', senha: 'Senha#Forte123');
+    await tocar(tester, find.text('ENTRAR'));
+
+    expect(tudo.sessoes.isSignedIn, isTrue);
+    expect(tudo.sessoes.accessToken, 'jwt-de-teste');
+    expect(tudo.sessoes.session?.user, isNull);
   });
 
   testWidgets('login certo abre a sessao e manda email e senha', (

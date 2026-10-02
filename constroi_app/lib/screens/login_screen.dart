@@ -14,8 +14,10 @@ const _rotulo = Color(0xFF4D4732);
 const _pontos = Color(0xFF6B7280);
 const _linha = Color(0xFFE2E2E2);
 const _textoRodape = Color(0xFF5E5E5E);
-const _dica = Color(0xFF9A9A9A);
+const _dica = Color(0xFF767676);
 const _vermelho = Color(0xFFB3261E);
+
+const _statusQueFalamComOperador = {403, 429};
 
 TextStyle _mini(Color cor, [double espaco = 1.2]) => TextStyle(
   color: cor,
@@ -79,9 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ApiException catch (erro) {
       if (!mounted) return;
       setState(() {
-        _erro = erro.statusCode == 401
-            ? 'E-mail ou senha inválidos.'
-            : erro.message;
+        _erro = _mensagemParaOperador(erro);
         _enviando = false;
       });
     } catch (_) {
@@ -91,6 +91,15 @@ class _LoginScreenState extends State<LoginScreen> {
         _enviando = false;
       });
     }
+  }
+
+  String _mensagemParaOperador(ApiException erro) {
+    if (erro.statusCode == 401) return 'E-mail ou senha inválidos.';
+    if (_statusQueFalamComOperador.contains(erro.statusCode)) {
+      return erro.message;
+    }
+    debugPrint('Falha no login (${erro.statusCode}): ${erro.message}');
+    return 'Não foi possível entrar agora. Tente novamente em instantes.';
   }
 
   void _avisarRedefinicao() {
@@ -124,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 358),
-                  child: DecoratedBox(
+                  child: Container(
                     decoration: BoxDecoration(
                       color: _cartao,
                       border: Border.all(color: _tinta, width: 2),
@@ -322,57 +331,53 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
   );
 
-  Widget _opcoes() => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _opcoes() => Wrap(
+    alignment: WrapAlignment.spaceBetween,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    spacing: 12,
+    runSpacing: 12,
     children: [
-      Flexible(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Checkbox(
-                value: _manterSessao,
-                onChanged: _enviando
-                    ? null
-                    : (valor) => setState(() => _manterSessao = valor ?? false),
-                fillColor: WidgetStateProperty.resolveWith(
-                  (estados) => estados.contains(WidgetState.selected)
-                      ? _tinta
-                      : Colors.white,
-                ),
-                checkColor: Colors.white,
-                side: const BorderSide(color: _tinta, width: 2),
-                shape: const RoundedRectangleBorder(),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Checkbox(
+              value: _manterSessao,
+              onChanged: _enviando
+                  ? null
+                  : (valor) => setState(() => _manterSessao = valor ?? false),
+              fillColor: WidgetStateProperty.resolveWith(
+                (estados) => estados.contains(WidgetState.selected)
+                    ? _tinta
+                    : Colors.white,
               ),
+              checkColor: Colors.white,
+              side: const BorderSide(color: _tinta, width: 2),
+              shape: const RoundedRectangleBorder(),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
             ),
-            const SizedBox(width: 11),
-            Flexible(
-              child: Text(
-                'MANTER SESSÃO',
-                overflow: TextOverflow.ellipsis,
-                style: _mini(_tinta),
-              ),
+          ),
+          const SizedBox(width: 11),
+          Flexible(
+            child: Text(
+              'MANTER CONECTADO 8H',
+              overflow: TextOverflow.ellipsis,
+              style: _mini(_tinta),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      const SizedBox(width: 12),
-      Flexible(
-        child: GestureDetector(
-          onTap: _avisarRedefinicao,
-          child: Text(
-            'REDEFINIR SENHA',
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-            style: _mini(_tinta).copyWith(
-              decoration: TextDecoration.underline,
-              decorationColor: _tinta,
-              decorationThickness: 1.5,
-            ),
+      GestureDetector(
+        onTap: _avisarRedefinicao,
+        child: Text(
+          'REDEFINIR SENHA',
+          style: _mini(_tinta).copyWith(
+            decoration: TextDecoration.underline,
+            decorationColor: _tinta,
+            decorationThickness: 1.5,
           ),
         ),
       ),

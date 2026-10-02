@@ -2,13 +2,15 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
-ARG API_BASE_URL=http://localhost:8090/api
-ARG ALLOW_INSECURE_API=true
+ARG API_BASE_URL
+ARG ALLOW_INSECURE_API=false
 
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
 COPY . .
+RUN test -n "$API_BASE_URL" \
+    || (echo "Informe --build-arg API_BASE_URL=https://seu-endereco" >&2; exit 1)
 RUN flutter build web --release \
     --dart-define=API_BASE_URL=$API_BASE_URL \
     --dart-define=ALLOW_INSECURE_API=$ALLOW_INSECURE_API
