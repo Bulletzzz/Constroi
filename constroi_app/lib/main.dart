@@ -6,7 +6,11 @@ import 'core/api/api_config.dart';
 import 'core/auth/auth_service.dart';
 import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
+import 'navigation/app_route.dart';
+import 'navigation/perfil_usuario.dart';
+import 'navigation/route_guard.dart';
 import 'screens/login_screen.dart';
+import 'screens/module_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_home.dart';
 
@@ -70,7 +74,20 @@ class _ConstroiAppState extends State<ConstroiApp> {
     debugShowCheckedModeBanner: false,
     theme: AppTheme.dark,
     home: _inicio(),
+    onGenerateRoute: _gerarRota,
   );
+
+  Route<void>? _gerarRota(RouteSettings settings) {
+    final solicitada = AppRoute.porCaminho(settings.name);
+    if (solicitada == null) return null;
+
+    final guarda = RouteGuard.doToken(_sessoes?.accessToken);
+    final destino = guarda.destinoPermitido(solicitada);
+    return MaterialPageRoute<void>(
+      settings: RouteSettings(name: destino.caminho),
+      builder: (_) => _areaAutenticada(destino),
+    );
+  }
 
   Widget _inicio() {
     if (_iniciando) {
@@ -86,10 +103,69 @@ class _ConstroiAppState extends State<ConstroiApp> {
     final sessoes = _sessoes!;
     return ListenableBuilder(
       listenable: sessoes,
-      builder: (_, _) =>
-          sessoes.isSignedIn ? const AppHome() : LoginScreen(auth: _auth!),
+      builder: (_, _) => sessoes.isSignedIn
+          ? _areaAutenticada(AppRoute.painel)
+          : LoginScreen(auth: _auth!),
     );
   }
+
+  Widget _areaAutenticada(AppRoute solicitada) {
+    final sessoes = _sessoes!;
+    return ListenableBuilder(
+      listenable: sessoes,
+      builder: (_, _) {
+        if (!sessoes.isSignedIn) return LoginScreen(auth: _auth!);
+
+        final guarda = RouteGuard.doToken(sessoes.accessToken);
+        final perfil = guarda.perfil;
+        if (perfil == null) {
+          return _SessaoSemPerfil(onSair: sessoes.signOut);
+        }
+
+        return _telaDaRota(guarda.destinoPermitido(solicitada), perfil);
+      },
+    );
+  }
+
+  Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil) {
+    if (rota == AppRoute.painel) return AppHome(perfil: perfil);
+    return ModuleScreen(rota: rota, perfil: perfil);
+  }
+}
+
+class _SessaoSemPerfil extends StatelessWidget {
+  const _SessaoSemPerfil({required this.onSair});
+
+  final Future<void> Function() onSair;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, color: AppTheme.accent, size: 36),
+              const SizedBox(height: 16),
+              Text(
+                'Não foi possível identificar seu perfil.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onSair,
+                child: const Text('VOLTAR AO LOGIN'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _ConfiguracaoAusente extends StatelessWidget {
