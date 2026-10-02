@@ -21,16 +21,19 @@ class SessionManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> start(AppSession session, {bool persistir = true}) async {
+  Future<void> start(AppSession session) async {
     if (session.accessToken.trim().isEmpty) {
       throw ArgumentError.value(session.accessToken, 'accessToken');
     }
-    if (persistir) {
-      await _storage.write(session.accessToken);
-    } else {
-      await _storage.delete();
-    }
+    await _storage.delete();
     _session = session;
+    notifyListeners();
+  }
+
+  void definirUsuario(AppUser? usuario) {
+    final atual = _session;
+    if (atual == null || usuario == null) return;
+    _session = AppSession(accessToken: atual.accessToken, user: usuario);
     notifyListeners();
   }
 

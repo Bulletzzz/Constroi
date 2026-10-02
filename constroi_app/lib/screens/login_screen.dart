@@ -41,7 +41,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _focoEmail = FocusNode();
   final _focoSenha = FocusNode();
 
-  bool _manterSessao = false;
   bool _enviando = false;
   String? _erro;
 
@@ -71,11 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await widget.auth.entrar(
-        email: email,
-        senha: senha,
-        manterSessao: _manterSessao,
-      );
+      await widget.auth.entrar(email: email, senha: senha);
       if (!mounted) return;
       setState(() => _enviando = false);
     } on ApiException catch (erro) {
@@ -331,57 +326,19 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
   );
 
-  Widget _opcoes() => Wrap(
-    alignment: WrapAlignment.spaceBetween,
-    crossAxisAlignment: WrapCrossAlignment.center,
-    spacing: 12,
-    runSpacing: 12,
-    children: [
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: Checkbox(
-              value: _manterSessao,
-              onChanged: _enviando
-                  ? null
-                  : (valor) => setState(() => _manterSessao = valor ?? false),
-              fillColor: WidgetStateProperty.resolveWith(
-                (estados) => estados.contains(WidgetState.selected)
-                    ? _tinta
-                    : Colors.white,
-              ),
-              checkColor: Colors.white,
-              side: const BorderSide(color: _tinta, width: 2),
-              shape: const RoundedRectangleBorder(),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-          const SizedBox(width: 11),
-          Flexible(
-            child: Text(
-              'MANTER CONECTADO 8H',
-              overflow: TextOverflow.ellipsis,
-              style: _mini(_tinta),
-            ),
-          ),
-        ],
-      ),
-      GestureDetector(
-        onTap: _avisarRedefinicao,
-        child: Text(
-          'REDEFINIR SENHA',
-          style: _mini(_tinta).copyWith(
-            decoration: TextDecoration.underline,
-            decorationColor: _tinta,
-            decorationThickness: 1.5,
-          ),
+  Widget _opcoes() => Align(
+    alignment: Alignment.centerRight,
+    child: GestureDetector(
+      onTap: _avisarRedefinicao,
+      child: Text(
+        'REDEFINIR SENHA',
+        style: _mini(_tinta).copyWith(
+          decoration: TextDecoration.underline,
+          decorationColor: _tinta,
+          decorationThickness: 1.5,
         ),
       ),
-    ],
+    ),
   );
 
   Widget _botao() => SizedBox(

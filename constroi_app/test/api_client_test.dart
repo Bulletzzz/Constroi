@@ -67,10 +67,14 @@ void main() {
     await sessions.expireIfCurrent('antigo');
 
     expect(sessions.accessToken, 'novo');
-    expect(storage.token, 'novo');
+    expect(sessions.isSignedIn, isTrue);
   });
 
   test('recusa HTTP sem permissão explícita de desenvolvimento', () {
     expect(() => ApiConfig('http://api.exemplo.com'), throwsArgumentError);
+  });
+
+  test('caminho relativo so vale no Flutter Web', () {
+    expect(() => ApiConfig('/api'), throwsArgumentError);
   });
 }

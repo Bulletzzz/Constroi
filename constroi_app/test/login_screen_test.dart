@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:constroi_app/core/api/api_client.dart';
 import 'package:constroi_app/core/api/api_config.dart';
@@ -101,8 +102,8 @@ void main() {
     expect(find.text('AUTORIZAÇÃO NECESSÁRIA'), findsOneWidget);
     expect(find.text('EMAIL DO OPERADOR'), findsOneWidget);
     expect(find.text('SENHA DE SEGURANÇA'), findsOneWidget);
-    expect(find.text('MANTER CONECTADO 8H'), findsOneWidget);
     expect(find.text('REDEFINIR SENHA'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing);
     expect(find.text('ENTRAR'), findsOneWidget);
     expect(
       find.textContaining('Sistema de acesso restrito'),
@@ -238,10 +239,11 @@ void main() {
     });
   });
 
-  testWidgets('sem manter sessao o token nao fica guardado', (tester) async {
+  testWidgets('o token nunca fica guardado em disco', (tester) async {
     final tudo = montar(
       (_) => http.Response(jsonEncode(_respostaDeSucesso), 200),
     );
+    tudo.cofre.token = 'sobra-de-versao-antiga';
     await abrir(tester, tudo.auth);
 
     await preencher(tester, email: 'a@b.com', senha: 'Senha#Forte123');
@@ -251,17 +253,46 @@ void main() {
     expect(tudo.cofre.token, isNull);
   });
 
-  testWidgets('com manter sessao o token fica guardado', (tester) async {
+  test('token guardado valido abre a sessao e carrega o perfil', () async {
     final tudo = montar(
-      (_) => http.Response(jsonEncode(_respostaDeSucesso), 200),
+      (_) => http.Response(
+        jsonEncode({
+          'id': 7,
+          'nome': 'Eduardo',
+          'email': 'eduardo@constroi.test',
+          'tipo': 'engenheiro',
+          'empresa_id': 3,
+        }),
+        200,
+      ),
     );
-    await abrir(tester, tudo.auth);
+    tudo.cofre.token = 'jwt-guardado';
 
-    await preencher(tester, email: 'a@b.com', senha: 'Senha#Forte123');
-    await tocar(tester, find.byType(Checkbox));
-    await tocar(tester, find.text('ENTRAR'));
+    await tudo.auth.restaurar();
 
-    expect(tudo.cofre.token, 'jwt-de-teste');
+    expect(tudo.sessoes.isSignedIn, isTrue);
+    expect(tudo.sessoes.session?.user?.nome, 'Eduardo');
+  });
+
+  test('token guardado invalido volta para o login', () async {
+    final tudo = montar(
+      (_) => http.Response(jsonEncode({'erro': 'Token expirado.'}), 401),
+    );
+    tudo.cofre.token = 'jwt-vencido';
+
+    await tudo.auth.restaurar();
+
+    expect(tudo.sessoes.isSignedIn, isFalse);
+    expect(tudo.cofre.token, isNull);
+  });
+
+  test('api fora do ar nao desloga quem ja estava dentro', () async {
+    final tudo = montar((_) => throw const SocketException('sem rede'));
+    tudo.cofre.token = 'jwt-guardado';
+
+    await tudo.auth.restaurar();
+
+    expect(tudo.sessoes.isSignedIn, isTrue);
   });
 
   testWidgets('redefinir senha avisa que e o administrador', (tester) async {

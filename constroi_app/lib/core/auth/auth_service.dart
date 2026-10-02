@@ -10,10 +10,19 @@ class AuthService {
   final ApiClient _api;
   final SessionManager _sessions;
 
+  Future<void> restaurar() async {
+    await _sessions.restore();
+    if (_sessions.accessToken == null) return;
+    try {
+      _sessions.definirUsuario(AppUser.talvezDoJson(await _api.get('eu')));
+    } catch (_) {
+      return;
+    }
+  }
+
   Future<AppSession> entrar({
     required String email,
     required String senha,
-    bool manterSessao = true,
   }) async {
     final resposta = await _api.post(
       'login',
@@ -34,7 +43,7 @@ class AuthService {
       user: AppUser.talvezDoJson(resposta['usuario']),
     );
 
-    await _sessions.start(sessao, persistir: manterSessao);
+    await _sessions.start(sessao);
     return sessao;
   }
 

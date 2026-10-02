@@ -56,8 +56,9 @@ class _ConstroiAppState extends State<ConstroiApp> {
       );
       _sessoes = sessoes;
       _api = api;
-      _auth = AuthService(api: api, sessions: sessoes);
-      await sessoes.restore();
+      final auth = AuthService(api: api, sessions: sessoes);
+      _auth = auth;
+      await auth.restaurar();
     } catch (erro) {
       _erroDeConfiguracao = '$erro';
     }
@@ -100,12 +101,13 @@ class _ConfiguracaoAusente extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppTheme.background,
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
+    body: SingleChildScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -121,7 +123,9 @@ class _ConfiguracaoAusente extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Rode o aplicativo informando onde a API está:',
+                'No Flutter Web a API fica na mesma origem da página, '
+                'então basta um caminho. No Android e iOS informe a '
+                'URL completa:',
                 style: TextStyle(height: 1.4),
               ),
               const SizedBox(height: 12),
@@ -130,9 +134,10 @@ class _ConfiguracaoAusente extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 color: AppTheme.surface,
                 child: const SelectableText(
-                  'flutter run -d chrome \\\n'
-                  '  --dart-define=API_BASE_URL=http://localhost:8080 \\\n'
-                  '  --dart-define=ALLOW_INSECURE_API=true',
+                  'flutter build web \\\n'
+                  '  --dart-define=API_BASE_URL=/api\n\n'
+                  'flutter run -d android \\\n'
+                  '  --dart-define=API_BASE_URL=https://api.constroi.com.br',
                   style: TextStyle(fontFamily: 'monospace', fontSize: 12.5),
                 ),
               ),
@@ -141,7 +146,8 @@ class _ConfiguracaoAusente extends StatelessWidget {
                 detalhe,
                 style: const TextStyle(fontSize: 12, color: Color(0xFF9A978E)),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

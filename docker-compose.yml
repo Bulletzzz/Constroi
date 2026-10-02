@@ -4,8 +4,7 @@ services:
       context: ./constroi_app
       target: producao
       args:
-        API_BASE_URL: http://localhost:8090/api
-        ALLOW_INSECURE_API: "true"
+        API_BASE_URL: /api
     image: constroi-app
     container_name: constroi-app
     depends_on:
