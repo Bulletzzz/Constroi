@@ -11,3 +11,13 @@ String? variavel(String nome) {
   final valor = _ambiente[nome]?.trim();
   return (valor == null || valor.isEmpty) ? null : valor;
 }
+
+/// Remove parâmetros que o console do Neon acrescenta, mas que ainda não são
+/// reconhecidos pelo package:postgres. O TLS continua obrigatório pelo
+/// `sslmode=require` validado no migrador.
+String normalizarDatabaseUrl(String valor) {
+  final uri = Uri.parse(valor);
+  final parametros = Map<String, String>.from(uri.queryParameters)
+    ..remove('channel_binding');
+  return uri.replace(queryParameters: parametros).toString();
+}

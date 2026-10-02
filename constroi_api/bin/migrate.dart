@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:constroi_api/ambiente.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
@@ -25,7 +26,9 @@ Future<void> main() async {
     return;
   }
 
-  final conexao = await Connection.openFromUrl(databaseUrl);
+  final conexao = await Connection.openFromUrl(
+    normalizarDatabaseUrl(databaseUrl),
+  );
   try {
     await conexao.execute('''
       CREATE TABLE IF NOT EXISTS schema_migrations (

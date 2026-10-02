@@ -1,0 +1,17 @@
+Custos da obra
+
+O orçamento total fica na obra, no campo orcamento_total.
+
+O preço pago por um material fica em item_entrada.valor_unitario. Isso preserva o histórico de cada compra: alterar um preço futuro não muda o valor das entradas anteriores. A categoria usada na compra também fica no item de entrada.
+
+Despesas que não representam entrada de material, como locação de equipamentos e serviços, ficam em despesa_obra. Uma compra de material não deve ser lançada novamente nessa tabela, pois isso duplicaria o custo.
+
+A tabela categoria_custo classifica materiais e outras despesas. O produto pode ter uma categoria sugerida, mas a categoria gravada no item de entrada é a classificação histórica usada nos relatórios.
+
+A view vw_lancamento_custo reúne entradas de material com preço e outras despesas. A view vw_resumo_custo_obra calcula custo acumulado, saldo do orçamento e percentual consumido por obra.
+
+Entradas antigas sem valor_unitario permanecem válidas, mas não entram no total de custos até que o preço seja informado.
+
+Implementação
+
+A estrutura é criada pela migration constroi_api/migrations/005_custos_obra.sql, executada depois de 004_usuario_obra.sql. O executor registra a aplicação em schema_migrations e não repete migrations já concluídas.

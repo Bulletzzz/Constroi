@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:constroi_api/ambiente.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
@@ -28,7 +29,9 @@ Future<void> main(List<String> argumentos) async {
   final nome = argumentos[2];
   final tipo = argumentos[3];
 
-  final conexao = await Connection.openFromUrl(databaseUrl);
+  final conexao = await Connection.openFromUrl(
+    normalizarDatabaseUrl(databaseUrl),
+  );
   try {
     final empresas = await conexao.execute('SELECT id FROM empresa LIMIT 1');
     final empresaId = empresas.isNotEmpty

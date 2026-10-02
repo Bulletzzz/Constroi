@@ -9,5 +9,5 @@ Pool<void> get banco {
   if (url == null) {
     throw StateError('DATABASE_URL nao configurada. Confira o .env');
   }
-  return _pool ??= Pool.withUrl(url);
+  return _pool ??= Pool.withUrl(normalizarDatabaseUrl(url));
 }

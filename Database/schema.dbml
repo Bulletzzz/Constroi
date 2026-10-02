@@ -1,0 +1,176 @@
+Project Constroi {
+  database_type: 'PostgreSQL'
+  Note: 'Estado consolidado depois das migrations 001 a 005'
+}
+
+Table empresa {
+  id integer [pk, increment]
+  nome varchar(150) [not null]
+  cnpj varchar(18) [not null, unique]
+}
+
+Table usuario {
+  id integer [pk, increment]
+  empresa_id integer [not null, ref: > empresa.id]
+  nome varchar(150) [not null]
+  email varchar(150) [not null]
+  senha_hash varchar(255) [not null]
+  tipo varchar(30) [not null]
+  ativo boolean [not null, default: true]
+  tentativas_login integer [not null, default: 0]
+  bloqueado_ate timestamptz
+  ultimo_login_em timestamptz
+  email_verificado_em timestamptz
+  criado_em timestamptz [not null]
+  atualizado_em timestamptz [not null]
+}
+
+Table obra {
+  id integer [pk, increment]
+  empresa_id integer [not null, ref: > empresa.id]
+  nome varchar(150) [not null]
+  endereco varchar(255) [not null]
+  status varchar(30) [not null]
+  orcamento_total decimal(14,2)
+}
+
+Table usuario_obra {
+  id integer [pk, increment]
+  empresa_id integer [not null]
+  usuario_id integer [not null]
+  obra_id integer [not null]
+  data_inicio timestamptz [not null]
+  data_fim timestamptz
+}
+
+Table categoria_custo {
+  id integer [pk, increment]
+  nome varchar(100) [not null, unique]
+}
+
+Table produto {
+  id integer [pk, increment]
+  empresa_id integer [not null, ref: > empresa.id]
+  categoria_custo_id integer [ref: > categoria_custo.id]
+  nome varchar(150) [not null]
+  unidade varchar(30) [not null]
+  criado_em timestamptz [not null]
+  atualizado_em timestamptz [not null]
+}
+
+Table estoque {
+  id integer [pk, increment]
+  obra_id integer [not null, ref: > obra.id]
+  produto_id integer [not null, ref: > produto.id]
+  quantidade decimal(12,2) [not null, default: 0]
+  indexes { (obra_id, produto_id) [unique] }
+}
+
+Table pedido {
+  id integer [pk, increment]
+  usuario_id integer [not null, ref: > usuario.id]
+  obra_id integer [not null, ref: > obra.id]
+  protocolo varchar(50) [not null, unique]
+  status varchar(30) [not null]
+  justificativa varchar(255)
+  data timestamptz [not null]
+}
+
+Table item_pedido {
+  id integer [pk, increment]
+  pedido_id integer [not null, ref: > pedido.id]
+  produto_id integer [not null, ref: > produto.id]
+  quantidade decimal(12,2) [not null]
+}
+
+Table entrada_estoque {
+  id integer [pk, increment]
+  usuario_id integer [not null, ref: > usuario.id]
+  obra_id integer [not null, ref: > obra.id]
+  xml_nota_fiscal text
+  justificativa varchar(255)
+  data timestamptz [not null]
+}
+
+Table item_entrada {
+  id integer [pk, increment]
+  entrada_id integer [not null, ref: > entrada_estoque.id]
+  produto_id integer [not null, ref: > produto.id]
+  categoria_custo_id integer [ref: > categoria_custo.id]
+  quantidade decimal(12,2) [not null]
+  valor_unitario decimal(14,2)
+}
+
+Table despesa_obra {
+  id bigint [pk, increment]
+  empresa_id integer [not null]
+  obra_id integer [not null]
+  registrado_por_usuario_id integer [not null]
+  categoria_custo_id integer [not null, ref: > categoria_custo.id]
+  descricao varchar(255) [not null]
+  valor decimal(14,2) [not null]
+  data_lancamento timestamptz [not null]
+}
+
+Table equipamento {
+  id integer [pk, increment]
+  empresa_id integer [not null, ref: > empresa.id]
+  nome varchar(150) [not null]
+  patrimonio varchar(50) [not null]
+  status varchar(30) [not null]
+  criado_em timestamptz [not null]
+  atualizado_em timestamptz [not null]
+  indexes { (empresa_id, patrimonio) [unique] }
+}
+
+Table emprestimo {
+  id integer [pk, increment]
+  equipamento_id integer [not null, ref: > equipamento.id]
+  usuario_id integer [not null, ref: > usuario.id]
+  obra_id integer [not null, ref: > obra.id]
+  data_emprestimo timestamptz [not null]
+  data_devolucao timestamptz
+  status varchar(30) [not null]
+}
+
+Table log_sistema {
+  id bigint [pk, increment]
+  usuario_id integer [not null, ref: > usuario.id]
+  acao varchar(255) [not null]
+  data timestamptz [not null]
+}
+
+Table sessao_usuario {
+  id uuid [pk]
+  usuario_id integer [not null, ref: > usuario.id]
+  refresh_token_hash char(64) [not null, unique]
+  expira_em timestamptz [not null]
+  revogado_em timestamptz
+  endereco_ip inet
+  user_agent varchar(500)
+  criado_em timestamptz [not null]
+}
+
+Table recuperacao_senha {
+  id uuid [pk]
+  usuario_id integer [not null, ref: > usuario.id]
+  token_hash char(64) [not null, unique]
+  expira_em timestamptz [not null]
+  utilizado_em timestamptz
+  endereco_ip inet
+  criado_em timestamptz [not null]
+}
+
+Table tentativa_login {
+  id bigint [pk, increment]
+  usuario_id integer [ref: > usuario.id]
+  email_hash char(64) [not null]
+  endereco_ip inet
+  sucesso boolean [not null]
+  criado_em timestamptz [not null]
+}
+
+Ref: usuario_obra.(usuario_id, empresa_id) > usuario.(id, empresa_id)
+Ref: usuario_obra.(obra_id, empresa_id) > obra.(id, empresa_id)
+Ref: despesa_obra.(obra_id, empresa_id) > obra.(id, empresa_id)
+Ref: despesa_obra.(registrado_por_usuario_id, empresa_id) > usuario.(id, empresa_id)
