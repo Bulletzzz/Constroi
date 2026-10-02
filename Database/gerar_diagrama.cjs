@@ -97,11 +97,10 @@ const svgPath = path.join(docsDir, 'Diagrama_Banco.svg');
 const pngPath = path.join(docsDir, 'Diagrama_Banco.png');
 fs.writeFileSync(svgPath, svg, 'utf8');
 
-try {
-  const sharp = require('sharp');
-  sharp(Buffer.from(svg)).png().toFile(pngPath)
-    .then(() => console.log(`Diagrama gerado em ${pngPath}`))
-    .catch((error) => { throw error; });
-} catch (error) {
-  console.log(`SVG gerado em ${svgPath}. PNG não gerado: ${error.message}`);
-}
+const sharp = require('sharp');
+sharp(Buffer.from(svg)).png().toFile(pngPath)
+  .then(() => console.log(`Diagramas gerados em ${svgPath} e ${pngPath}`))
+  .catch((error) => {
+    console.error(`Falha ao gerar o PNG: ${error.message}`);
+    process.exitCode = 1;
+  });

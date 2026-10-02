@@ -18,4 +18,20 @@ void main() {
     const entrada = 'postgresql://usuario:senha@host/neondb?sslmode=require';
     expect(normalizarDatabaseUrl(entrada), entrada);
   });
+
+  test('recusa URL sem sslmode', () {
+    expect(
+      () => normalizarDatabaseUrl('postgresql://usuario:senha@host/neondb'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('recusa URL que perde sslmode ao remover channel_binding', () {
+    expect(
+      () => normalizarDatabaseUrl(
+        'postgresql://usuario:senha@host/neondb?channel_binding=require',
+      ),
+      throwsA(isA<FormatException>()),
+    );
+  });
 }

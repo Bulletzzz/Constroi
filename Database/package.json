@@ -1,0 +1,10 @@
+{
+  "name": "constroi-database-docs",
+  "private": true,
+  "scripts": {
+    "diagram": "node gerar_diagrama.cjs"
+  },
+  "dependencies": {
+    "sharp": "^0.35.5"
+  }
+}

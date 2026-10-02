@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS usuario (
     email VARCHAR(150) NOT NULL,
     senha_hash VARCHAR(255) NOT NULL,
     tipo VARCHAR(30) NOT NULL,
+    CONSTRAINT ck_usuario_tipo
+        CHECK (tipo IN ('pedreiro', 'engenheiro', 'master')),
     ativo BOOLEAN NOT NULL DEFAULT TRUE,
     tentativas_login INTEGER NOT NULL DEFAULT 0,
     bloqueado_ate TIMESTAMPTZ,
@@ -341,5 +343,6 @@ INSERT INTO schema_migrations (versao) VALUES
     ('002_tabelas_login.sql'),
     ('003_catalogo_timestamps.sql'),
     ('004_usuario_obra.sql'),
-    ('005_custos_obra.sql')
+    ('005_custos_obra.sql'),
+    ('006_usuario_tipo.sql')
 ON CONFLICT (versao) DO NOTHING;
