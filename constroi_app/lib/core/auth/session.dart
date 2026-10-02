@@ -13,13 +13,28 @@ class AppUser {
   final String email;
   final String tipo;
 
-  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-    id: json['id'] as int,
-    empresaId: json['empresa_id'] as int,
-    nome: json['nome'] as String,
-    email: json['email'] as String,
-    tipo: json['tipo'] as String,
-  );
+  static AppUser? talvezDoJson(Object? dados) {
+    if (dados is! Map) return null;
+    final id = _inteiro(dados['id']);
+    final empresa = _inteiro(dados['empresa_id']);
+    if (id == null || empresa == null) return null;
+    return AppUser(
+      id: id,
+      empresaId: empresa,
+      nome: _texto(dados['nome']),
+      email: _texto(dados['email']),
+      tipo: _texto(dados['tipo']),
+    );
+  }
+
+  static int? _inteiro(Object? valor) {
+    if (valor is int) return valor;
+    if (valor is num) return valor.toInt();
+    if (valor is String) return int.tryParse(valor);
+    return null;
+  }
+
+  static String _texto(Object? valor) => valor is String ? valor : '';
 }
 
 class AppSession {
