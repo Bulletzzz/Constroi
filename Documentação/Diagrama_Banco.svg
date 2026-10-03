@@ -1,0 +1,237 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1710" viewBox="0 0 2400 1710">
+  <rect width="100%" height="100%" fill="#111416" />
+  <style>
+    .table { fill: #202429; stroke: #697078; stroke-width: 2; }
+    .title { font: 700 23px Arial, sans-serif; }
+    .field { fill: #e8eaed; font: 18px Consolas, monospace; }
+    .links path { fill: none; stroke: #89929c; stroke-width: 2; opacity: .42; }
+    .heading { fill: #ffffff; font: 700 34px Arial, sans-serif; }
+    .subtitle { fill: #aeb6bf; font: 19px Arial, sans-serif; }
+  </style>
+  <text x="60" y="48" class="heading">CONSTRÓI — Modelo de dados</text>
+  <text x="810" y="46" class="subtitle">azul: equipe • amarelo: custos • roxo: autenticação • verde: views</text>
+  <g class="links"><path d="M 1190 205 L 1190 405 L 720 405 L 720 605" />
+<path d="M 1190 205 L 1190 405 L 1660 405 L 1660 605" />
+<path d="M 1190 205 L 1190 605 L 720 605 L 720 1005" />
+<path d="M 1190 205 L 1190 405 L 250 405 L 250 605" />
+<path d="M 720 605 L 720 405 L 250 405 L 250 205" />
+<path d="M 720 605 L 720 405 L 720 405 L 720 205" />
+<path d="M 720 605 L 720 405 L 1660 405 L 1660 205" />
+<path d="M 720 605 L 720 405 L 2130 405 L 2130 205" />
+<path d="M 720 605 L 720 605 L 1190 605 L 1190 605" />
+<path d="M 1660 605 L 1660 605 L 1190 605 L 1190 605" />
+<path d="M 250 605 L 250 605 L 2130 605 L 2130 605" />
+<path d="M 720 605 L 720 605 L 2130 605 L 2130 605" />
+<path d="M 1660 605 L 1660 605 L 2130 605 L 2130 605" />
+<path d="M 250 1005 L 250 1005 L 720 1005 L 720 1005" />
+<path d="M 250 1005 L 250 1205 L 720 1205 L 720 1405" />
+<path d="M 250 1005 L 250 1205 L 250 1205 L 250 1405" />
+<path d="M 1660 605 L 1660 805 L 1190 805 L 1190 1005" />
+<path d="M 720 1005 L 720 1005 L 1190 1005 L 1190 1005" />
+<path d="M 720 605 L 720 805 L 1660 805 L 1660 1005" />
+<path d="M 1660 605 L 1660 805 L 1660 805 L 1660 1005" />
+<path d="M 1660 1005 L 1660 1005 L 2130 1005 L 2130 1005" />
+<path d="M 720 1005 L 720 1005 L 2130 1005 L 2130 1005" />
+<path d="M 720 605 L 720 1005 L 1190 1005 L 1190 1405" />
+<path d="M 1660 605 L 1660 1005 L 1190 1005 L 1190 1405" />
+<path d="M 1190 1405 L 1190 1405 L 720 1405 L 720 1405" />
+<path d="M 720 1005 L 720 1205 L 720 1205 L 720 1405" />
+<path d="M 1660 605 L 1660 1005 L 250 1005 L 250 1405" />
+<path d="M 720 605 L 720 1005 L 250 1005 L 250 1405" />
+<path d="M 1660 605 L 1660 1005 L 1660 1005 L 1660 1405" />
+<path d="M 720 1405 L 720 1405 L 2130 1405 L 2130 1405" />
+<path d="M 250 1405 L 250 1405 L 2130 1405 L 2130 1405" />
+<path d="M 2130 1405 L 2130 1405 L 1660 1405 L 1660 1405" /></g>
+  <g>
+    <rect x="60" y="80" width="380" height="250" rx="12" class="table" />
+    <path d="M 72 80 H 428 Q 440 80 440 92 V 138 H 60 V 92 Q 60 80 72 80" fill="#563d7c" />
+    <text x="80" y="119" class="title" fill="#f4f6f8">sessao_usuario</text>
+    <text x="80" y="172" class="field">id PK</text>
+<text x="80" y="201" class="field">usuario_id FK</text>
+<text x="80" y="230" class="field">refresh_token_hash</text>
+<text x="80" y="259" class="field">expira_em</text>
+<text x="80" y="288" class="field">revogado_em</text>
+  </g>
+<g>
+    <rect x="530" y="80" width="380" height="250" rx="12" class="table" />
+    <path d="M 542 80 H 898 Q 910 80 910 92 V 138 H 530 V 92 Q 530 80 542 80" fill="#563d7c" />
+    <text x="550" y="119" class="title" fill="#f4f6f8">recuperacao_senha</text>
+    <text x="550" y="172" class="field">id PK</text>
+<text x="550" y="201" class="field">usuario_id FK</text>
+<text x="550" y="230" class="field">token_hash</text>
+<text x="550" y="259" class="field">expira_em</text>
+<text x="550" y="288" class="field">utilizado_em</text>
+  </g>
+<g>
+    <rect x="1000" y="80" width="380" height="250" rx="12" class="table" />
+    <path d="M 1012 80 H 1368 Q 1380 80 1380 92 V 138 H 1000 V 92 Q 1000 80 1012 80" fill="#2f343a" />
+    <text x="1020" y="119" class="title" fill="#f4f6f8">empresa</text>
+    <text x="1020" y="172" class="field">id PK</text>
+<text x="1020" y="201" class="field">nome</text>
+<text x="1020" y="230" class="field">cnpj UQ</text>
+  </g>
+<g>
+    <rect x="1470" y="80" width="380" height="250" rx="12" class="table" />
+    <path d="M 1482 80 H 1838 Q 1850 80 1850 92 V 138 H 1470 V 92 Q 1470 80 1482 80" fill="#563d7c" />
+    <text x="1490" y="119" class="title" fill="#f4f6f8">tentativa_login</text>
+    <text x="1490" y="172" class="field">id PK</text>
+<text x="1490" y="201" class="field">usuario_id FK</text>
+<text x="1490" y="230" class="field">email_hash</text>
+<text x="1490" y="259" class="field">sucesso</text>
+<text x="1490" y="288" class="field">criado_em</text>
+  </g>
+<g>
+    <rect x="1940" y="80" width="380" height="250" rx="12" class="table" />
+    <path d="M 1952 80 H 2308 Q 2320 80 2320 92 V 138 H 1940 V 92 Q 1940 80 1952 80" fill="#2f343a" />
+    <text x="1960" y="119" class="title" fill="#f4f6f8">log_sistema</text>
+    <text x="1960" y="172" class="field">id PK</text>
+<text x="1960" y="201" class="field">usuario_id FK</text>
+<text x="1960" y="230" class="field">acao</text>
+<text x="1960" y="259" class="field">data</text>
+  </g>
+<g>
+    <rect x="60" y="480" width="380" height="250" rx="12" class="table" />
+    <path d="M 72 480 H 428 Q 440 480 440 492 V 538 H 60 V 492 Q 60 480 72 480" fill="#2f343a" />
+    <text x="80" y="519" class="title" fill="#f4f6f8">equipamento</text>
+    <text x="80" y="572" class="field">id PK</text>
+<text x="80" y="601" class="field">empresa_id FK</text>
+<text x="80" y="630" class="field">nome</text>
+<text x="80" y="659" class="field">patrimonio</text>
+<text x="80" y="688" class="field">status</text>
+  </g>
+<g>
+    <rect x="530" y="480" width="380" height="250" rx="12" class="table" />
+    <path d="M 542 480 H 898 Q 910 480 910 492 V 538 H 530 V 492 Q 530 480 542 480" fill="#2f343a" />
+    <text x="550" y="519" class="title" fill="#f4f6f8">usuario</text>
+    <text x="550" y="572" class="field">id PK</text>
+<text x="550" y="601" class="field">empresa_id FK</text>
+<text x="550" y="630" class="field">nome</text>
+<text x="550" y="659" class="field">email</text>
+<text x="550" y="688" class="field">tipo / ativo</text>
+  </g>
+<g>
+    <rect x="1000" y="480" width="380" height="250" rx="12" class="table" />
+    <path d="M 1012 480 H 1368 Q 1380 480 1380 492 V 538 H 1000 V 492 Q 1000 480 1012 480" fill="#1976a3" />
+    <text x="1020" y="519" class="title" fill="#ffffff">usuario_obra</text>
+    <text x="1020" y="572" class="field">id PK</text>
+<text x="1020" y="601" class="field">empresa_id</text>
+<text x="1020" y="630" class="field">usuario_id FK</text>
+<text x="1020" y="659" class="field">obra_id FK</text>
+<text x="1020" y="688" class="field">data_inicio / data_fim</text>
+  </g>
+<g>
+    <rect x="1470" y="480" width="380" height="250" rx="12" class="table" />
+    <path d="M 1482 480 H 1838 Q 1850 480 1850 492 V 538 H 1470 V 492 Q 1470 480 1482 480" fill="#d99a00" />
+    <text x="1490" y="519" class="title" fill="#171717">obra</text>
+    <text x="1490" y="572" class="field">id PK</text>
+<text x="1490" y="601" class="field">empresa_id FK</text>
+<text x="1490" y="630" class="field">nome</text>
+<text x="1490" y="659" class="field">status</text>
+<text x="1490" y="688" class="field">orcamento_total</text>
+  </g>
+<g>
+    <rect x="1940" y="480" width="380" height="250" rx="12" class="table" />
+    <path d="M 1952 480 H 2308 Q 2320 480 2320 492 V 538 H 1940 V 492 Q 1940 480 1952 480" fill="#2f343a" />
+    <text x="1960" y="519" class="title" fill="#f4f6f8">emprestimo</text>
+    <text x="1960" y="572" class="field">id PK</text>
+<text x="1960" y="601" class="field">equipamento_id FK</text>
+<text x="1960" y="630" class="field">usuario_id FK</text>
+<text x="1960" y="659" class="field">obra_id FK</text>
+<text x="1960" y="688" class="field">datas / status</text>
+  </g>
+<g>
+    <rect x="60" y="880" width="380" height="250" rx="12" class="table" />
+    <path d="M 72 880 H 428 Q 440 880 440 892 V 938 H 60 V 892 Q 60 880 72 880" fill="#d99a00" />
+    <text x="80" y="919" class="title" fill="#171717">categoria_custo</text>
+    <text x="80" y="972" class="field">id PK</text>
+<text x="80" y="1001" class="field">nome UQ</text>
+  </g>
+<g>
+    <rect x="530" y="880" width="380" height="250" rx="12" class="table" />
+    <path d="M 542 880 H 898 Q 910 880 910 892 V 938 H 530 V 892 Q 530 880 542 880" fill="#d99a00" />
+    <text x="550" y="919" class="title" fill="#171717">produto</text>
+    <text x="550" y="972" class="field">id PK</text>
+<text x="550" y="1001" class="field">empresa_id FK</text>
+<text x="550" y="1030" class="field">categoria_custo_id FK</text>
+<text x="550" y="1059" class="field">nome</text>
+<text x="550" y="1088" class="field">unidade</text>
+  </g>
+<g>
+    <rect x="1000" y="880" width="380" height="250" rx="12" class="table" />
+    <path d="M 1012 880 H 1368 Q 1380 880 1380 892 V 938 H 1000 V 892 Q 1000 880 1012 880" fill="#2f343a" />
+    <text x="1020" y="919" class="title" fill="#f4f6f8">estoque</text>
+    <text x="1020" y="972" class="field">id PK</text>
+<text x="1020" y="1001" class="field">obra_id FK</text>
+<text x="1020" y="1030" class="field">produto_id FK</text>
+<text x="1020" y="1059" class="field">quantidade</text>
+  </g>
+<g>
+    <rect x="1470" y="880" width="380" height="250" rx="12" class="table" />
+    <path d="M 1482 880 H 1838 Q 1850 880 1850 892 V 938 H 1470 V 892 Q 1470 880 1482 880" fill="#2f343a" />
+    <text x="1490" y="919" class="title" fill="#f4f6f8">pedido</text>
+    <text x="1490" y="972" class="field">id PK</text>
+<text x="1490" y="1001" class="field">usuario_id FK</text>
+<text x="1490" y="1030" class="field">obra_id FK</text>
+<text x="1490" y="1059" class="field">protocolo</text>
+<text x="1490" y="1088" class="field">status / data</text>
+  </g>
+<g>
+    <rect x="1940" y="880" width="380" height="250" rx="12" class="table" />
+    <path d="M 1952 880 H 2308 Q 2320 880 2320 892 V 938 H 1940 V 892 Q 1940 880 1952 880" fill="#2f343a" />
+    <text x="1960" y="919" class="title" fill="#f4f6f8">item_pedido</text>
+    <text x="1960" y="972" class="field">id PK</text>
+<text x="1960" y="1001" class="field">pedido_id FK</text>
+<text x="1960" y="1030" class="field">produto_id FK</text>
+<text x="1960" y="1059" class="field">quantidade</text>
+  </g>
+<g>
+    <rect x="60" y="1280" width="380" height="250" rx="12" class="table" />
+    <path d="M 72 1280 H 428 Q 440 1280 440 1292 V 1338 H 60 V 1292 Q 60 1280 72 1280" fill="#d99a00" />
+    <text x="80" y="1319" class="title" fill="#171717">despesa_obra</text>
+    <text x="80" y="1372" class="field">id PK</text>
+<text x="80" y="1401" class="field">obra_id FK</text>
+<text x="80" y="1430" class="field">usuario_id FK</text>
+<text x="80" y="1459" class="field">categoria_custo_id FK</text>
+<text x="80" y="1488" class="field">descricao / valor</text>
+  </g>
+<g>
+    <rect x="530" y="1280" width="380" height="250" rx="12" class="table" />
+    <path d="M 542 1280 H 898 Q 910 1280 910 1292 V 1338 H 530 V 1292 Q 530 1280 542 1280" fill="#d99a00" />
+    <text x="550" y="1319" class="title" fill="#171717">item_entrada</text>
+    <text x="550" y="1372" class="field">id PK</text>
+<text x="550" y="1401" class="field">entrada_id FK</text>
+<text x="550" y="1430" class="field">produto_id FK</text>
+<text x="550" y="1459" class="field">categoria_custo_id FK</text>
+<text x="550" y="1488" class="field">quantidade / valor_unitario</text>
+  </g>
+<g>
+    <rect x="1000" y="1280" width="380" height="250" rx="12" class="table" />
+    <path d="M 1012 1280 H 1368 Q 1380 1280 1380 1292 V 1338 H 1000 V 1292 Q 1000 1280 1012 1280" fill="#2f343a" />
+    <text x="1020" y="1319" class="title" fill="#f4f6f8">entrada_estoque</text>
+    <text x="1020" y="1372" class="field">id PK</text>
+<text x="1020" y="1401" class="field">usuario_id FK</text>
+<text x="1020" y="1430" class="field">obra_id FK</text>
+<text x="1020" y="1459" class="field">xml_nota_fiscal</text>
+<text x="1020" y="1488" class="field">data</text>
+  </g>
+<g>
+    <rect x="1470" y="1280" width="380" height="250" rx="12" class="table" />
+    <path d="M 1482 1280 H 1838 Q 1850 1280 1850 1292 V 1338 H 1470 V 1292 Q 1470 1280 1482 1280" fill="#247c55" />
+    <text x="1490" y="1319" class="title" fill="#ffffff">vw_resumo_custo_obra</text>
+    <text x="1490" y="1372" class="field">VIEW</text>
+<text x="1490" y="1401" class="field">obra_id</text>
+<text x="1490" y="1430" class="field">custo_acumulado</text>
+<text x="1490" y="1459" class="field">saldo_orcamento</text>
+<text x="1490" y="1488" class="field">percentual_consumido</text>
+  </g>
+<g>
+    <rect x="1940" y="1280" width="380" height="250" rx="12" class="table" />
+    <path d="M 1952 1280 H 2308 Q 2320 1280 2320 1292 V 1338 H 1940 V 1292 Q 1940 1280 1952 1280" fill="#247c55" />
+    <text x="1960" y="1319" class="title" fill="#ffffff">vw_lancamento_custo</text>
+    <text x="1960" y="1372" class="field">VIEW</text>
+<text x="1960" y="1401" class="field">origem / origem_id</text>
+<text x="1960" y="1430" class="field">obra_id</text>
+<text x="1960" y="1459" class="field">categoria_custo_id</text>
+<text x="1960" y="1488" class="field">valor</text>
+  </g>
+</svg>

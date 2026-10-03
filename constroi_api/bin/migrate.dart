@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:constroi_api/ambiente.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
@@ -17,15 +18,18 @@ Future<void> main() async {
     return;
   }
 
-  final uri = Uri.tryParse(databaseUrl);
-  final sslMode = uri?.queryParameters['sslmode'];
-  if (sslMode != 'require' && sslMode != 'verify-full') {
-    stderr.writeln('A conexao remota deve usar sslmode=require');
+  late final String databaseUrlNormalizada;
+  try {
+    databaseUrlNormalizada = normalizarDatabaseUrl(databaseUrl);
+  } on FormatException catch (erro) {
+    stderr.writeln(erro.message);
     exitCode = 1;
     return;
   }
 
-  final conexao = await Connection.openFromUrl(databaseUrl);
+  final conexao = await Connection.openFromUrl(
+    databaseUrlNormalizada,
+  );
   try {
     await conexao.execute('''
       CREATE TABLE IF NOT EXISTS schema_migrations (

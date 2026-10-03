@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:constroi_api/ambiente.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
@@ -15,7 +16,9 @@ Future<void> main() async {
     return;
   }
 
-  final conexao = await Connection.openFromUrl(databaseUrl);
+  final conexao = await Connection.openFromUrl(
+    normalizarDatabaseUrl(databaseUrl),
+  );
   try {
     final colunas = await conexao.execute('''
       SELECT table_name, column_name, data_type, is_nullable
