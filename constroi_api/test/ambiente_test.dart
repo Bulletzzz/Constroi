@@ -20,9 +20,22 @@ void main() {
   });
 
   test('recusa URL sem sslmode', () {
+    const senha = 'SENHA_SECRETA_NAO_PODE_VAZAR';
+    late Object erro;
+
+    try {
+      normalizarDatabaseUrl(
+        'postgresql://usuario:$senha@host/neondb',
+      );
+    } catch (excecao) {
+      erro = excecao;
+    }
+
+    expect(erro, isA<FormatException>());
+    expect(erro.toString(), isNot(contains(senha)));
     expect(
-      () => normalizarDatabaseUrl('postgresql://usuario:senha@host/neondb'),
-      throwsA(isA<FormatException>()),
+      erro.toString(),
+      contains('A conexao remota deve usar sslmode=require'),
     );
   });
 

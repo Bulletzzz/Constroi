@@ -18,9 +18,8 @@ String normalizarDatabaseUrl(String valor) {
   final uri = Uri.parse(valor);
   final sslMode = uri.queryParameters['sslmode'];
   if (sslMode != 'require' && sslMode != 'verify-full') {
-    throw FormatException(
+    throw const FormatException(
       'A conexao remota deve usar sslmode=require ou sslmode=verify-full.',
-      valor,
     );
   }
 

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:constroi_api/ambiente.dart';
 import 'package:constroi_api/senha.dart';
+import 'package:constroi_api/usuarios.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
@@ -27,7 +28,14 @@ Future<void> main(List<String> argumentos) async {
   final email = argumentos[0];
   final senha = argumentos[1];
   final nome = argumentos[2];
-  final tipo = argumentos[3];
+  final tipo = validarTipoUsuario(argumentos[3]);
+  if (tipo == null) {
+    stderr.writeln(
+      'Tipo invalido. Use pedreiro, engenheiro ou master.',
+    );
+    exitCode = 1;
+    return;
+  }
 
   final conexao = await Connection.openFromUrl(
     normalizarDatabaseUrl(databaseUrl),
