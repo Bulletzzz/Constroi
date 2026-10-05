@@ -11,7 +11,7 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `003_catalogo_timestamps.sql`: datas de criação e atualização do catálogo
 - `004_usuario_obra.sql`: vínculo histórico da equipe com as obras
 - `005_custos_obra.sql`: orçamento, categorias, preços históricos e despesas
-- `006_usuario_tipo.sql`: restringe os perfis aos níveis aceitos pela API
+- `006_usuario_tipo.sql`: converte o perfil legado `admin` para `master` e restringe os perfis aos níveis aceitos pela API
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
 
