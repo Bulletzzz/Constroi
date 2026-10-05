@@ -25,8 +25,15 @@ class SessionManager extends ChangeNotifier {
     if (session.accessToken.trim().isEmpty) {
       throw ArgumentError.value(session.accessToken, 'accessToken');
     }
-    await _storage.write(session.accessToken);
+    await _storage.delete();
     _session = session;
+    notifyListeners();
+  }
+
+  void definirUsuario(AppUser? usuario) {
+    final atual = _session;
+    if (atual == null || usuario == null) return;
+    _session = AppSession(accessToken: atual.accessToken, user: usuario);
     notifyListeners();
   }
 

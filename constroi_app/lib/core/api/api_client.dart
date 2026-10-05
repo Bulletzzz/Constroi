@@ -54,12 +54,20 @@ class ApiClient {
         ..body = body == null ? '' : jsonEncode(body),
     );
     final text = await response.stream.bytesToString();
+    final mensagem = _mensagemDaApi(text);
+
     if (response.statusCode == 401) {
-      if (token != null) await _sessions.expireIfCurrent(token);
-      throw const ApiException(401, 'Sessão expirada. Entre novamente.');
+      if (token != null) {
+        await _sessions.expireIfCurrent(token);
+        throw const ApiException(401, 'Sessão expirada. Entre novamente.');
+      }
+      throw ApiException(401, mensagem ?? 'Credenciais inválidas.');
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(response.statusCode, 'Falha na requisição à API');
+      throw ApiException(
+        response.statusCode,
+        mensagem ?? 'Falha na requisição à API',
+      );
     }
     return text.isEmpty ? null : jsonDecode(text);
   }
@@ -72,5 +80,19 @@ class ApiClient {
 
   void close() {
     if (_ownsClient) _http.close();
+  }
+
+  static String? _mensagemDaApi(String corpo) {
+    if (corpo.isEmpty) return null;
+    try {
+      final decodificado = jsonDecode(corpo);
+      if (decodificado is Map && decodificado['erro'] is String) {
+        final erro = decodificado['erro'] as String;
+        return erro.isEmpty ? null : erro;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
   }
 }

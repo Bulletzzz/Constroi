@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiConfig {
   ApiConfig(String baseUrl, {bool allowInsecureForDevelopment = false})
-    : baseUri = _parseBaseUrl(baseUrl, allowInsecureForDevelopment);
+    : baseUri = _montarBase(baseUrl, allowInsecureForDevelopment);
 
   final Uri baseUri;
 
@@ -13,22 +13,42 @@ class ApiConfig {
     ),
   );
 
-  static Uri _parseBaseUrl(String value, bool allowInsecure) {
-    final uri = Uri.tryParse(value);
+  static Uri _montarBase(String valor, bool permitirHttp) =>
+      valor.startsWith('/')
+      ? _mesmaOrigem(valor)
+      : _absoluta(valor, permitirHttp);
+
+  static Uri _mesmaOrigem(String caminho) {
+    if (!kIsWeb) {
+      throw ArgumentError.value(
+        caminho,
+        'baseUrl',
+        'Caminho relativo só vale no Flutter Web. '
+            'No Android e iOS informe a URL completa da API.',
+      );
+    }
+    return _comBarraFinal(Uri.base.resolve(caminho));
+  }
+
+  static Uri _absoluta(String valor, bool permitirHttp) {
+    final uri = Uri.tryParse(valor);
     if (uri == null || !uri.hasAuthority || uri.host.isEmpty) {
       throw ArgumentError.value(
-        value,
+        valor,
         'baseUrl',
         'Informe uma URL base válida',
       );
     }
     if (uri.scheme != 'https' &&
-        !(uri.scheme == 'http' && !kReleaseMode && allowInsecure)) {
-      throw ArgumentError.value(value, 'baseUrl', 'A API deve usar HTTPS');
+        !(uri.scheme == 'http' && !kReleaseMode && permitirHttp)) {
+      throw ArgumentError.value(valor, 'baseUrl', 'A API deve usar HTTPS');
     }
     if (uri.hasQuery || uri.hasFragment || uri.userInfo.isNotEmpty) {
-      throw ArgumentError.value(value, 'baseUrl', 'URL base inválida');
+      throw ArgumentError.value(valor, 'baseUrl', 'URL base inválida');
     }
-    return uri.replace(path: '${uri.path.replaceFirst(RegExp(r'/$'), '')}/');
+    return _comBarraFinal(uri);
   }
+
+  static Uri _comBarraFinal(Uri uri) =>
+      uri.replace(path: '${uri.path.replaceFirst(RegExp(r'/$'), '')}/');
 }
