@@ -154,8 +154,10 @@ Chamar PATCH "/obras/$($obra.id)" $tokenPedreiro @{ obra = @{ status = 'concluid
 
 Secao 'EQUIPE DA OBRA'
 $rotaEquipe = "/obras/$($obra.id)/equipe"
-$equipeInicial = Chamar GET $rotaEquipe $tokenPedreiro $null 200 'GET equipe permitido ao pedreiro'
+Chamar GET $rotaEquipe $tokenPedreiro $null 404 'GET equipe pedreiro sem vinculo' | Out-Null
+$equipeInicial = Chamar GET $rotaEquipe $engenheiro $null 200 'GET equipe engenheiro sem vinculo'
 if ($null -eq $equipeInicial.equipe) { $script:falhas += 'GET equipe sem propriedade equipe' }
+Chamar GET $rotaEquipe $master $null 200 'GET equipe master sem vinculo' | Out-Null
 
 $vinculo = Chamar POST $rotaEquipe $engenheiro @{ equipe = @{ usuario_id = $pedreiro.id } } 201 'POST equipe vinculo valido'
 if ($null -eq $vinculo -or $vinculo.usuario_id -ne $pedreiro.id -or $vinculo.obra_id -ne $obra.id) {
@@ -177,7 +179,8 @@ if ($null -ne $vinculo.id) {
         'Vinculo encerrado permanece no banco'
 }
 
-$equipeFinal = Chamar GET $rotaEquipe $tokenPedreiro $null 200 'GET equipe sem encerrados'
+Chamar GET $rotaEquipe $tokenPedreiro $null 404 'GET equipe pedreiro vinculo encerrado' | Out-Null
+$equipeFinal = Chamar GET $rotaEquipe $engenheiro $null 200 'GET equipe sem encerrados'
 if ($equipeFinal.equipe | Where-Object { $_.usuario_id -eq $pedreiro.id }) {
     $script:falhas += 'Vinculo encerrado ainda consta na equipe ativa'
 }
@@ -222,6 +225,7 @@ $empresaB = Chamar POST '/empresas' $null @{
 } 201 'POST /empresas segunda empresa'
 $masterB = Entrar "masterb.$marca@teste.com"
 Chamar GET "/obras/$($obra.id)" $masterB $null 404 'obra da empresa A com token da B' | Out-Null
+Chamar GET $rotaEquipe $masterB $null 404 'equipe da empresa A com token da B' | Out-Null
 Chamar GET "/produtos/$($produto.id)" $masterB $null 404 'produto da empresa A com token da B' | Out-Null
 Chamar GET "/usuarios/$($pedreiro.id)" $masterB $null 404 'usuario da empresa A com token da B' | Out-Null
 $euB = Chamar GET '/eu' $masterB $null 200 'GET /eu empresa B'

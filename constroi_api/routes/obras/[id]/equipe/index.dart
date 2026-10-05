@@ -21,15 +21,30 @@ Future<Response> onRequest(RequestContext context, String idDaRota) async {
 
 Future<Response> _listar(RequestContext context, int obraId) async {
   final banco = context.read<Pool<void>>();
-  final empresaId = context.usuario.empresaId;
+  final usuario = context.usuario;
+  final empresaId = usuario.empresaId;
   final obra = await banco.execute(
     Sql.named('''
-      SELECT id
-      FROM obra
-      WHERE id = @obra AND empresa_id = @empresa
+      SELECT o.id
+      FROM obra o
+      WHERE o.id = @obra AND o.empresa_id = @empresa
+        AND (
+          @todas
+          OR EXISTS (
+            SELECT 1 FROM usuario_obra uo
+            WHERE uo.obra_id = o.id
+              AND uo.usuario_id = @usuario
+              AND uo.data_fim IS NULL
+          )
+        )
       LIMIT 1
     '''),
-    parameters: {'obra': obraId, 'empresa': empresaId},
+    parameters: {
+      'obra': obraId,
+      'empresa': empresaId,
+      'usuario': usuario.id,
+      'todas': usuario.nivel.alcanca(Nivel.engenheiro),
+    },
   );
 
   if (obra.isEmpty) {
