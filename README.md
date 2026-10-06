@@ -100,12 +100,61 @@ acesso daquele trecho.
 | `GET` `PATCH` | `/produtos/{id}` | engenheiro |
 | `GET` `POST` | `/equipamentos` | engenheiro |
 | `GET` `PATCH` | `/equipamentos/{id}` | engenheiro |
+| `GET` `POST` | `/pedidos` | pedreiro |
+| `GET` | `/pedidos/{id}` | pedreiro |
 
 Nas rotas de escrita, o objeto vai dentro de uma chave com o nome do recurso:
 
 ```json
 { "produto": { "nome": "Cimento Portland CP-II", "unidade": "saco" } }
 ```
+
+Para criar um pedido, envie o token no cabeçalho `Authorization: Bearer <token>`:
+
+```json
+{
+  "pedido": {
+    "obra_id": 1,
+    "justificativa": "Material para concretagem",
+    "itens": [
+      { "produto_id": 1, "quantidade": 10 },
+      { "produto_id": 2, "quantidade": 2.5 }
+    ]
+  }
+}
+```
+
+O `POST /pedidos` retorna `201` com o pedido, seus itens e o protocolo único
+no formato `PED-` seguido de 32 caracteres hexadecimais. O status inicial é sempre
+`pendente` e o solicitante vem do token. Pedido e itens são gravados na mesma
+transação. A obra e os produtos precisam pertencer à empresa do token; pedreiros
+também precisam de vínculo ativo com a obra. A justificativa é opcional, com até
+255 caracteres. Cada pedido deve ter de 1 a 200 itens, sem repetir produtos,
+e as quantidades devem ser números positivos com até duas casas decimais,
+limitados a `9999999999.99`.
+
+Uma colisão de protocolo gera uma nova tentativa, até cinco vezes. Se todas
+colidirem, a API retorna `503` sem gravar o pedido. Dados inválidos retornam `400`,
+ausência de token válido retorna `401`, pedreiro sem vínculo retorna `403` e obra
+inexistente ou de outra empresa retorna `404`.
+
+O `GET /pedidos` retorna `{ "pedidos": [...] }`, com os pedidos mais recentes
+primeiro. A paginação usa `limit` (padrão 50, de 1 a 200) e `offset` (padrão 0,
+maior ou igual a zero), por exemplo: `/pedidos?limit=50&offset=50` para a segunda
+página. Valores de paginação inválidos retornam `400`.
+Os filtros opcionais `obra_id`, `status` e `protocolo` podem ser usados
+juntos, por exemplo: `/pedidos?obra_id=1&status=pendente` ou
+`/pedidos?protocolo=PED-0123456789ABCDEF0123456789ABCDEF`.
+Status e protocolo são comparados pelo valor completo, sem diferenciar maiúsculas
+de minúsculas. Uma busca sem resultados retorna uma lista vazia; filtros vazios,
+IDs inválidos ou textos maiores que os campos do banco retornam `400`.
+
+Pedreiros consultam apenas os próprios pedidos, inclusive após o fim do vínculo
+com a obra. Engenheiros e masters consultam todos os pedidos da sua empresa.
+Essas regras valem também para buscas por protocolo e pelo ID do pedido.
+O `GET /pedidos/{id}` retorna o pedido com a lista `itens`, incluindo
+`id`, `produto_id`, `produto_nome`, `unidade` e `quantidade` em texto.
+Pedidos inexistentes ou sem permissão de acesso retornam `404`.
 
 ## Rodando o projeto
 
