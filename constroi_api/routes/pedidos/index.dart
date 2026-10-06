@@ -14,6 +14,19 @@ Future<Response> onRequest(RequestContext context) async {
 
 Future<Response> _listar(RequestContext context) async {
   final filtros = context.request.uri.queryParameters;
+  final limite = int.tryParse(filtros['limit'] ?? '50');
+  final offset = int.tryParse(filtros['offset'] ?? '0');
+  if (limite == null ||
+      limite < 1 ||
+      limite > 200 ||
+      offset == null ||
+      offset < 0) {
+    return _erro(
+      HttpStatus.badRequest,
+      'Informe limit entre 1 e 200 e offset maior ou igual a zero.',
+    );
+  }
+
   final usuario = context.usuario;
   final condicoes = <String>[
     'o.empresa_id = @empresa',
@@ -24,6 +37,8 @@ Future<Response> _listar(RequestContext context) async {
     'empresa': usuario.empresaId,
     'usuario': usuario.id,
     'todos': usuario.nivel.alcanca(Nivel.engenheiro),
+    'limit': limite,
+    'offset': offset,
   };
 
   if (filtros.containsKey('obra_id')) {
@@ -62,6 +77,7 @@ Future<Response> _listar(RequestContext context) async {
       JOIN usuario u ON u.id = p.usuario_id
       WHERE ${condicoes.join(' AND ')}
       ORDER BY p.data DESC, p.id DESC
+      LIMIT @limit OFFSET @offset
     '''),
     parameters: parametros,
   );
@@ -96,8 +112,8 @@ Future<Response> _criar(RequestContext context) async {
   if (obraId == null || itens == null) {
     return _erro(
       HttpStatus.badRequest,
-      'Informe obra_id e itens com produto_id valido, sem repeticao, '
-      'e quantidade positiva com ate duas casas decimais.',
+      'Informe obra_id e de 1 a 200 itens com produto_id valido, '
+      'sem repeticao, e quantidade positiva com ate duas casas decimais.',
     );
   }
 

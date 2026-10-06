@@ -96,6 +96,8 @@ void main() {
           'empresa': 3,
           'usuario': 7,
           'todos': nivel != Nivel.pedreiro,
+          'limit': 50,
+          'offset': 0,
         });
       });
     }
@@ -110,6 +112,8 @@ void main() {
         'empresa': 3,
         'usuario': 7,
         'todos': false,
+        'limit': 50,
+        'offset': 0,
         'obra': 10,
         'status': 'pendente',
         'protocolo': 'PED-ABC',
@@ -125,7 +129,7 @@ void main() {
         requisicao('/pedidos?${filtro.$1}');
         expect((await lista.onRequest(contexto)).statusCode, HttpStatus.ok);
         expect(parametros.single[filtro.$2], filtro.$3);
-        expect(parametros.single, hasLength(4));
+        expect(parametros.single, hasLength(6));
       });
     }
 
@@ -138,6 +142,41 @@ void main() {
       expect(parametros.single['todos'], isFalse);
       expect(parametros.single['usuario'], 7);
       expect(parametros.single['empresa'], 3);
+    });
+
+    test('aceita paginacao com filtros e limite maximo', () async {
+      requisicao('/pedidos?limit=200&offset=200&status=pendente');
+      expect((await lista.onRequest(contexto)).statusCode, HttpStatus.ok);
+      expect(parametros.single, {
+        'empresa': 3,
+        'usuario': 7,
+        'todos': false,
+        'limit': 200,
+        'offset': 200,
+        'status': 'pendente',
+      });
+    });
+
+    test('recusa paginacao invalida antes de acessar o banco', () async {
+      for (final paginacao in [
+        'limit=',
+        'limit=abc',
+        'limit=0',
+        'limit=-1',
+        'limit=1.5',
+        'limit=201',
+        'offset=',
+        'offset=abc',
+        'offset=-1',
+        'offset=1.5',
+      ]) {
+        requisicao('/pedidos?$paginacao');
+        final resposta = await lista.onRequest(contexto);
+        expect(resposta.statusCode, HttpStatus.badRequest, reason: paginacao);
+      }
+      verifyNever(
+        () => banco.execute(any(), parameters: any(named: 'parameters')),
+      );
     });
 
     test('recusa filtros invalidos antes de acessar o banco', () async {
@@ -169,7 +208,13 @@ void main() {
       () async {
         requisicao('/pedidos?usuario_id=99&empresa_id=99&todos=true');
         expect((await lista.onRequest(contexto)).statusCode, HttpStatus.ok);
-        expect(parametros.single, {'empresa': 3, 'usuario': 7, 'todos': false});
+        expect(parametros.single, {
+          'empresa': 3,
+          'usuario': 7,
+          'todos': false,
+          'limit': 50,
+          'offset': 0,
+        });
       },
     );
 

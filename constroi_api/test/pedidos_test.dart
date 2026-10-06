@@ -17,6 +17,15 @@ void main() {
     );
   });
 
+  test('aceita 200 itens e recusa pedidos acima do limite', () {
+    final itens = List.generate(
+      201,
+      (indice) => {'produto_id': indice + 1, 'quantidade': 1},
+    );
+    expect(validarItensPedido(itens.take(200).toList()), hasLength(200));
+    expect(validarItensPedido(itens), isNull);
+  });
+
   test('recusa lista vazia, produto repetido e tipos invalidos', () {
     for (final valor in [
       null,

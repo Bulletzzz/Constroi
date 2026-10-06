@@ -246,6 +246,15 @@ void main() {
         },
         {
           'pedido': {
+            'obra_id': 10,
+            'itens': List.generate(
+              201,
+              (indice) => {'produto_id': indice + 1, 'quantidade': 1},
+            ),
+          },
+        },
+        {
+          'pedido': {
             ...corpo['pedido']!,
             'justificativa': 123,
           },

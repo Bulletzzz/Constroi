@@ -129,8 +129,9 @@ no formato `PED-` seguido de 32 caracteres hexadecimais. O status inicial é sem
 `pendente` e o solicitante vem do token. Pedido e itens são gravados na mesma
 transação. A obra e os produtos precisam pertencer à empresa do token; pedreiros
 também precisam de vínculo ativo com a obra. A justificativa é opcional, com até
-255 caracteres. Os itens não podem repetir produtos e as quantidades devem ser
-números positivos com até duas casas decimais, limitados a `9999999999.99`.
+255 caracteres. Cada pedido deve ter de 1 a 200 itens, sem repetir produtos,
+e as quantidades devem ser números positivos com até duas casas decimais,
+limitados a `9999999999.99`.
 
 Uma colisão de protocolo gera uma nova tentativa, até cinco vezes. Se todas
 colidirem, a API retorna `503` sem gravar o pedido. Dados inválidos retornam `400`,
@@ -138,7 +139,10 @@ ausência de token válido retorna `401`, pedreiro sem vínculo retorna `403` e 
 inexistente ou de outra empresa retorna `404`.
 
 O `GET /pedidos` retorna `{ "pedidos": [...] }`, com os pedidos mais recentes
-primeiro. Os filtros opcionais `obra_id`, `status` e `protocolo` podem ser usados
+primeiro. A paginação usa `limit` (padrão 50, de 1 a 200) e `offset` (padrão 0,
+maior ou igual a zero), por exemplo: `/pedidos?limit=50&offset=50` para a segunda
+página. Valores de paginação inválidos retornam `400`.
+Os filtros opcionais `obra_id`, `status` e `protocolo` podem ser usados
 juntos, por exemplo: `/pedidos?obra_id=1&status=pendente` ou
 `/pedidos?protocolo=PED-0123456789ABCDEF0123456789ABCDEF`.
 Status e protocolo são comparados pelo valor completo, sem diferenciar maiúsculas
