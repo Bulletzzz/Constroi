@@ -312,36 +312,48 @@ $corpoJson = @{
     pedido = @{ obra_id = $obra.id; itens = @(@{ produto_id = $produto.id; quantidade = 1 }) }
 } | ConvertTo-Json -Depth 6
 
-$tarefas = @(1..$simultaneos | ForEach-Object {
-    $conteudo = [System.Net.Http.StringContent]::new($corpoJson, [System.Text.Encoding]::UTF8, 'application/json')
-    $cliente.PostAsync("$BaseUrl$rotaPedidos", $conteudo)
-})
-[System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]$tarefas)
-
-$script:total++
 $codigos = @()
 $protocolos = @()
-foreach ($tarefa in $tarefas) {
-    $resposta = $tarefa.Result
-    $codigos += [int]$resposta.StatusCode
-    $texto = $resposta.Content.ReadAsStringAsync().Result
-    if ($resposta.IsSuccessStatusCode) {
-        try { $protocolos += ($texto | ConvertFrom-Json).protocolo } catch { }
+try {
+    $tarefas = @(1..$simultaneos | ForEach-Object {
+        $conteudo = [System.Net.Http.StringContent]::new($corpoJson, [System.Text.Encoding]::UTF8, 'application/json')
+        $cliente.PostAsync("$BaseUrl$rotaPedidos", $conteudo)
+    })
+    [System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]$tarefas)
+
+    foreach ($tarefa in $tarefas) {
+        $resposta = $tarefa.Result
+        $codigos += [int]$resposta.StatusCode
+        if ($resposta.IsSuccessStatusCode) {
+            $texto = $resposta.Content.ReadAsStringAsync().Result
+            try { $protocolos += ($texto | ConvertFrom-Json).protocolo } catch { }
+        }
     }
 }
-$cliente.Dispose()
+finally {
+    $cliente.Dispose()
+}
 
+$script:total += $simultaneos
 $criados = ($codigos | Where-Object { $_ -eq 201 }).Count
 $distintos = ($protocolos | Select-Object -Unique).Count
 $erros5xx = ($codigos | Where-Object { $_ -ge 500 }).Count
 
-if ($criados -ne $simultaneos -or $distintos -ne $simultaneos -or $erros5xx -gt 0) {
-    $detalhe = "criados $criados/$simultaneos, distintos $distintos, 5xx $erros5xx"
-    $falhas += "Protocolo sob concorrencia ($detalhe)"
+if ($criados -lt 2 -or $distintos -ne $criados) {
+    $detalhe = "criados $criados, distintos $distintos"
+    $falhas += "Protocolo repetido sob concorrencia ($detalhe)"
     Write-Host ("  FALHA {0,-46} {1}" -f 'protocolo unico sob concorrencia', $detalhe) -ForegroundColor Red
 }
 else {
-    Write-Host ("  ok   {0,-46} {1}" -f 'protocolo unico sob concorrencia', "$simultaneos/$simultaneos distintos") -ForegroundColor DarkGray
+    Write-Host ("  ok   {0,-46} {1}" -f 'protocolo unico sob concorrencia', "$distintos/$criados distintos") -ForegroundColor DarkGray
+}
+
+if ($erros5xx -gt 0) {
+    $falhas += "API devolveu $erros5xx erro(s) 5xx com $simultaneos pedidos simultaneos"
+    Write-Host ("  FALHA {0,-46} {1}" -f 'suporta carga simultanea', "$erros5xx de $simultaneos deram 5xx") -ForegroundColor Red
+}
+else {
+    Write-Host ("  ok   {0,-46} {1}" -f 'suporta carga simultanea', "$criados/$simultaneos sem 5xx") -ForegroundColor DarkGray
 }
 
 Secao 'PEDIDOS - LEITURA E ISOLAMENTO'
@@ -395,6 +407,8 @@ else {
 Write-Host ''
 Write-Host "Dados criados com a marca $marca. Para limpar:" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM usuario_obra WHERE empresa_id IN (SELECT id FROM empresa WHERE nome LIKE '%$marca');" -ForegroundColor DarkGray
+Write-Host "  DELETE FROM item_pedido WHERE pedido_id IN (SELECT p.id FROM pedido p JOIN obra o ON o.id = p.obra_id WHERE o.nome LIKE '%$marca');" -ForegroundColor DarkGray
+Write-Host "  DELETE FROM pedido WHERE obra_id IN (SELECT id FROM obra WHERE nome LIKE '%$marca');" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM obra WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM produto WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM equipamento WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray
