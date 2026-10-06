@@ -12,8 +12,11 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `004_usuario_obra.sql`: vínculo histórico da equipe com as obras
 - `005_custos_obra.sql`: orçamento, categorias, preços históricos e despesas
 - `006_usuario_tipo.sql`: converte o perfil legado `admin` para `master` e restringe os perfis aos níveis aceitos pela API
+- `007_corrige_colunas_legadas.sql`: alinha `pedido.protocolo` e as colunas de data com o que a `001` declara, recriando as views de custo
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
+
+O pool abre até 10 conexões. Para mudar, acrescente `max_connection_count` na própria `DATABASE_URL`.
 
 ```powershell
 cd constroi_api
