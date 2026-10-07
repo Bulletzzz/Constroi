@@ -1,0 +1,77 @@
+TELA DE PAINEL - FIGMA 02
+
+O Painel usa o cliente HTTP existente e consulta GET /painel.
+Nao ha numeros fixos do prototipo no aplicativo.
+
+ENTREGA
+Layout claro com cabecalho preto, amarelo do tema, indicadores e tabela.
+Filtro por obra, carregamento, erro com nova tentativa e estado sem dados.
+Puxar para atualizar, horario da ultima consulta e paginacao de movimentacoes.
+O refresh que falha conserva os dados anteriores com aviso de desatualizacao.
+Respostas antigas sao ignoradas quando uma consulta mais recente e iniciada.
+Rotas e menu por perfil seguem os contratos da branch de navegacao.
+A busca e Nova requisicao encaminham para os respectivos modulos, com os
+filtros nos argumentos da rota. As telas desses modulos ficam em seus cartoes.
+
+INDICADORES E LIMITES DOS DADOS ATUAIS
+Total de itens: quantidade de produtos distintos presentes no estoque das
+obras selecionadas. Nao soma sacos, metros e outras unidades diferentes.
+Rupturas criticas: registros de estoque com quantidade zero. Ainda nao existe
+estoque minimo cadastrado para calcular alertas por limite.
+Requisicoes pendentes: pedidos com status pendente no escopo permitido.
+O pedreiro ve apenas os proprios pedidos. Engenheiro e master veem os pedidos
+das obras da empresa dentro do filtro.
+Valor estimado: saldo positivo multiplicado pelo ultimo preco unitario
+informado para o mesmo produto e obra, ordenado por data da entrada e item.
+Saldos sem preco ficam fora da soma e a tela informa que o valor e parcial.
+Sem nenhum preco utilizavel, exibe Nao informado, em vez de inventar um valor.
+Obras ativas: obras selecionadas com status ativa.
+Movimentacoes: itens de entradas ja registrados, por data e id decrescentes.
+O banco ainda nao tem um historico proprio de saidas e ajustes. Pedidos
+pendentes/aprovados nao sao apresentados como baixas de estoque.
+Nao se calcula variacao semanal sem dados historicos suficientes.
+
+ACESSO
+GET /painel exige o token validado pelo middleware da API.
+Empresa e usuario vem do token; filtros enviados pelo cliente nao os alteram.
+Pedreiro consulta somente obras com vinculo ativo em usuario_obra.
+Engenheiro e master consultam obras da propria empresa.
+Valores financeiros sao omitidos pela API e pela interface para pedreiro.
+Obra inexistente ou fora do escopo responde 404.
+O cliente HTTP existente encerra a sessao em caso de 401.
+
+CONTRATO
+GET /painel?obra_id=10&limit=5&offset=0
+obra_id e opcional; sem ele agrega as obras disponiveis.
+limit: 1 a 50, padrao 5. offset: 0 a 10000, padrao 0.
+Retorna obras, obra_id, atualizado_em, indicadores, movimentacoes e paginacao.
+Numeros monetarios e quantidades usam strings decimais no JSON.
+paginacao.tem_mais indica se ha uma proxima pagina.
+Todos os dados do resumo sao calculados em uma unica consulta ao PostgreSQL.
+
+BANCO E EXECUCAO
+Nao foi criada migration e nao ha alteracao necessaria no schema.
+A rota utiliza as tabelas existentes da versao atual da main (001 a 008).
+As migrations ja existentes precisam estar aplicadas no ambiente de destino.
+Nenhuma alteracao de dados ou de schema no Neon faz parte desta entrega.
+
+VALIDACAO
+Testes do app cobrem carregamento, erro, refresh, filtro, paginacao,
+dados invalidos, perfil, sessao expirada e tamanhos de tela.
+Testes da API cobrem autenticacao, filtros, paginacao e protecao dos valores.
+Testes utilizam dados isolados, sem credenciais e sem escrever no Neon.
+Em 07/10/2026: 36 testes do app e 106 testes da API passaram.
+Os analisadores do app e da API terminaram sem problemas.
+A compilacao Flutter Web com API_BASE_URL=/api foi concluida.
+A consulta SQL foi executada em PostgreSQL em memoria, incluindo dados
+de duas empresas, vinculos de obra, precos historicos e referencias cruzadas.
+Nenhum teste em aparelho Android ou iOS fisico foi realizado nesta entrega.
+
+COMMIT
+Branch: feat/tela-painel.
+O commit e o push ficam a cargo do Andrew.
+
+Na pasta tela-painel deste computador, revise os arquivos e execute:
+git add constroi_app constroi_api "Documentação/Tela de Painel.txt"
+git commit -m "Implementa tela de Painel integrada a API"
+git push -u origin feat/tela-painel

@@ -35,7 +35,9 @@ void main() {
     await tester.pumpWidget(
       ConstroiApp(
         config: ApiConfig('https://api.constroi.test'),
-        storage: MemoryTokenStorage()..token = 'jwt-guardado',
+        storage: MemoryTokenStorage()
+          ..token =
+              '${base64Url.encode(utf8.encode('{"alg":"HS256"}'))}.${base64Url.encode(utf8.encode('{"sub":"7","empresa_id":3,"tipo":"pedreiro"}'))}.assinatura',
         httpClient: _semChamadas(),
       ),
     );
@@ -43,7 +45,7 @@ void main() {
 
     expect(find.byType(AppHome), findsOneWidget);
     expect(find.byType(LoginScreen), findsNothing);
-    expect(find.text('CONSTRÓI'), findsOneWidget);
+    expect(find.text('VISÃO GERAL\nDO ESTOQUE'), findsOneWidget);
   });
 
   testWidgets('sem API_BASE_URL explica como rodar', (tester) async {
