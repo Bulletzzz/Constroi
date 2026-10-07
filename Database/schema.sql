@@ -337,7 +337,7 @@ FROM obra AS o
 LEFT JOIN vw_lancamento_custo AS l ON l.obra_id = o.id
 GROUP BY o.id, o.orcamento_total;
 
--- Este arquivo representa o estado final depois das migrations 001 a 007.
+-- Este arquivo representa o estado final depois das migrations 001 a 008.
 INSERT INTO schema_migrations (versao) VALUES
     ('001_schema_inicial.sql'),
     ('002_tabelas_login.sql'),
@@ -345,5 +345,6 @@ INSERT INTO schema_migrations (versao) VALUES
     ('004_usuario_obra.sql'),
     ('005_custos_obra.sql'),
     ('006_usuario_tipo.sql'),
-    ('007_corrige_colunas_legadas.sql')
+    ('007_corrige_colunas_legadas.sql'),
+    ('008_protege_estoque.sql')
 ON CONFLICT (versao) DO NOTHING;
