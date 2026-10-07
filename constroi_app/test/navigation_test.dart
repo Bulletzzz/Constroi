@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:constroi_app/core/api/api_config.dart';
+import 'package:constroi_app/core/auth/session.dart';
 import 'package:constroi_app/main.dart';
 import 'package:constroi_app/navigation/app_bottom_navigation.dart';
 import 'package:constroi_app/navigation/app_route.dart';
@@ -13,6 +14,14 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+
+AppUser usuarioDe(String tipo) => AppUser(
+  id: 7,
+  empresaId: 3,
+  nome: 'Operador',
+  email: 'operador@example.test',
+  tipo: tipo,
+);
 
 String tokenDe(String tipo) {
   final cabecalho = base64Url.encode(utf8.encode(jsonEncode({'alg': 'HS256'})));
@@ -43,32 +52,44 @@ void main() {
   });
 
   group('guarda de rota', () {
-    test('pedreiro nao abre custos nem equipe', () {
-      final guarda = RouteGuard.doToken(tokenDe('pedreiro'));
+    test('pedreiro nao abre custos mas pode ler equipe', () {
+      final guarda = RouteGuard.daSessao(
+        AppSession(accessToken: tokenDe('pedreiro')),
+      );
 
       expect(guarda.permite(AppRoute.painel), isTrue);
       expect(guarda.permite(AppRoute.estoque), isTrue);
       expect(guarda.permite(AppRoute.requisicoes), isTrue);
       expect(guarda.permite(AppRoute.custos), isFalse);
-      expect(guarda.permite(AppRoute.equipe), isFalse);
-      expect(guarda.destinoPermitido(AppRoute.equipe), AppRoute.painel);
+      expect(guarda.permite(AppRoute.equipe), isTrue);
+      expect(guarda.destinoPermitido(AppRoute.equipe), AppRoute.equipe);
     });
 
-    test('engenheiro abre custos mas nao equipe', () {
-      final guarda = RouteGuard.doToken(tokenDe('engenheiro'));
+    test('engenheiro abre custos e equipe', () {
+      final guarda = RouteGuard.daSessao(
+        AppSession(
+          accessToken: tokenDe('master'),
+          user: usuarioDe('engenheiro'),
+        ),
+      );
 
+      expect(guarda.perfil, PerfilUsuario.engenheiro);
       expect(guarda.permite(AppRoute.custos), isTrue);
-      expect(guarda.permite(AppRoute.equipe), isFalse);
+      expect(guarda.permite(AppRoute.equipe), isTrue);
     });
 
     test('master abre todas as rotas', () {
-      final guarda = RouteGuard.doToken(tokenDe('master'));
+      final guarda = RouteGuard.daSessao(
+        AppSession(accessToken: tokenDe('pedreiro'), user: usuarioDe('master')),
+      );
 
       expect(AppRoute.values.every(guarda.permite), isTrue);
     });
   });
 
-  testWidgets('menu esconde abas proibidas para pedreiro', (tester) async {
+  testWidgets('menu mostra equipe e esconde custos para pedreiro', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -84,7 +105,7 @@ void main() {
     expect(find.text('Estoque'), findsOneWidget);
     expect(find.text('Requisições'), findsOneWidget);
     expect(find.text('Custos'), findsNothing);
-    expect(find.text('Equipe'), findsNothing);
+    expect(find.text('Equipe'), findsOneWidget);
   });
 
   testWidgets('rota nomeada permitida abre o modulo', (tester) async {
@@ -116,7 +137,7 @@ void main() {
 
     Navigator.of(
       tester.element(find.byType(AppBottomNavigation)),
-    ).pushReplacementNamed('/equipe');
+    ).pushReplacementNamed('/custos');
     await tester.pumpAndSettle();
 
     expect(find.text('PAINEL'), findsWidgets);

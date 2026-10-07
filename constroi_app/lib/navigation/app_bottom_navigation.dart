@@ -15,34 +15,61 @@ class AppBottomNavigation extends StatelessWidget {
   final PerfilUsuario perfil;
 
   @override
-  Widget build(BuildContext context) {
-    final rotas = AppRoute.values
-        .where((rota) => rota.podeSerAcessadaPor(perfil))
-        .toList(growable: false);
-    final indice = rotas.indexOf(rotaAtual);
-
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: const Color(0xFF111313),
-      selectedItemColor: AppTheme.accent,
-      unselectedItemColor: const Color(0xFFD1D1D1),
-      selectedFontSize: 11,
-      unselectedFontSize: 11,
-      currentIndex: indice < 0 ? 0 : indice,
-      onTap: (novoIndice) {
-        final destino = rotas[novoIndice];
-        if (destino != rotaAtual) {
-          Navigator.of(context).pushReplacementNamed(destino.caminho);
-        }
-      },
-      items: [
-        for (final rota in rotas)
-          BottomNavigationBarItem(
-            icon: Icon(rota.icone),
-            activeIcon: Icon(rota.icone, color: AppTheme.accent),
-            label: rota.rotulo,
-          ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Material(
+    color: AppTheme.background,
+    child: SafeArea(
+      top: false,
+      child: Row(
+        children: [
+          for (final rota in AppRoute.values.where(
+            (r) => r.podeSerAcessadaPor(perfil),
+          ))
+            Expanded(
+              child: Semantics(
+                selected: rota == rotaAtual,
+                button: true,
+                child: InkWell(
+                  onTap: () {
+                    if (rota != rotaAtual) {
+                      Navigator.of(context).pushReplacementNamed(rota.caminho);
+                    }
+                  },
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 64),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 2,
+                    ),
+                    color: rota == rotaAtual ? AppTheme.accent : null,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          rota.icone,
+                          color: rota == rotaAtual
+                              ? AppTheme.background
+                              : Colors.white,
+                          size: 23,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          rota.rotulo,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: rota == rotaAtual
+                                ? AppTheme.background
+                                : Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }

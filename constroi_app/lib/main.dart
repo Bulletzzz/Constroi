@@ -81,7 +81,7 @@ class _ConstroiAppState extends State<ConstroiApp> {
     final solicitada = AppRoute.porCaminho(settings.name);
     if (solicitada == null) return null;
 
-    final guarda = RouteGuard.doToken(_sessoes?.accessToken);
+    final guarda = RouteGuard.daSessao(_sessoes?.session);
     final destino = guarda.destinoPermitido(solicitada);
     return MaterialPageRoute<void>(
       settings: RouteSettings(name: destino.caminho),
@@ -116,7 +116,7 @@ class _ConstroiAppState extends State<ConstroiApp> {
       builder: (_, _) {
         if (!sessoes.isSignedIn) return LoginScreen(auth: _auth!);
 
-        final guarda = RouteGuard.doToken(sessoes.accessToken);
+        final guarda = RouteGuard.daSessao(sessoes.session);
         final perfil = guarda.perfil;
         if (perfil == null) {
           return _SessaoSemPerfil(onSair: sessoes.signOut);

@@ -16,7 +16,7 @@ enum AppRoute {
     Icons.payments_outlined,
     PerfilUsuario.engenheiro,
   ),
-  equipe('/equipe', 'Equipe', Icons.groups_outlined, PerfilUsuario.master),
+  equipe('/equipe', 'Equipe', Icons.groups_outlined, PerfilUsuario.pedreiro),
   requisicoes(
     '/requisicoes',
     'Requisições',

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../core/auth/session.dart';
+
 enum PerfilUsuario {
   pedreiro(1),
   engenheiro(2),
@@ -24,7 +26,7 @@ enum PerfilUsuario {
 class PerfilDoToken {
   const PerfilDoToken._();
 
-  /// Lê apenas os dados públicos do JWT para decidir a interface exibida.
+  /// Decodifica o JWT só como fallback quando a sessão não tem usuário.
   /// A assinatura e a autorização real continuam sendo validadas pela API.
   static PerfilUsuario? ler(String? token) {
     if (token == null || token.trim().isEmpty) return null;
@@ -42,5 +44,17 @@ class PerfilDoToken {
     } on FormatException {
       return null;
     }
+  }
+}
+
+class PerfilDaSessao {
+  const PerfilDaSessao._();
+
+  /// O usuário atualizado por /eu (ou recebido no login) prevalece sobre o JWT.
+  /// O token só fornece o perfil quando a sessão não conseguiu ler um usuário.
+  static PerfilUsuario? ler(AppSession? sessao) {
+    final usuario = sessao?.user;
+    if (usuario != null) return PerfilUsuario.porNome(usuario.tipo);
+    return PerfilDoToken.ler(sessao?.accessToken);
   }
 }
