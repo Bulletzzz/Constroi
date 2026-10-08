@@ -396,18 +396,27 @@ Chamar GET "$rotaPedidos/0" $engenheiro $null 400 'GET /pedidos/0 invalido' | Ou
 Chamar GET $rotaPedidos $null $null 401 'GET /pedidos sem token' | Out-Null
 
 Secao 'CONSULTA DE ESTOQUE'
+# Usuario exclusivo: a secao de pedidos pode revincular os seus proprios usuarios.
+$pedreiroEstoque = Chamar POST '/usuarios' $master @{
+    usuario = @{ nome = "Ped estoque $marca"; email = "ped.estoque.$marca@teste.com"; senha = $senhaPadrao; tipo = 'pedreiro' }
+} 201 'POST /usuarios pedreiro do estoque'
+if ($null -eq $pedreiroEstoque.id) { throw 'Falha ao criar usuario do cenario de estoque.' }
+$tokenPedreiroEstoque = Entrar "ped.estoque.$marca@teste.com"
 $rotaEstoque = "/estoque?obra_id=$($obra.id)"
+Chamar GET $rotaEstoque $tokenPedreiroEstoque $null 404 'GET estoque sem vinculo' | Out-Null
+$semVinculo = Chamar GET '/estoque' $tokenPedreiroEstoque $null 200 'GET estoque geral sem vinculo'
+if (@($semVinculo.estoque).Count -ne 0) { $falhas += 'Usuario sem vinculo recebeu saldos de estoque' }
+Chamar POST $rotaEquipe $engenheiro @{ equipe = @{ usuario_id = $pedreiroEstoque.id } } 201 'vincula pedreiro do estoque' | Out-Null
 Chamar GET $rotaEstoque $engenheiro $null 200 'GET estoque engenheiro' | Out-Null
-Chamar GET $rotaEstoque $tokenPedreiroDois $null 200 'GET estoque pedreiro vinculado' | Out-Null
-Chamar GET $rotaEstoque $tokenPedreiro $null 404 'GET estoque vinculo encerrado' | Out-Null
+Chamar GET $rotaEstoque $tokenPedreiroEstoque $null 200 'GET estoque pedreiro vinculado' | Out-Null
 Chamar GET $rotaEstoque $masterB $null 404 'GET estoque empresa B' | Out-Null
 Chamar GET $rotaEstoque $null $null 401 'GET estoque sem token' | Out-Null
 Chamar GET '/estoque' $master $null 200 'GET estoque sem obra_id' | Out-Null
-Chamar GET '/estoque' $tokenPedreiroDois $null 200 'GET estoque geral pedreiro' | Out-Null
+Chamar GET '/estoque' $tokenPedreiroEstoque $null 200 'GET estoque geral pedreiro' | Out-Null
 Chamar GET '/estoque?categoria_id=abc' $master $null 400 'GET estoque categoria invalida' | Out-Null
 Chamar GET '/estoque?categoria_id=2147483647' $master $null 200 'GET estoque categoria inexistente' | Out-Null
 Chamar GET "$rotaEstoque&baixo=1" $master $null 400 'GET estoque filtro invalido' | Out-Null
-Chamar POST $rotaEstoque $tokenPedreiroDois @{} 405 'POST estoque nao permitido' | Out-Null
+Chamar POST $rotaEstoque $tokenPedreiroEstoque @{} 405 'POST estoque nao permitido' | Out-Null
 
 $configurado = Chamar PATCH "/produtos/$($produto.id)" $engenheiro @{
     produto = @{ sku = "CIM-$marca"; estoque_minimo = '5.00' }
@@ -429,7 +438,7 @@ if ($DatabaseUrl -and (Get-Command psql -ErrorAction SilentlyContinue)) {
     if ($LASTEXITCODE -ne 0 -or $categoriaEstoque -notmatch '^\d+$') { throw 'Categoria de teste nao encontrada.' }
     & psql $DatabaseUrl -v ON_ERROR_STOP=1 -c "INSERT INTO estoque (obra_id, produto_id, quantidade) VALUES ($($obra.id), $($produto.id), 5) ON CONFLICT (obra_id, produto_id) DO UPDATE SET quantidade = 5;" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar saldo de teste.' }
-    $saldo = Chamar GET "$rotaEstoque&busca=cim-$marca&baixo=true" $tokenPedreiroDois $null 200 'GET estoque por SKU e minimo'
+    $saldo = Chamar GET "$rotaEstoque&busca=cim-$marca&baixo=true" $tokenPedreiroEstoque $null 200 'GET estoque por SKU e minimo'
     if (@($saldo.estoque).Count -ne 1 -or $saldo.estoque[0].produto_id -ne $produto.id -or
         [decimal]$saldo.estoque[0].quantidade -ne 5 -or -not $saldo.estoque[0].baixo -or
         $saldo.estoque[0].produto_nome -ne $produto.nome -or
@@ -441,7 +450,7 @@ if ($DatabaseUrl -and (Get-Command psql -ErrorAction SilentlyContinue)) {
     if (-not ($porNome.estoque | Where-Object { $_.produto_id -eq $produto.id })) {
         $falhas += 'Busca por nome nao retornou o produto'
     }
-    $categoria = Chamar GET "/estoque?categoria_id=$categoriaEstoque&busca=cim-$marca" $tokenPedreiroDois $null 200 'GET estoque categoria sem obra_id'
+    $categoria = Chamar GET "/estoque?categoria_id=$categoriaEstoque&busca=cim-$marca" $tokenPedreiroEstoque $null 200 'GET estoque categoria sem obra_id'
     if (@($categoria.estoque).Count -ne 1 -or
         $categoria.estoque[0].obra_id -ne $obra.id -or
         $categoria.estoque[0].categoria_custo_id -ne [int]$categoriaEstoque -or
@@ -460,6 +469,12 @@ if ($DatabaseUrl -and (Get-Command psql -ErrorAction SilentlyContinue)) {
 else {
     Write-Host '  ignorado preparo de saldos (configure DATABASE_URL e instale psql)' -ForegroundColor Yellow
 }
+
+$encerradoEstoque = Chamar DELETE "$rotaEquipe/$($pedreiroEstoque.id)" $engenheiro $null 200 'encerra vinculo do cenario de estoque'
+if ($null -eq $encerradoEstoque.data_fim) { $falhas += 'Vinculo do estoque nao foi encerrado' }
+Chamar GET $rotaEstoque $tokenPedreiroEstoque $null 404 'GET estoque vinculo encerrado' | Out-Null
+$aposEncerramento = Chamar GET '/estoque' $tokenPedreiroEstoque $null 200 'GET estoque geral apos encerramento'
+if (@($aposEncerramento.estoque).Count -ne 0) { $falhas += 'Vinculo encerrado ainda permite consultar saldos' }
 
 Write-Host ''
 if ($falhas.Count -eq 0) {
