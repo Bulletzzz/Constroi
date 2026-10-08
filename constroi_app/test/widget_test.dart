@@ -51,7 +51,7 @@ void main() {
 
     expect(find.byType(AppHome), findsOneWidget);
     expect(find.byType(LoginScreen), findsNothing);
-    expect(find.text('PAINEL'), findsWidgets);
+    expect(find.text('VISÃO GERAL\nDO ESTOQUE'), findsOneWidget);
   });
 
   testWidgets('sem API_BASE_URL explica como rodar', (tester) async {

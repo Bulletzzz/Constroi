@@ -2,6 +2,18 @@
 
 API em Dart Frog com PostgreSQL/Neon.
 
+## Painel
+
+`GET /painel` fornece indicadores e entradas recentes para a tela Figma 02.
+Aceita `obra_id` opcional, `limit` (1 a 50, padrão 5) e `offset` (0 a 10000).
+Exige autenticação e limita os dados à empresa e às obras permitidas ao perfil.
+Valores financeiros ficam disponíveis somente para engenheiro e master.
+As fórmulas e limites dos dados estão em `Documentação/Tela de Painel.txt`.
+Não requer migration adicional.
+Falhas internas registram o tipo, a causa e a pilha no stdout do servidor.
+URLs PostgreSQL são omitidas do diagnóstico para não registrar credenciais.
+A resposta HTTP 503 continua genérica, sem expor detalhes internos ao app.
+
 ## Migrations
 
 As migrations ficam em `migrations/` e são executadas em ordem numérica. A tabela `schema_migrations` registra cada arquivo aplicado, impedindo a execução duplicada.
