@@ -15,6 +15,14 @@ import 'login_screen_test.dart' show MemoryTokenStorage;
 MockClient _semChamadas() =>
     MockClient((_) async => http.Response(jsonEncode({}), 200));
 
+String _token(String tipo) {
+  final cabecalho = base64Url.encode(utf8.encode(jsonEncode({'alg': 'HS256'})));
+  final corpo = base64Url.encode(
+    utf8.encode(jsonEncode({'sub': '7', 'empresa_id': 3, 'tipo': tipo})),
+  );
+  return '$cabecalho.$corpo.assinatura';
+}
+
 void main() {
   testWidgets('sem sessao guardada o app abre no login', (tester) async {
     await tester.pumpWidget(
@@ -35,7 +43,7 @@ void main() {
     await tester.pumpWidget(
       ConstroiApp(
         config: ApiConfig('https://api.constroi.test'),
-        storage: MemoryTokenStorage()..token = 'jwt-guardado',
+        storage: MemoryTokenStorage()..token = _token('pedreiro'),
         httpClient: _semChamadas(),
       ),
     );
@@ -43,7 +51,7 @@ void main() {
 
     expect(find.byType(AppHome), findsOneWidget);
     expect(find.byType(LoginScreen), findsNothing);
-    expect(find.text('CONSTRÓI'), findsOneWidget);
+    expect(find.text('VISÃO GERAL\nDO ESTOQUE'), findsOneWidget);
   });
 
   testWidgets('sem API_BASE_URL explica como rodar', (tester) async {

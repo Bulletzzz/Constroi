@@ -6,7 +6,12 @@ import 'core/api/api_config.dart';
 import 'core/auth/auth_service.dart';
 import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
+import 'features/painel/painel_service.dart';
+import 'navigation/app_route.dart';
+import 'navigation/perfil_usuario.dart';
+import 'navigation/route_guard.dart';
 import 'screens/login_screen.dart';
+import 'screens/module_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_home.dart';
 
@@ -71,7 +76,23 @@ class _ConstroiAppState extends State<ConstroiApp> {
     debugShowCheckedModeBanner: false,
     theme: AppTheme.dark,
     home: _inicio(),
+    onGenerateRoute: _gerarRota,
   );
+
+  Route<void>? _gerarRota(RouteSettings settings) {
+    final solicitada = AppRoute.porCaminho(settings.name);
+    if (solicitada == null) return null;
+
+    final guarda = RouteGuard.daSessao(_sessoes?.session);
+    final destino = guarda.destinoPermitido(solicitada);
+    return MaterialPageRoute<void>(
+      settings: RouteSettings(
+        name: destino.caminho,
+        arguments: settings.arguments,
+      ),
+      builder: (_) => _areaAutenticada(destino),
+    );
+  }
 
   Widget _inicio() {
     if (_iniciando) {
@@ -84,13 +105,72 @@ class _ConstroiAppState extends State<ConstroiApp> {
       return _ConfiguracaoAusente(detalhe: _erroDeConfiguracao!);
     }
 
+    return _areaAutenticada(AppRoute.painel);
+  }
+
+  Widget _areaAutenticada(AppRoute solicitada) {
     final sessoes = _sessoes!;
     return ListenableBuilder(
       listenable: sessoes,
-      builder: (_, _) =>
-          sessoes.isSignedIn ? const AppHome() : LoginScreen(auth: _auth!),
+      builder: (_, _) {
+        if (!sessoes.isSignedIn) return LoginScreen(auth: _auth!);
+
+        final guarda = RouteGuard.daSessao(sessoes.session);
+        final perfil = guarda.perfil;
+        if (perfil == null) {
+          return _SessaoSemPerfil(onSair: sessoes.signOut);
+        }
+
+        return _telaDaRota(guarda.destinoPermitido(solicitada), perfil);
+      },
     );
   }
+
+  Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil) {
+    if (rota == AppRoute.painel) {
+      return AppHome(
+        service: PainelService(_api!),
+        perfil: perfil,
+        onSair: _sessoes!.signOut,
+      );
+    }
+    return ModuleScreen(rota: rota, perfil: perfil);
+  }
+}
+
+class _SessaoSemPerfil extends StatelessWidget {
+  const _SessaoSemPerfil({required this.onSair});
+
+  final Future<void> Function() onSair;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, color: AppTheme.accent, size: 36),
+              const SizedBox(height: 16),
+              Text(
+                'Não foi possível identificar seu perfil.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onSair,
+                child: const Text('VOLTAR AO LOGIN'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _ConfiguracaoAusente extends StatelessWidget {
@@ -108,44 +188,47 @@ class _ConfiguracaoAusente extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Icons.settings_outlined,
-                color: AppTheme.accent,
-                size: 34,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Falta configurar o endereço da API',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'No Flutter Web a API fica na mesma origem da página, '
-                'então basta um caminho. No Android e iOS informe a '
-                'URL completa:',
-                style: TextStyle(height: 1.4),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                color: AppTheme.surface,
-                child: const SelectableText(
-                  'flutter build web \\\n'
-                  '  --dart-define=API_BASE_URL=/api\n\n'
-                  'flutter run -d android \\\n'
-                  '  --dart-define=API_BASE_URL=https://api.constroi.com.br',
-                  style: TextStyle(fontFamily: 'monospace', fontSize: 12.5),
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.settings_outlined,
+                  color: AppTheme.accent,
+                  size: 34,
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                detalhe,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF9A978E)),
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  'Falta configurar o endereço da API',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No Flutter Web a API fica na mesma origem da página, '
+                  'então basta um caminho. No Android e iOS informe a '
+                  'URL completa:',
+                  style: TextStyle(height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  color: AppTheme.surface,
+                  child: const SelectableText(
+                    'flutter build web \\\n'
+                    '  --dart-define=API_BASE_URL=/api\n\n'
+                    'flutter run -d android \\\n'
+                    '  --dart-define=API_BASE_URL=https://api.constroi.com.br',
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 12.5),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  detalhe,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9A978E),
+                  ),
+                ),
               ],
             ),
           ),

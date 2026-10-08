@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   static const background = Color(0xFF1A1C1C);
-  static const accent = Color(0xFFFCBC03);
+  static const accent = Color(0xFFFFD700);
   static const surface = Color(0xFF292C2C);
 
   static ThemeData get dark {
