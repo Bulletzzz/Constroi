@@ -96,4 +96,16 @@ A dependência fica na pasta ignorada `.dart_tool`, fora do runtime da API.
 PGlite não valida TLS/pool do driver Dart nem a integração HTTP; o teste remove
 apenas a declaração de extensão pgcrypto, indisponível nesse ambiente.
 Para validar a integração com um banco configurado e API em execução, rode
-`testar_rotas.ps1 -BaseUrl http://localhost:8080 -DatabaseUrl $env:DATABASE_URL`.
+`./testar_rotas.ps1 -BaseUrl http://localhost:8080`.
+O banco é lido de `.env` (ou `DATABASE_ENV_FILE`), da variável `DATABASE_URL`
+ou do parâmetro `-DatabaseUrl`, que prevalece sobre o arquivo. Use o mesmo banco
+da API. O runner chama `dart run bin/testar_banco.dart` para verificar os vínculos
+e preparar saldos/categoria, usando o driver já instalado para as migrations;
+não precisa de `psql` nem de Node.js para a suíte HTTP.
+
+O preparo é obrigatório: configuração ausente, falha de conexão ou de SQL
+encerra a suíte com erro, sem pular os casos de estoque nem anunciar sucesso.
+O cenário usa um pedreiro próprio, saldo igual ao mínimo (5) e depois acima dele
+(6), verificando nome, unidade, SKU, mínimo, indicador de estoque baixo, categoria
+com acentos, filtros e encerramento do vínculo. O helper limita o preparo à
+obra/produto informados e exige que pertençam à mesma empresa.
