@@ -6,6 +6,18 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
 Future<Response> onRequest(RequestContext context, String idDaRota) async {
+  try {
+    return await _responder(context, idDaRota);
+  } on ServerException catch (erro) {
+    if (erro.code == '23505' &&
+        erro.constraintName == 'ux_produto_sku_empresa') {
+      return _erro(HttpStatus.conflict, 'SKU ja cadastrado para esta empresa.');
+    }
+    rethrow;
+  }
+}
+
+Future<Response> _responder(RequestContext context, String idDaRota) async {
   final id = int.tryParse(idDaRota);
   if (id == null) {
     return _erro(HttpStatus.badRequest, 'Id do produto invalido.');
@@ -27,7 +39,8 @@ Future<Response> _buscar(RequestContext context, int id) async {
 
   final encontrados = await banco.execute(
     Sql.named('''
-      SELECT id, nome, unidade, empresa_id, criado_em, atualizado_em
+      SELECT id, nome, unidade, sku, estoque_minimo,
+             empresa_id, criado_em, atualizado_em
       FROM produto
       WHERE id = @id AND empresa_id = @empresa
       LIMIT 1
@@ -43,17 +56,8 @@ Future<Response> _buscar(RequestContext context, int id) async {
   }
 
   final produto = encontrados.first.toColumnMap();
-  final criadoEm = produto['criado_em'] as DateTime?;
-  final atualizadoEm = produto['atualizado_em'] as DateTime?;
   return Response.json(
-    body: {
-      'id': produto['id'],
-      'nome': produto['nome'],
-      'unidade': produto['unidade'],
-      'empresa_id': produto['empresa_id'],
-      'criado_em': criadoEm?.toIso8601String(),
-      'atualizado_em': atualizadoEm?.toIso8601String(),
-    },
+    body: dadosDoProduto(produto),
   );
 }
 
@@ -76,13 +80,24 @@ Future<Response> _editar(RequestContext context, int id) async {
     );
   }
 
-  final nome = validarNomeProduto(dados['nome'] as String?);
-  final unidade = validarUnidadeProduto(dados['unidade'] as String?);
+  final nome = validarNomeProduto(dados['nome']);
+  final unidade = validarUnidadeProduto(dados['unidade']);
+  final sku = validarSkuProduto(dados['sku']);
+  final minimo = validarEstoqueMinimo(dados['estoque_minimo']);
 
-  if (nome == null && unidade == null) {
+  if ((dados.containsKey('nome') && nome == null) ||
+      (dados.containsKey('unidade') && unidade == null) ||
+      (dados.containsKey('sku') && !sku.valido) ||
+      (dados.containsKey('estoque_minimo') && minimo == null)) {
+    return _erro(HttpStatus.badRequest, 'Dados do produto invalidos.');
+  }
+  if (nome == null &&
+      unidade == null &&
+      !dados.containsKey('sku') &&
+      !dados.containsKey('estoque_minimo')) {
     return _erro(
       HttpStatus.badRequest,
-      'Informe nome ou unidade para atualizar.',
+      'Informe nome, unidade, sku ou estoque_minimo para atualizar.',
     );
   }
 
@@ -118,6 +133,15 @@ Future<Response> _editar(RequestContext context, int id) async {
     partes.add('unidade = @unidade');
   }
 
+  if (dados.containsKey('sku')) {
+    campos['sku'] = sku.valor;
+    partes.add('sku = @sku');
+  }
+  if (dados.containsKey('estoque_minimo')) {
+    campos['minimo'] = minimo;
+    partes.add('estoque_minimo = @minimo');
+  }
+
   partes.add('atualizado_em = CURRENT_TIMESTAMP');
   campos['id'] = id;
   campos['empresa'] = empresaId;
@@ -127,7 +151,8 @@ Future<Response> _editar(RequestContext context, int id) async {
       UPDATE produto
       SET ${partes.join(', ')}
       WHERE id = @id AND empresa_id = @empresa
-      RETURNING id, nome, unidade, empresa_id, criado_em, atualizado_em
+      RETURNING id, nome, unidade, sku, estoque_minimo,
+                empresa_id, criado_em, atualizado_em
     '''),
     parameters: campos,
   );
@@ -140,17 +165,8 @@ Future<Response> _editar(RequestContext context, int id) async {
   }
 
   final produto = atualizado.first.toColumnMap();
-  final criadoEm = produto['criado_em'] as DateTime?;
-  final atualizadoEm = produto['atualizado_em'] as DateTime?;
   return Response.json(
-    body: {
-      'id': produto['id'],
-      'nome': produto['nome'],
-      'unidade': produto['unidade'],
-      'empresa_id': produto['empresa_id'],
-      'criado_em': criadoEm?.toIso8601String(),
-      'atualizado_em': atualizadoEm?.toIso8601String(),
-    },
+    body: dadosDoProduto(produto),
   );
 }
 

@@ -395,6 +395,53 @@ Chamar GET "$rotaPedidos`?obra_id=abc" $engenheiro $null 400 'GET /pedidos com o
 Chamar GET "$rotaPedidos/0" $engenheiro $null 400 'GET /pedidos/0 invalido' | Out-Null
 Chamar GET $rotaPedidos $null $null 401 'GET /pedidos sem token' | Out-Null
 
+Secao 'CONSULTA DE ESTOQUE'
+$rotaEstoque = "/estoque?obra_id=$($obra.id)"
+Chamar GET $rotaEstoque $engenheiro $null 200 'GET estoque engenheiro' | Out-Null
+Chamar GET $rotaEstoque $tokenPedreiroDois $null 200 'GET estoque pedreiro vinculado' | Out-Null
+Chamar GET $rotaEstoque $tokenPedreiro $null 404 'GET estoque vinculo encerrado' | Out-Null
+Chamar GET $rotaEstoque $masterB $null 404 'GET estoque empresa B' | Out-Null
+Chamar GET $rotaEstoque $null $null 401 'GET estoque sem token' | Out-Null
+Chamar GET '/estoque' $master $null 400 'GET estoque sem obra_id' | Out-Null
+Chamar GET "$rotaEstoque&baixo=1" $master $null 400 'GET estoque filtro invalido' | Out-Null
+Chamar POST $rotaEstoque $tokenPedreiroDois @{} 405 'POST estoque nao permitido' | Out-Null
+
+$configurado = Chamar PATCH "/produtos/$($produto.id)" $engenheiro @{
+    produto = @{ sku = "CIM-$marca"; estoque_minimo = '5.00' }
+} 200 'PATCH SKU e minimo do produto'
+if ($configurado.sku -ne "CIM-$marca" -or [decimal]$configurado.estoque_minimo -ne 5) {
+    $falhas += 'SKU ou minimo nao foram persistidos'
+}
+Chamar POST '/produtos' $engenheiro @{
+    produto = @{ nome = "Outro $marca"; unidade = 'un'; sku = "cim-$marca" }
+} 409 'POST SKU duplicado na empresa' | Out-Null
+Chamar PATCH "/produtos/$($produto.id)" $engenheiro @{
+    produto = @{ estoque_minimo = -1 }
+} 400 'PATCH minimo negativo' | Out-Null
+
+if ($DatabaseUrl -and (Get-Command psql -ErrorAction SilentlyContinue)) {
+    & psql $DatabaseUrl -v ON_ERROR_STOP=1 -c "INSERT INTO estoque (obra_id, produto_id, quantidade) VALUES ($($obra.id), $($produto.id), 5) ON CONFLICT (obra_id, produto_id) DO UPDATE SET quantidade = 5;" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar saldo de teste.' }
+    $saldo = Chamar GET "$rotaEstoque&busca=cim-$marca&baixo=true" $tokenPedreiroDois $null 200 'GET estoque por SKU e minimo'
+    if (@($saldo.estoque).Count -ne 1 -or $saldo.estoque[0].produto_id -ne $produto.id -or
+        [decimal]$saldo.estoque[0].quantidade -ne 5 -or -not $saldo.estoque[0].baixo) {
+        $falhas += 'Busca por SKU ou estoque baixo retornou saldo inesperado'
+    }
+    $porNome = Chamar GET "$rotaEstoque&busca=Cimento" $engenheiro $null 200 'GET estoque busca por nome'
+    if (-not ($porNome.estoque | Where-Object { $_.produto_id -eq $produto.id })) {
+        $falhas += 'Busca por nome nao retornou o produto'
+    }
+    & psql $DatabaseUrl -v ON_ERROR_STOP=1 -c "UPDATE estoque SET quantidade = 6 WHERE obra_id = $($obra.id) AND produto_id = $($produto.id);" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao atualizar saldo de teste.' }
+    $acima = Chamar GET "$rotaEstoque&baixo=true" $engenheiro $null 200 'GET estoque acima do minimo'
+    if ($acima.estoque | Where-Object { $_.produto_id -eq $produto.id }) {
+        $falhas += 'Saldo acima do minimo apareceu como baixo'
+    }
+}
+else {
+    Write-Host '  ignorado preparo de saldos (configure DATABASE_URL e instale psql)' -ForegroundColor Yellow
+}
+
 Write-Host ''
 if ($falhas.Count -eq 0) {
     Write-Host "$total chamadas, todas com o codigo esperado." -ForegroundColor Green
@@ -407,6 +454,7 @@ else {
 Write-Host ''
 Write-Host "Dados criados com a marca $marca. Para limpar:" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM usuario_obra WHERE empresa_id IN (SELECT id FROM empresa WHERE nome LIKE '%$marca');" -ForegroundColor DarkGray
+Write-Host "  DELETE FROM estoque WHERE obra_id IN (SELECT id FROM obra WHERE nome LIKE '%$marca');" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM item_pedido WHERE pedido_id IN (SELECT p.id FROM pedido p JOIN obra o ON o.id = p.obra_id WHERE o.nome LIKE '%$marca');" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM pedido WHERE obra_id IN (SELECT id FROM obra WHERE nome LIKE '%$marca');" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM obra WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray

@@ -6,6 +6,18 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
 Future<Response> onRequest(RequestContext context) async {
+  try {
+    return await _responder(context);
+  } on ServerException catch (erro) {
+    if (erro.code == '23505' &&
+        erro.constraintName == 'ux_produto_sku_empresa') {
+      return _erro(HttpStatus.conflict, 'SKU ja cadastrado para esta empresa.');
+    }
+    rethrow;
+  }
+}
+
+Future<Response> _responder(RequestContext context) async {
   final metodo = context.request.method;
   if (metodo == HttpMethod.get) {
     return _listar(context);
@@ -22,7 +34,8 @@ Future<Response> _listar(RequestContext context) async {
 
   final linhas = await banco.execute(
     Sql.named('''
-      SELECT id, nome, unidade, empresa_id, criado_em, atualizado_em
+      SELECT id, nome, unidade, sku, estoque_minimo,
+             empresa_id, criado_em, atualizado_em
       FROM produto
       WHERE empresa_id = @empresa
       ORDER BY nome, id
@@ -30,23 +43,9 @@ Future<Response> _listar(RequestContext context) async {
     parameters: {'empresa': empresaId},
   );
 
-  final produtos = linhas.map((linha) => linha.toColumnMap()).map((produto) {
-    final id = produto['id'] as int?;
-    final nome = produto['nome'] as String?;
-    final unidade = produto['unidade'] as String?;
-    final empresaId = produto['empresa_id'] as int?;
-    final criadoEm = produto['criado_em'] as DateTime?;
-    final atualizadoEm = produto['atualizado_em'] as DateTime?;
-
-    return {
-      'id': id,
-      'nome': nome,
-      'unidade': unidade,
-      'empresa_id': empresaId,
-      'criado_em': criadoEm?.toIso8601String(),
-      'atualizado_em': atualizadoEm?.toIso8601String(),
-    };
-  }).toList();
+  final produtos = linhas
+      .map((linha) => dadosDoProduto(linha.toColumnMap()))
+      .toList();
 
   return Response.json(body: {'produtos': produtos});
 }
@@ -69,8 +68,16 @@ Future<Response> _criar(RequestContext context) async {
     );
   }
 
-  final nome = validarNomeProduto(dados['nome'] as String?);
-  final unidade = validarUnidadeProduto(dados['unidade'] as String?);
+  final nome = validarNomeProduto(dados['nome']);
+  final unidade = validarUnidadeProduto(dados['unidade']);
+  final sku = validarSkuProduto(dados['sku']);
+  final minimo = validarEstoqueMinimo(
+    dados.containsKey('estoque_minimo') ? dados['estoque_minimo'] : 0,
+  );
+
+  if (!sku.valido || minimo == null) {
+    return _erro(HttpStatus.badRequest, 'SKU ou estoque minimo invalido.');
+  }
 
   if (nome == null || unidade == null) {
     return _erro(
@@ -99,26 +106,23 @@ Future<Response> _criar(RequestContext context) async {
 
   final resultado = await banco.execute(
     Sql.named('''
-      INSERT INTO produto (empresa_id, nome, unidade)
-      VALUES (@empresa, @nome, @unidade)
-      RETURNING id, nome, unidade, empresa_id
+      INSERT INTO produto (empresa_id, nome, unidade, sku, estoque_minimo)
+      VALUES (@empresa, @nome, @unidade, @sku, @minimo)
+      RETURNING id, nome, unidade, sku, estoque_minimo, empresa_id
     '''),
     parameters: {
       'empresa': empresaId,
       'nome': nome,
       'unidade': unidade,
+      'sku': sku.valor,
+      'minimo': minimo,
     },
   );
 
   final linha = resultado.first.toColumnMap();
   return Response.json(
     statusCode: HttpStatus.created,
-    body: {
-      'id': linha['id'],
-      'nome': linha['nome'],
-      'unidade': linha['unidade'],
-      'empresa_id': linha['empresa_id'],
-    },
+    body: dadosDoProduto(linha),
   );
 }
 

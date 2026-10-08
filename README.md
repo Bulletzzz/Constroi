@@ -97,6 +97,7 @@ acesso daquele trecho.
 | `GET` `PATCH` | `/usuarios/{id}` | master |
 | `PATCH` | `/usuarios/{id}/inativar` | master |
 | `GET` `POST` | `/produtos` | engenheiro |
+| `GET` | `/estoque?obra_id={id}` | pedreiro (vínculo ativo com a obra) |
 | `GET` `PATCH` | `/produtos/{id}` | engenheiro |
 | `GET` `POST` | `/equipamentos` | engenheiro |
 | `GET` `PATCH` | `/equipamentos/{id}` | engenheiro |

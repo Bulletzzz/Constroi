@@ -14,6 +14,7 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `006_usuario_tipo.sql`: converte o perfil legado `admin` para `master` e restringe os perfis aos níveis aceitos pela API
 - `007_corrige_colunas_legadas.sql`: alinha `pedido.protocolo` e as colunas de data com o que a `001` declara, recriando as views de custo
 - `008_protege_estoque.sql`: devolve ao `estoque` o `CHECK (quantidade >= 0)` e o `UNIQUE (obra_id, produto_id)` que a `001` declara
+- `009_consulta_estoque.sql`: SKU opcional e estoque mínimo por produto, com SKU único por empresa (sem diferenciar maiúsculas)
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
 
@@ -25,6 +26,46 @@ dart pub get
 dart run bin/migrate.dart
 ```
 
-O arquivo `Database/schema.sql` representa o estado consolidado depois das migrations 001 a 006 e serve para inicializar um banco vazio. Bancos existentes devem ser atualizados exclusivamente pelo executor de migrations.
+O arquivo `Database/schema.sql` representa o estado consolidado depois das migrations 001 a 009 e serve para inicializar um banco vazio. Bancos existentes devem ser atualizados exclusivamente pelo executor de migrations.
 
 Para criar uma alteração futura, adicione uma nova migration numerada. Não edite uma migration que já tenha sido aplicada.
+
+## Consulta de estoque (RF05)
+
+Após aplicar a migration 009, `GET /estoque?obra_id=7` retorna os saldos
+registrados naquela obra, incluindo saldo zero. Uma obra sem registros retorna
+`{"estoque": []}`; produtos sem registro de estoque não são inventados na lista.
+O acesso exige token de pedreiro ou superior. Pedreiros precisam de vínculo ativo;
+engenheiro/master consultam qualquer obra da própria empresa. Obra inexistente,
+de outra empresa ou sem vínculo permitido retorna 404. Escrita em `/estoque` retorna 405.
+
+Filtros combináveis:
+
+| Parâmetro | Regra |
+|---|---|
+| `obra_id` | Obrigatório, inteiro positivo até 2147483647 |
+| `busca` | Trecho literal do nome ou SKU, sem diferenciar maiúsculas; até 150 caracteres |
+| `baixo` | `true` para somente saldo menor ou igual ao mínimo; padrão `false` |
+| `limit` | De 1 a 200; padrão 50 |
+| `offset` | De 0 a 10000; padrão 0 |
+
+Exemplo: `GET /estoque?obra_id=7&busca=CIM&baixo=true&limit=50&offset=0`.
+Ordenação por nome e ID do produto. Retorno:
+
+```json
+{"estoque": [{"id": 1, "obra_id": 7, "produto_id": 2, "nome": "Cimento",
+  "unidade": "saco", "sku": "CIM-01", "quantidade": "4.50",
+  "estoque_minimo": "5.00", "baixo": true}]}
+```
+
+Quantidades são strings decimais para preservar a precisão. O cadastro de produto
+aceita `sku` e `estoque_minimo` em `POST /produtos` e `PATCH /produtos/{id}`,
+restritos a engenheiro/master. SKU tem até 50 caracteres, é aparado e pode ser
+removido com `null` ou texto vazio; duplicata na mesma empresa retorna 409.
+O mínimo é não negativo, tem até duas casas e máximo 9999999999.99; aceita número
+JSON ou string decimal (ponto ou vírgula). Omitir na criação usa zero; no PATCH
+preserva o valor. Mínimo `null` é inválido. Ambos aparecem nas respostas de produto.
+
+A regra de mínimo é por produto, compartilhada entre obras da empresa. Produtos
+existentes ficam sem SKU e com mínimo zero, marcando baixo apenas saldo zero.
+O card backend não inclui a tela Flutter (card separado).
