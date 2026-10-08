@@ -68,7 +68,15 @@ Future<Response> onRequest(RequestContext context) async {
     };
     dados['movimentacoes'] = movimentos.take(limite).toList();
     return Response.json(body: dados);
-  } catch (_) {
+  } catch (erro, pilha) {
+    // FormatException de conexao pode conter a DATABASE_URL com a senha.
+    // Preserva o diagnostico e a pilha no servidor, omitindo a URL completa.
+    final diagnostico = '$erro\n$pilha'.replaceAll(
+      RegExp(r'postgres(?:ql)?://[^\r\n]*', caseSensitive: false),
+      '[conexao PostgreSQL omitida]',
+    );
+    // ignore: avoid_print
+    print('Falha no painel (${erro.runtimeType}): $diagnostico');
     return Response.json(
       statusCode: HttpStatus.serviceUnavailable,
       body: {

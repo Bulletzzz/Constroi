@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -30,6 +31,12 @@ void main() {
       );
   void requisicao(String filtros) => when(() => contexto.request).thenReturn(
     Request.get(Uri.parse('http://localhost/painel$filtros')),
+  );
+  Future<Response> chamarComLogs(List<String> logs) => runZoned(
+    () => rota.onRequest(contexto),
+    zoneSpecification: ZoneSpecification(
+      print: (_, _, _, mensagem) => logs.add(mensagem),
+    ),
   );
   setUpAll(() => registerFallbackValue(Sql.named('')));
   setUp(() {
@@ -163,9 +170,97 @@ void main() {
     when(
       () => banco.execute(any(), parameters: any(named: 'parameters')),
     ).thenThrow(StateError('postgresql://segredo'));
-    final resposta = await rota.onRequest(contexto);
+    final logs = <String>[];
+    final resposta = await chamarComLogs(logs);
     expect(resposta.statusCode, HttpStatus.serviceUnavailable);
-    expect(await resposta.body(), isNot(contains('segredo')));
+    expect(jsonDecode(await resposta.body()), {
+      'erro': 'Nao foi possivel consultar o painel. Tente novamente.',
+    });
+    expect(logs, hasLength(1));
+    expect(logs.single, contains('Falha no painel (StateError)'));
+    expect(logs.single, contains('[conexao PostgreSQL omitida]'));
+    expect(logs.single, isNot(contains('segredo')));
+  });
+
+  test('falha registra causa e pilha somente no servidor', () async {
+    const causa = 'relation "item_entrada" does not exist';
+    final pilha = StackTrace.fromString('origem_da_falha: banco.execute');
+    when(
+      () => banco.execute(any(), parameters: any(named: 'parameters')),
+    ).thenAnswer((_) => Future<Result>.error(StateError(causa), pilha));
+    final logs = <String>[];
+    final resposta = await chamarComLogs(logs);
+    expect(resposta.statusCode, HttpStatus.serviceUnavailable);
+    expect(logs, hasLength(1));
+    expect(logs.single, contains(causa));
+    expect(logs.single, contains(pilha.toString()));
+    final corpo = await resposta.body();
+    expect(corpo, isNot(contains(causa)));
+    expect(corpo, isNot(contains(pilha.toString())));
+  });
+
+  test(
+    'FormatException nao expoe URLs PostgreSQL no log ou na resposta',
+    () async {
+      for (final url in [
+        'postgres://owner:senha-secreta@db.test/app?sslmode=require',
+        'postgresql://owner:senha-secreta@db.test/app?sslmode=require',
+        'POSTGRESQL://owner:senha-secreta@db.test/app?sslmode=require',
+        'postgresql://owner:senha secreta@db.test/app?sslmode=require',
+      ]) {
+        final erro = FormatException('Conexao invalida', url);
+        final pilha = StackTrace.fromString('conexao.dart:1 $url');
+        when(
+          () => banco.execute(any(), parameters: any(named: 'parameters')),
+        ).thenAnswer((_) => Future<Result>.error(erro, pilha));
+        final logs = <String>[];
+        final resposta = await chamarComLogs(logs);
+        expect(resposta.statusCode, HttpStatus.serviceUnavailable);
+        expect(logs, hasLength(1));
+        expect(logs.single, contains('FormatException'));
+        expect(logs.single, contains('Conexao invalida'));
+        expect(logs.single, contains('conexao.dart:1'));
+        expect(logs.single, contains('[conexao PostgreSQL omitida]'));
+        for (final segredo in [
+          url,
+          'owner',
+          'senha-secreta',
+          'senha secreta',
+          'db.test',
+        ]) {
+          expect(logs.single, isNot(contains(segredo)));
+          expect(await resposta.body(), isNot(contains(segredo)));
+        }
+      }
+    },
+  );
+
+  test(
+    'resposta de banco malformada tambem gera diagnostico no servidor',
+    () async {
+      dados['movimentacoes'] = 'formato inesperado';
+      final logs = <String>[];
+      final resposta = await chamarComLogs(logs);
+      expect(resposta.statusCode, HttpStatus.serviceUnavailable);
+      expect(logs, hasLength(1));
+      expect(logs.single, contains('Falha no painel'));
+      expect(logs.single, contains('TypeError'));
+      expect(await resposta.body(), isNot(contains('TypeError')));
+    },
+  );
+
+  test('sucesso e erros esperados nao registram falha interna', () async {
+    final logs = <String>[];
+    expect((await chamarComLogs(logs)).statusCode, HttpStatus.ok);
+    dados['obra_permitida'] = false;
+    expect((await chamarComLogs(logs)).statusCode, HttpStatus.notFound);
+    requisicao('?limit=0');
+    expect((await chamarComLogs(logs)).statusCode, HttpStatus.badRequest);
+    when(
+      () => contexto.request,
+    ).thenReturn(Request.post(Uri.parse('http://localhost/painel')));
+    expect((await chamarComLogs(logs)).statusCode, HttpStatus.methodNotAllowed);
+    expect(logs, isEmpty);
   });
 
   test('rota e somente leitura', () async {

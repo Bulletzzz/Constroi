@@ -44,6 +44,10 @@ Engenheiro e master consultam obras da propria empresa.
 Valores financeiros sao omitidos pela API e pela interface para pedreiro.
 Obra inexistente ou fora do escopo responde 404.
 O cliente HTTP existente encerra a sessao em caso de 401.
+Falhas inesperadas registram tipo, causa e pilha no stdout do servidor.
+URLs PostgreSQL presentes no erro ou na pilha sao omitidas do log para nao
+expor credenciais. O aplicativo recebe somente a mensagem generica de 503.
+Erros de validacao e obra fora do escopo nao geram esse log de falha interna.
 
 CONTRATO
 GET /painel?obra_id=10&limit=5&offset=0
@@ -65,11 +69,14 @@ Testes do app cobrem carregamento, erro, refresh, filtro, paginacao,
 dados invalidos, perfil, sessao expirada e tamanhos de tela.
 Testes da API cobrem autenticacao, filtros, paginacao e protecao dos valores.
 Testes utilizam dados isolados, sem credenciais e sem escrever no Neon.
-Em 07/10/2026, apos a revisao: 53 testes do app e 106 da API passaram.
+Em 07/10/2026, apos a nova revisao: 53 testes do app e 110 da API passaram.
 A branch de navegacao foi validada separadamente, com 34 testes aprovados.
 Revisao dos PRs 9 e 10: testes cobrem divergencia entre sessao e JWT,
 fallback sem usuario, perfil desconhecido e menu com fonte ampliada.
 Testes de integracao conferem menu e rota direta apos o /eu mudar o perfil.
+Testes do diagnostico conferem causa e pilha no servidor, resposta generica
+ao cliente e omissao de URLs PostgreSQL, inclusive URLs malformadas.
+Sucesso e respostas esperadas 400, 404 e 405 nao geram log de falha interna.
 Os analisadores do app e da API terminaram sem problemas.
 A compilacao Flutter Web com API_BASE_URL=/api foi concluida.
 A consulta SQL foi executada em PostgreSQL em memoria, incluindo dados
@@ -79,14 +86,11 @@ Nenhum teste em aparelho Android ou iOS fisico foi realizado nesta entrega.
 COMMIT
 Branch: feat/tela-painel.
 O commit e o push ficam a cargo do Andrew.
-Na revisao, a integracao da branch feat/navegacao-menu-inferior foi iniciada
-com --no-commit e os conflitos foram resolvidos. O proximo commit nesta
-pasta conclui essa integracao; nenhum commit ou push foi feito pelo agente.
-Publicar as correcoes nos dois PRs e integrar o PR 9 antes do PR 10.
-Ao integrar o PR 9 no GitHub, preferir Create a merge commit para preservar
-a ancestralidade usada pelo PR 10, sem reescrever o historico.
+O PR 9 de navegacao foi aprovado e integrado a main.
+Esta revisao incorpora essa main sem regressao nos arquivos de navegacao.
+O registro de falhas atende ao novo review do PR 10.
 
 Na pasta tela-painel deste computador, revise os arquivos e execute:
-git add constroi_app constroi_api "Documentação/Tela de Painel.txt"
-git commit -m "Implementa tela de Painel integrada a API"
-git push -u origin feat/tela-painel
+git add constroi_api/README.md constroi_api/routes/painel/index.dart constroi_api/test/routes/painel_test.dart "Documentação/Tela de Painel.txt"
+git commit -m "Registra falhas do Painel e atualiza com a main"
+git push origin feat/tela-painel

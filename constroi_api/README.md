@@ -10,6 +10,9 @@ Exige autenticação e limita os dados à empresa e às obras permitidas ao perf
 Valores financeiros ficam disponíveis somente para engenheiro e master.
 As fórmulas e limites dos dados estão em `Documentação/Tela de Painel.txt`.
 Não requer migration adicional.
+Falhas internas registram o tipo, a causa e a pilha no stdout do servidor.
+URLs PostgreSQL são omitidas do diagnóstico para não registrar credenciais.
+A resposta HTTP 503 continua genérica, sem expor detalhes internos ao app.
 
 ## Migrations
 
