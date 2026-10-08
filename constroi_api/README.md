@@ -32,28 +32,37 @@ Para criar uma alteração futura, adicione uma nova migration numerada. Não ed
 
 ## Consulta de estoque (RF05)
 
-Após aplicar a migration 009, `GET /estoque?obra_id=7` retorna os saldos
-registrados naquela obra, incluindo saldo zero. Uma obra sem registros retorna
+Após aplicar a migration 009, `GET /estoque` retorna os saldos das obras acessíveis,
+incluindo saldo zero. `obra_id=7` restringe a consulta àquela obra. Uma obra sem registros retorna
 `{"estoque": []}`; produtos sem registro de estoque não são inventados na lista.
 O acesso exige token de pedreiro ou superior. Pedreiros precisam de vínculo ativo;
-engenheiro/master consultam qualquer obra da própria empresa. Obra inexistente,
-de outra empresa ou sem vínculo permitido retorna 404. Escrita em `/estoque` retorna 405.
+engenheiro/master consultam qualquer obra da própria empresa. Sem `obra_id`,
+pedreiros veem somente obras com vínculo ativo; gestores veem todas da sua empresa.
+Um `obra_id` explícito inexistente, de outra empresa ou sem vínculo permitido
+retorna 404. Sem obras acessíveis, a consulta geral retorna lista vazia.
+Escrita em `/estoque` retorna 405.
 
 Filtros combináveis:
 
 | Parâmetro | Regra |
 |---|---|
-| `obra_id` | Obrigatório, inteiro positivo até 2147483647 |
+| `obra_id` | Opcional; inteiro positivo até 2147483647 |
+| `categoria_id` | Opcional; inteiro positivo até 2147483647, filtra `produto.categoria_custo_id` |
 | `busca` | Trecho literal do nome ou SKU, sem diferenciar maiúsculas; até 150 caracteres |
 | `baixo` | `true` para somente saldo menor ou igual ao mínimo; padrão `false` |
 | `limit` | De 1 a 200; padrão 50 |
 | `offset` | De 0 a 10000; padrão 0 |
 
-Exemplo: `GET /estoque?obra_id=7&busca=CIM&baixo=true&limit=50&offset=0`.
-Ordenação por nome e ID do produto. Retorno:
+Exemplo: `GET /estoque?obra_id=7&categoria_id=2&busca=CIM&baixo=true&limit=50&offset=0`.
+Ordenação por nome/ID do produto, obra e ID do saldo para paginação estável entre obras.
+Categorias inexistentes ou sem saldos visíveis retornam lista vazia. Produtos sem
+categoria continuam na consulta sem filtro, com os dois campos de categoria nulos.
+O contrato usa `produto_nome` (não `nome`) e `categoria_custo_id`/`categoria_nome`.
+Retorno:
 
 ```json
-{"estoque": [{"id": 1, "obra_id": 7, "produto_id": 2, "nome": "Cimento",
+{"estoque": [{"id": 1, "obra_id": 7, "produto_id": 2, "produto_nome": "Cimento",
+  "categoria_custo_id": 2, "categoria_nome": "Cimento e agregados",
   "unidade": "saco", "sku": "CIM-01", "quantidade": "4.50",
   "estoque_minimo": "5.00", "baixo": true}]}
 ```
@@ -69,3 +78,22 @@ preserva o valor. Mínimo `null` é inválido. Ambos aparecem nas respostas de p
 A regra de mínimo é por produto, compartilhada entre obras da empresa. Produtos
 existentes ficam sem SKU e com mínimo zero, marcando baixo apenas saldo zero.
 O card backend não inclui a tela Flutter (card separado).
+
+### Testes do contrato de estoque
+
+`dart test` verifica resposta, parâmetros, validação e permissões das rotas.
+O teste SQL abaixo também executa as consultas reais da rota em PostgreSQL em
+memória, verificando `produto_nome`, categorias, filtros e isolamento entre
+obras/empresas. Os dados vêm do SQL, sem respostas previamente montadas por mocks.
+
+```powershell
+# Na pasta constroi_api, com Node.js instalado:
+npm install --prefix .dart_tool/sql-validation --no-save @electric-sql/pglite@0.5.8
+node test/sql/estoque_contract.mjs
+```
+
+A dependência fica na pasta ignorada `.dart_tool`, fora do runtime da API.
+PGlite não valida TLS/pool do driver Dart nem a integração HTTP; o teste remove
+apenas a declaração de extensão pgcrypto, indisponível nesse ambiente.
+Para validar a integração com um banco configurado e API em execução, rode
+`testar_rotas.ps1 -BaseUrl http://localhost:8080 -DatabaseUrl $env:DATABASE_URL`.

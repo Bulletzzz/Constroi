@@ -402,7 +402,10 @@ Chamar GET $rotaEstoque $tokenPedreiroDois $null 200 'GET estoque pedreiro vincu
 Chamar GET $rotaEstoque $tokenPedreiro $null 404 'GET estoque vinculo encerrado' | Out-Null
 Chamar GET $rotaEstoque $masterB $null 404 'GET estoque empresa B' | Out-Null
 Chamar GET $rotaEstoque $null $null 401 'GET estoque sem token' | Out-Null
-Chamar GET '/estoque' $master $null 400 'GET estoque sem obra_id' | Out-Null
+Chamar GET '/estoque' $master $null 200 'GET estoque sem obra_id' | Out-Null
+Chamar GET '/estoque' $tokenPedreiroDois $null 200 'GET estoque geral pedreiro' | Out-Null
+Chamar GET '/estoque?categoria_id=abc' $master $null 400 'GET estoque categoria invalida' | Out-Null
+Chamar GET '/estoque?categoria_id=2147483647' $master $null 200 'GET estoque categoria inexistente' | Out-Null
 Chamar GET "$rotaEstoque&baixo=1" $master $null 400 'GET estoque filtro invalido' | Out-Null
 Chamar POST $rotaEstoque $tokenPedreiroDois @{} 405 'POST estoque nao permitido' | Out-Null
 
@@ -420,17 +423,33 @@ Chamar PATCH "/produtos/$($produto.id)" $engenheiro @{
 } 400 'PATCH minimo negativo' | Out-Null
 
 if ($DatabaseUrl -and (Get-Command psql -ErrorAction SilentlyContinue)) {
+    & psql $DatabaseUrl -v ON_ERROR_STOP=1 -c "UPDATE produto SET categoria_custo_id = (SELECT id FROM categoria_custo WHERE nome = 'Cimento e agregados') WHERE id = $($produto.id);" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar categoria de teste.' }
+    $categoriaEstoque = (& psql $DatabaseUrl -At -v ON_ERROR_STOP=1 -c "SELECT categoria_custo_id FROM produto WHERE id = $($produto.id);" | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $categoriaEstoque -notmatch '^\d+$') { throw 'Categoria de teste nao encontrada.' }
     & psql $DatabaseUrl -v ON_ERROR_STOP=1 -c "INSERT INTO estoque (obra_id, produto_id, quantidade) VALUES ($($obra.id), $($produto.id), 5) ON CONFLICT (obra_id, produto_id) DO UPDATE SET quantidade = 5;" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar saldo de teste.' }
     $saldo = Chamar GET "$rotaEstoque&busca=cim-$marca&baixo=true" $tokenPedreiroDois $null 200 'GET estoque por SKU e minimo'
     if (@($saldo.estoque).Count -ne 1 -or $saldo.estoque[0].produto_id -ne $produto.id -or
-        [decimal]$saldo.estoque[0].quantidade -ne 5 -or -not $saldo.estoque[0].baixo) {
+        [decimal]$saldo.estoque[0].quantidade -ne 5 -or -not $saldo.estoque[0].baixo -or
+        $saldo.estoque[0].produto_nome -ne $produto.nome -or
+        -not ($saldo.estoque[0].PSObject.Properties.Name -contains 'categoria_custo_id') -or
+        -not ($saldo.estoque[0].PSObject.Properties.Name -contains 'categoria_nome')) {
         $falhas += 'Busca por SKU ou estoque baixo retornou saldo inesperado'
     }
     $porNome = Chamar GET "$rotaEstoque&busca=Cimento" $engenheiro $null 200 'GET estoque busca por nome'
     if (-not ($porNome.estoque | Where-Object { $_.produto_id -eq $produto.id })) {
         $falhas += 'Busca por nome nao retornou o produto'
     }
+    $categoria = Chamar GET "/estoque?categoria_id=$categoriaEstoque&busca=cim-$marca" $tokenPedreiroDois $null 200 'GET estoque categoria sem obra_id'
+    if (@($categoria.estoque).Count -ne 1 -or
+        $categoria.estoque[0].obra_id -ne $obra.id -or
+        $categoria.estoque[0].categoria_custo_id -ne [int]$categoriaEstoque -or
+        $categoria.estoque[0].categoria_nome -ne 'Cimento e agregados') {
+        $falhas += 'Categoria ou escopo geral do estoque divergiram do contrato'
+    }
+    $semCategoria = Chamar GET "$rotaEstoque&categoria_id=2147483647" $engenheiro $null 200 'GET estoque sem saldo na categoria'
+    if (@($semCategoria.estoque).Count -ne 0) { $falhas += 'Filtro de categoria foi ignorado' }
     & psql $DatabaseUrl -v ON_ERROR_STOP=1 -c "UPDATE estoque SET quantidade = 6 WHERE obra_id = $($obra.id) AND produto_id = $($produto.id);" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao atualizar saldo de teste.' }
     $acima = Chamar GET "$rotaEstoque&baixo=true" $engenheiro $null 200 'GET estoque acima do minimo'

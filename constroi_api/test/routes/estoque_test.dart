@@ -35,7 +35,9 @@ void main() {
     'id': 1,
     'obra_id': 10,
     'produto_id': 2,
-    'nome': 'Cimento',
+    'produto_nome': 'Cimento',
+    'categoria_custo_id': 2,
+    'categoria_nome': 'Cimento e agregados',
     'unidade': 'saco',
     'sku': 'CIM-01',
     'quantidade': '4.50',
@@ -96,6 +98,9 @@ void main() {
         expect(parametros.last, {
           'empresa': 3,
           'obra': 10,
+          'categoria': null,
+          'usuario': 7,
+          'todas': nivel != Nivel.pedreiro,
           'busca': '',
           'baixo': false,
           'limite': 50,
@@ -116,11 +121,17 @@ void main() {
   }
 
   test('combina filtros, apara busca e mantem caracteres literais', () async {
-    requisicao('obra_id=10&busca=%20CIM%25_%20&baixo=true&limit=20&offset=40');
+    requisicao(
+      'obra_id=10&categoria_id=2&busca=%20CIM%25_%20'
+      '&baixo=true&limit=20&offset=40',
+    );
     expect((await rota.onRequest(contexto)).statusCode, HttpStatus.ok);
     expect(parametros.last, {
       'empresa': 3,
       'obra': 10,
+      'categoria': 2,
+      'usuario': 7,
+      'todas': false,
       'busca': 'CIM%_',
       'baixo': true,
       'limite': 20,
@@ -139,11 +150,16 @@ void main() {
     expect(jsonDecode(await resposta.body()), {'estoque': <Object?>[]});
   });
   for (final query in [
-    '',
+    'obra_id=',
     'obra_id=0',
     'obra_id=-1',
     'obra_id=abc',
     'obra_id=2147483648',
+    'categoria_id=',
+    'categoria_id=0',
+    'categoria_id=-1',
+    'categoria_id=abc',
+    'categoria_id=2147483648',
     'obra_id=10&baixo=1',
     'obra_id=10&baixo=',
     'obra_id=10&limit=0',
@@ -162,6 +178,61 @@ void main() {
       expect(parametros, isEmpty);
     });
   }
+  for (final nivel in Nivel.values) {
+    test(
+      'sem obra_id lista apenas obras visiveis para ${nivel.name}',
+      () async {
+        autenticar(nivel);
+        requisicao('categoria_id=2');
+        resultados = [
+          _resultado([item]),
+        ];
+        final resposta = await rota.onRequest(contexto);
+        expect(resposta.statusCode, HttpStatus.ok);
+        expect(jsonDecode(await resposta.body()), {
+          'estoque': [item],
+        });
+        expect(parametros.single, {
+          'empresa': 3,
+          'obra': null,
+          'categoria': 2,
+          'usuario': 7,
+          'todas': nivel != Nivel.pedreiro,
+          'busca': '',
+          'baixo': false,
+          'limite': 50,
+          'offset': 0,
+        });
+      },
+    );
+  }
+  test('GET /estoque sem filtros e valido', () async {
+    requisicao('');
+    resultados = [_resultado([])];
+    final resposta = await rota.onRequest(contexto);
+    expect(resposta.statusCode, HttpStatus.ok);
+    expect(jsonDecode(await resposta.body()), {'estoque': <Object?>[]});
+    expect(parametros.single['obra'], isNull);
+    expect(parametros.single['categoria'], isNull);
+  });
+  test('produto sem categoria preserva chaves nulas no contrato', () async {
+    resultados = [
+      _resultado([
+        {'id': 10},
+      ]),
+      _resultado([
+        {...item, 'categoria_custo_id': null, 'categoria_nome': null},
+      ]),
+    ];
+    final corpo =
+        jsonDecode(await (await rota.onRequest(contexto)).body()) as Map;
+    final linha = (corpo['estoque'] as List).single as Map;
+    expect(linha['produto_nome'], 'Cimento');
+    expect(linha.containsKey('categoria_custo_id'), isTrue);
+    expect(linha.containsKey('categoria_nome'), isTrue);
+    expect(linha['categoria_custo_id'], isNull);
+    expect(linha['categoria_nome'], isNull);
+  });
   test('sem token retorna 401 sem acesso ao banco', () async {
     when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(null);
     expect(
