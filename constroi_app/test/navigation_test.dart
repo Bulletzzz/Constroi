@@ -8,6 +8,7 @@ import 'package:constroi_app/navigation/app_route.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/navigation/route_guard.dart';
 import 'package:constroi_app/screens/module_screen.dart';
+import 'package:constroi_app/widgets/app_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -35,7 +36,7 @@ MockClient semChamadas() =>
     MockClient((_) async => http.Response(jsonEncode({}), 200));
 
 void main() {
-  group('perfil do token', () {
+  group('perfil do JWT usado como fallback', () {
     test('le os tres perfis aceitos pelo backend', () {
       expect(PerfilDoToken.ler(tokenDe('pedreiro')), PerfilUsuario.pedreiro);
       expect(
@@ -48,6 +49,52 @@ void main() {
     test('recusa token malformado ou perfil desconhecido', () {
       expect(PerfilDoToken.ler('token-invalido'), isNull);
       expect(PerfilDoToken.ler(tokenDe('visitante')), isNull);
+    });
+  });
+
+  group('perfil da sessao', () {
+    test('usuario da sessao prevalece quando o JWT tem outro tipo', () {
+      for (final perfil in PerfilUsuario.values) {
+        for (final perfilAntigo in PerfilUsuario.values) {
+          if (perfil == perfilAntigo) continue;
+          final sessao = AppSession(
+            accessToken: tokenDe(perfilAntigo.name),
+            user: usuarioDe(perfil.name),
+          );
+
+          expect(PerfilDaSessao.ler(sessao), perfil);
+          expect(RouteGuard.daSessao(sessao).perfil, perfil);
+        }
+      }
+    });
+
+    test('sem usuario na sessao usa o perfil do JWT valido', () {
+      for (final perfil in PerfilUsuario.values) {
+        final sessao = AppSession(accessToken: tokenDe(perfil.name));
+
+        expect(sessao.user, isNull);
+        expect(PerfilDaSessao.ler(sessao), perfil);
+        expect(RouteGuard.daSessao(sessao).perfil, perfil);
+      }
+    });
+
+    test('usuario com perfil desconhecido nao herda privilegios do JWT', () {
+      final sessao = AppSession(
+        accessToken: tokenDe('master'),
+        user: usuarioDe('visitante'),
+      );
+
+      expect(PerfilDaSessao.ler(sessao), isNull);
+      expect(AppRoute.values.any(RouteGuard.daSessao(sessao).permite), isFalse);
+    });
+
+    test('sem sessao ou sem JWT valido nao libera rotas', () {
+      expect(PerfilDaSessao.ler(null), isNull);
+      expect(
+        PerfilDaSessao.ler(const AppSession(accessToken: 'invalido')),
+        isNull,
+      );
+      expect(AppRoute.values.any(RouteGuard.daSessao(null).permite), isFalse);
     });
   });
 
@@ -108,6 +155,43 @@ void main() {
     expect(find.text('Equipe'), findsOneWidget);
   });
 
+  for (final perfil in PerfilUsuario.values) {
+    testWidgets(
+      'menu de ${perfil.name} suporta tela estreita e fonte ampliada',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(2.5)),
+              child: child!,
+            ),
+            home: Scaffold(
+              bottomNavigationBar: AppBottomNavigation(
+                rotaAtual: AppRoute.painel,
+                perfil: perfil,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        for (final rota in AppRoute.values.where(
+          (rota) => rota.podeSerAcessadaPor(perfil),
+        )) {
+          final rotulo = tester.widget<Text>(find.text(rota.rotulo));
+          expect(rotulo.maxLines, 1);
+          expect(rotulo.overflow, TextOverflow.ellipsis);
+        }
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('rota nomeada permitida abre o modulo', (tester) async {
     await tester.pumpWidget(
       ConstroiApp(
@@ -140,7 +224,7 @@ void main() {
     ).pushReplacementNamed('/custos');
     await tester.pumpAndSettle();
 
-    expect(find.text('PAINEL'), findsWidgets);
+    expect(find.byType(AppHome), findsOneWidget);
     expect(find.text('EQUIPE'), findsNothing);
   });
 }
