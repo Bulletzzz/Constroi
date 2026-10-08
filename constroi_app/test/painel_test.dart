@@ -8,8 +8,10 @@ import 'package:constroi_app/core/auth/session_manager.dart';
 import 'package:constroi_app/features/painel/painel_model.dart';
 import 'package:constroi_app/features/painel/painel_service.dart';
 import 'package:constroi_app/main.dart';
+import 'package:constroi_app/navigation/app_bottom_navigation.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/screens/login_screen.dart';
+import 'package:constroi_app/screens/module_screen.dart';
 import 'package:constroi_app/theme/app_theme.dart';
 import 'package:constroi_app/widgets/app_home.dart';
 import 'package:flutter/material.dart';
@@ -233,7 +235,7 @@ void main() {
     expect(find.text('CARREGAR MAIS'), findsNothing);
   });
 
-  testWidgets('pedreiro nao ve custos nem equipe e nao ve valor estimado', (
+  testWidgets('pedreiro pode ler equipe mas nao ve custos nem valor estimado', (
     tester,
   ) async {
     await abrirPainel(
@@ -244,7 +246,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('VALOR ESTIMADO'), findsNothing);
     expect(find.text('Custos'), findsNothing);
-    expect(find.text('Equipe'), findsNothing);
+    expect(find.text('Equipe'), findsOneWidget);
     expect(find.text('Estoque'), findsOneWidget);
     expect(find.text('Requisições'), findsOneWidget);
   });
@@ -348,6 +350,58 @@ void main() {
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.byType(AppHome), findsNothing);
   });
+
+  for (final tipoAtual in ['pedreiro', 'engenheiro']) {
+    testWidgets('menu e rota usam $tipoAtual do /eu em vez do JWT antigo', (
+      tester,
+    ) async {
+      final tipoAntigo = tipoAtual == 'pedreiro' ? 'master' : 'pedreiro';
+      final consultas = <String>[];
+      await tester.pumpWidget(
+        ConstroiApp(
+          config: ApiConfig('https://api.constroi.test'),
+          storage: MemoryTokenStorage()..token = tokenPerfil(tipoAntigo),
+          httpClient: MockClient((request) async {
+            consultas.add(request.url.path);
+            return request.url.path == '/eu'
+                ? ok({
+                    'id': 7,
+                    'empresa_id': 3,
+                    'nome': 'Operador',
+                    'tipo': tipoAtual,
+                  })
+                : ok(respostaPainel());
+          }),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(consultas.first, '/eu');
+      expect(find.text('Equipe'), findsOneWidget);
+      expect(
+        find.text('Custos'),
+        tipoAtual == 'pedreiro' ? findsNothing : findsOneWidget,
+      );
+      expect(
+        find.text('VALOR ESTIMADO'),
+        tipoAtual == 'pedreiro' ? findsNothing : findsOneWidget,
+      );
+
+      Navigator.of(
+        tester.element(find.byType(AppBottomNavigation)),
+      ).pushReplacementNamed('/custos');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byType(ModuleScreen),
+        tipoAtual == 'pedreiro' ? findsNothing : findsOneWidget,
+      );
+      expect(
+        find.byType(AppHome),
+        tipoAtual == 'pedreiro' ? findsOneWidget : findsNothing,
+      );
+    });
+  }
 
   for (final tamanho in [
     const Size(320, 640),

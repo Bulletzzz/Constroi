@@ -10,6 +10,11 @@ Puxar para atualizar, horario da ultima consulta e paginacao de movimentacoes.
 O refresh que falha conserva os dados anteriores com aviso de desatualizacao.
 Respostas antigas sao ignoradas quando uma consulta mais recente e iniciada.
 Rotas e menu por perfil seguem os contratos da branch de navegacao.
+A navegacao do PR 9 foi integrada sem substituir suas correcoes por codigo
+antigo. Equipe permite leitura ao pedreiro, como no middleware da API.
+O perfil atualizado da sessao prevalece sobre o JWT; quando user e nulo,
+o JWT e usado como fallback. A restauracao via GET /eu foi preservada.
+Os rotulos do menu usam reticencias quando a fonte ampliada nao cabe.
 A busca e Nova requisicao encaminham para os respectivos modulos, com os
 filtros nos argumentos da rota. As telas desses modulos ficam em seus cartoes.
 
@@ -60,7 +65,11 @@ Testes do app cobrem carregamento, erro, refresh, filtro, paginacao,
 dados invalidos, perfil, sessao expirada e tamanhos de tela.
 Testes da API cobrem autenticacao, filtros, paginacao e protecao dos valores.
 Testes utilizam dados isolados, sem credenciais e sem escrever no Neon.
-Em 07/10/2026: 36 testes do app e 106 testes da API passaram.
+Em 07/10/2026, apos a revisao: 53 testes do app e 106 da API passaram.
+A branch de navegacao foi validada separadamente, com 34 testes aprovados.
+Revisao dos PRs 9 e 10: testes cobrem divergencia entre sessao e JWT,
+fallback sem usuario, perfil desconhecido e menu com fonte ampliada.
+Testes de integracao conferem menu e rota direta apos o /eu mudar o perfil.
 Os analisadores do app e da API terminaram sem problemas.
 A compilacao Flutter Web com API_BASE_URL=/api foi concluida.
 A consulta SQL foi executada em PostgreSQL em memoria, incluindo dados
@@ -70,6 +79,12 @@ Nenhum teste em aparelho Android ou iOS fisico foi realizado nesta entrega.
 COMMIT
 Branch: feat/tela-painel.
 O commit e o push ficam a cargo do Andrew.
+Na revisao, a integracao da branch feat/navegacao-menu-inferior foi iniciada
+com --no-commit e os conflitos foram resolvidos. O proximo commit nesta
+pasta conclui essa integracao; nenhum commit ou push foi feito pelo agente.
+Publicar as correcoes nos dois PRs e integrar o PR 9 antes do PR 10.
+Ao integrar o PR 9 no GitHub, preferir Create a merge commit para preservar
+a ancestralidade usada pelo PR 10, sem reescrever o historico.
 
 Na pasta tela-painel deste computador, revise os arquivos e execute:
 git add constroi_app constroi_api "Documentação/Tela de Painel.txt"

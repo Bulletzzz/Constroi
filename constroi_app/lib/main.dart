@@ -8,6 +8,7 @@ import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
 import 'features/painel/painel_service.dart';
 import 'navigation/app_route.dart';
+import 'navigation/perfil_usuario.dart';
 import 'navigation/route_guard.dart';
 import 'screens/login_screen.dart';
 import 'screens/module_screen.dart';
@@ -75,21 +76,23 @@ class _ConstroiAppState extends State<ConstroiApp> {
     debugShowCheckedModeBanner: false,
     theme: AppTheme.dark,
     home: _inicio(),
-    onGenerateRoute: (settings) {
-      final rota = AppRoute.porCaminho(settings.name);
-      if (rota == null) return null;
-      final destino = RouteGuard.doToken(
-        _sessoes?.accessToken,
-      ).destinoPermitido(rota);
-      return MaterialPageRoute<void>(
-        settings: RouteSettings(
-          name: destino.caminho,
-          arguments: settings.arguments,
-        ),
-        builder: (_) => _areaAutenticada(destino),
-      );
-    },
+    onGenerateRoute: _gerarRota,
   );
+
+  Route<void>? _gerarRota(RouteSettings settings) {
+    final solicitada = AppRoute.porCaminho(settings.name);
+    if (solicitada == null) return null;
+
+    final guarda = RouteGuard.daSessao(_sessoes?.session);
+    final destino = guarda.destinoPermitido(solicitada);
+    return MaterialPageRoute<void>(
+      settings: RouteSettings(
+        name: destino.caminho,
+        arguments: settings.arguments,
+      ),
+      builder: (_) => _areaAutenticada(destino),
+    );
+  }
 
   Widget _inicio() {
     if (_iniciando) {
@@ -105,36 +108,69 @@ class _ConstroiAppState extends State<ConstroiApp> {
     return _areaAutenticada(AppRoute.painel);
   }
 
-  Widget _areaAutenticada(AppRoute rota) {
+  Widget _areaAutenticada(AppRoute solicitada) {
     final sessoes = _sessoes!;
     return ListenableBuilder(
       listenable: sessoes,
       builder: (_, _) {
         if (!sessoes.isSignedIn) return LoginScreen(auth: _auth!);
-        final guarda = RouteGuard.doToken(sessoes.accessToken);
+
+        final guarda = RouteGuard.daSessao(sessoes.session);
         final perfil = guarda.perfil;
         if (perfil == null) {
-          return Scaffold(
-            body: Center(
-              child: ElevatedButton(
-                onPressed: sessoes.signOut,
-                child: const Text('Perfil inválido. Voltar ao login'),
-              ),
-            ),
-          );
+          return _SessaoSemPerfil(onSair: sessoes.signOut);
         }
-        final destino = guarda.destinoPermitido(rota);
-        if (destino != AppRoute.painel) {
-          return ModuleScreen(rota: destino, perfil: perfil);
-        }
-        return AppHome(
-          service: PainelService(_api!),
-          perfil: perfil,
-          onSair: sessoes.signOut,
-        );
+
+        return _telaDaRota(guarda.destinoPermitido(solicitada), perfil);
       },
     );
   }
+
+  Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil) {
+    if (rota == AppRoute.painel) {
+      return AppHome(
+        service: PainelService(_api!),
+        perfil: perfil,
+        onSair: _sessoes!.signOut,
+      );
+    }
+    return ModuleScreen(rota: rota, perfil: perfil);
+  }
+}
+
+class _SessaoSemPerfil extends StatelessWidget {
+  const _SessaoSemPerfil({required this.onSair});
+
+  final Future<void> Function() onSair;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, color: AppTheme.accent, size: 36),
+              const SizedBox(height: 16),
+              Text(
+                'Não foi possível identificar seu perfil.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onSair,
+                child: const Text('VOLTAR AO LOGIN'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _ConfiguracaoAusente extends StatelessWidget {

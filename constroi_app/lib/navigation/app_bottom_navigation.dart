@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 import 'app_route.dart';
 import 'perfil_usuario.dart';
@@ -9,6 +10,7 @@ class AppBottomNavigation extends StatelessWidget {
     required this.rotaAtual,
     required this.perfil,
   });
+
   final AppRoute rotaAtual;
   final PerfilUsuario perfil;
 
@@ -53,6 +55,7 @@ class AppBottomNavigation extends StatelessWidget {
                         Text(
                           rota.rotulo,
                           maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 10,
                             color: rota == rotaAtual
