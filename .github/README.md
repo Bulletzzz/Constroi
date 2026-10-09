@@ -7,7 +7,7 @@ Force push e exclusao da main ficam bloqueados. A lista de bypass esta vazia.
 
 O workflow `protecao-main.yml` oferece duas checagens obrigatorias:
 
-- `API - analise e testes`: instala as dependencias com o lockfile, executa
+- `API - analise e testes`: instala as dependencias, executa
   `dart analyze` e os testes da API com Dart 3.11.
 - `Politica de coautoria`: confere os commits novos e o titulo/corpo do PR,
   rejeitando trailers `Co-Authored-By` com Claude ou `noreply@anthropic.com`.
