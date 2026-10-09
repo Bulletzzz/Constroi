@@ -228,17 +228,13 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          const FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'INVENTÁRIO DE MATERIAIS',
-              style: TextStyle(
-                color: _tinta,
-                fontSize: 34,
-                fontWeight: FontWeight.w800,
-                height: 1.1,
-              ),
+          const Text(
+            'INVENTÁRIO DE MATERIAIS',
+            style: TextStyle(
+              color: _tinta,
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
             ),
           ),
           const SizedBox(height: 10),
