@@ -372,6 +372,60 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Obra Beta'), findsWidgets);
+    expect(find.textContaining('Obra Beta'), findsWidgets);
+  });
+
+  testWidgets('a linha mostra o saldo e a unidade', (tester) async {
+    final tudo = montar((_) => [item(1)]);
+    await abrir(tester, tudo.service);
+
+    expect(find.textContaining('4.50 SC'), findsOneWidget);
+  });
+
+  testWidgets('saldo baixo tambem destaca o texto, nao so o icone', (
+    tester,
+  ) async {
+    final tudo = montar((_) => [item(1, baixo: true)]);
+    await abrir(tester, tudo.service);
+
+    final texto = tester.widget<Text>(find.textContaining('4.50 SC'));
+    expect(texto.style?.color, const Color(0xFFBA1A1A));
+  });
+
+  testWidgets('o status tem rotulo para leitor de tela', (tester) async {
+    final tudo = montar((_) => [item(1, baixo: true)]);
+    await abrir(tester, tudo.service);
+
+    expect(
+      find.bySemanticsLabel(RegExp('Abaixo do mínimo')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('puxar para atualizar recarrega lista e indicadores', (
+    tester,
+  ) async {
+    final tudo = montarComPainel([item(1)]);
+    tester.view.physicalSize = const Size(390, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: EstoqueScreen(
+          service: tudo.estoque,
+          painel: tudo.painel,
+          perfil: PerfilUsuario.master,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final antes = tudo.chamadas.where((u) => u.path.endsWith('/painel')).length;
+
+    await tester.fling(find.byType(ListView), const Offset(0, 320), 1000);
+    await tester.pumpAndSettle();
+
+    final depois = tudo.chamadas.where((u) => u.path.endsWith('/painel')).length;
+    expect(depois, antes + 1);
   });
 }

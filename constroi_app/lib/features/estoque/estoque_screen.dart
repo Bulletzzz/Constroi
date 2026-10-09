@@ -37,14 +37,12 @@ class EstoqueScreen extends StatefulWidget {
     required this.perfil,
     this.painel,
     this.obraId,
-    this.contexto,
   });
 
   final EstoqueService service;
   final PainelService? painel;
   final PerfilUsuario perfil;
   final int? obraId;
-  final String? contexto;
 
   @override
   State<EstoqueScreen> createState() => _EstoqueScreenState();
@@ -155,6 +153,12 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
   int? get _obraAtual => widget.obraId ?? _obra;
 
+  String _detalheDaLinha(ItemEstoque item) {
+    final saldo = '${item.quantidade} ${item.unidade}'.trim();
+    if (_obraAtual != null) return saldo;
+    return '$saldo · ${_nomeDeObra(item.obraId)}';
+  }
+
   String _nomeDeObra(int id) {
     for (final obra in _obras) {
       if (obra.id == id) return obra.nome;
@@ -172,6 +176,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   }
 
   String _numero(int? valor) => valor == null ? '—' : '$valor';
+
+  Future<void> _atualizarTudo() async {
+    await Future.wait([_carregarIndicadores(), _buscar()]);
+  }
 
   void _digitou(String _) {
     _aguardandoDigitacao?.cancel();
@@ -206,7 +214,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       perfil: widget.perfil,
     ),
     body: RefreshIndicator(
-      onRefresh: _buscar,
+      onRefresh: _atualizarTudo,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -266,7 +274,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   Widget _seletorDeObra() {
     if (widget.obraId != null || _obras.isEmpty) {
       return Text(
-        widget.contexto ?? _nomeDaObra,
+        _nomeDaObra,
         style: const TextStyle(color: _apoio, fontSize: 15),
       );
     }
@@ -521,10 +529,15 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           const SizedBox(width: 9),
           SizedBox(
             width: 35,
-            child: Icon(
-              item.baixo ? Icons.warning_rounded : Icons.square_rounded,
-              size: item.baixo ? 18 : 12,
-              color: item.baixo ? _perigo : _tinta,
+            child: Semantics(
+              label: item.baixo
+                  ? 'Abaixo do mínimo de ${item.estoqueMinimo}'
+                  : 'Saldo normal',
+              child: Icon(
+                item.baixo ? Icons.warning_rounded : Icons.square_rounded,
+                size: item.baixo ? 18 : 12,
+                color: item.baixo ? _perigo : _tinta,
+              ),
             ),
           ),
           SizedBox(
@@ -550,12 +563,15 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: _tinta, fontSize: 13),
                 ),
-                if (_obraAtual == null)
-                  Text(
-                    _nomeDeObra(item.obraId),
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: _apoio, fontSize: 11),
+                Text(
+                  _detalheDaLinha(item),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: item.baixo ? _perigo : _apoio,
+                    fontSize: 11,
+                    fontWeight: item.baixo ? FontWeight.w700 : FontWeight.w400,
                   ),
+                ),
               ],
             ),
           ),
