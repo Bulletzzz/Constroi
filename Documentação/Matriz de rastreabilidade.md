@@ -146,7 +146,7 @@ Só os que já dá para afirmar. A triagem completa dos 20 RNFs é outro cartão
 | RNF03 senha com hash e salt | ✅ bcrypt custo 12, verificado no banco |
 | RNF04 política de senha | 🟡 exige 6 caracteres, **não bloqueia senha comum** — `12345678` passa |
 | RNF05 bloqueio por tentativa | 🟡 implementado pelo Pedro, sem teste automatizado |
-| RNF20 estoque sem valor negativo | ✅ `POST /pedidos/{id}/aprovar` com `FOR UPDATE`, testado com duas aprovações simultâneas em `test/integracao/baixa_concorrente_test.dart` |
+| RNF20 estoque sem valor negativo | 🟡 restrição existe no banco, **a rota de baixa não existe para testar** |
 
 ---
 
