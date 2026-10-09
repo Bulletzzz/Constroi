@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../widgets/app_header.dart';
 import '../../navigation/app_bottom_navigation.dart';
 import '../../navigation/app_route.dart';
 import '../../navigation/perfil_usuario.dart';
@@ -128,77 +128,7 @@ class _AppHomeState extends State<AppHome> {
     child: Builder(
       builder: (context) => Scaffold(
         backgroundColor: _fundo,
-        appBar: AppBar(
-          backgroundColor: _tinta,
-          foregroundColor: Colors.white,
-          toolbarHeight: 64,
-          centerTitle: true,
-          title: Semantics(
-            label: 'Constrói',
-            child: SvgPicture.asset('assets/Constroi.svg', height: 36),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'Minha conta',
-              icon: const Icon(Icons.account_circle_outlined),
-              onPressed: () => showModalBottomSheet<void>(
-                context: context,
-                builder: (context) => SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Perfil: ${widget.perfil.name}'),
-                        const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            widget.onSair();
-                          },
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Sair da conta'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        drawer: Drawer(
-          backgroundColor: _fundo,
-          child: SafeArea(
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'CONSTRÓI',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24),
-                  ),
-                ),
-                for (final rota in AppRoute.values.where(
-                  (r) => r.podeSerAcessadaPor(widget.perfil),
-                ))
-                  ListTile(
-                    leading: Icon(rota.icone, color: _tinta),
-                    title: Text(rota.rotulo),
-                    selected: rota == AppRoute.painel,
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (rota != AppRoute.painel) {
-                        Navigator.of(
-                          context,
-                        ).pushReplacementNamed(rota.caminho);
-                      }
-                    },
-                  ),
-              ],
-            ),
-          ),
-        ),
+        appBar: AppHeader(perfil: widget.perfil, onSair: widget.onSair),
         body: RefreshIndicator(
           color: _tinta,
           backgroundColor: _amarelo,

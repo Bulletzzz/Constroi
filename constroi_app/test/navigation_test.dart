@@ -206,7 +206,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ModuleScreen), findsOneWidget);
-    expect(find.text('CUSTOS'), findsWidgets);
+    expect(find.textContaining('Módulo Custos'), findsOneWidget);
   });
 
   testWidgets('rota direta proibida volta ao painel', (tester) async {

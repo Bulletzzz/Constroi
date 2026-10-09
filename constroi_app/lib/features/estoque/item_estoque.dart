@@ -6,6 +6,9 @@ class ItemEstoque {
     required this.produtoNome,
     required this.unidade,
     required this.quantidade,
+    required this.estoqueMinimo,
+    required this.baixo,
+    this.sku,
     this.categoriaId,
     this.categoriaNome,
   });
@@ -16,8 +19,15 @@ class ItemEstoque {
   final String produtoNome;
   final String unidade;
   final String quantidade;
+  final String estoqueMinimo;
+  final bool baixo;
+  final String? sku;
   final int? categoriaId;
   final String? categoriaNome;
+
+  String get identificacao => sku?.trim().isNotEmpty ?? false
+      ? sku!.trim()
+      : 'ID-$produtoId';
 
   static ItemEstoque? talvezDoJson(Object? dados) {
     if (dados is! Map) return null;
@@ -32,6 +42,9 @@ class ItemEstoque {
       produtoNome: _texto(dados['produto_nome']),
       unidade: _texto(dados['unidade']),
       quantidade: _texto(dados['quantidade']),
+      estoqueMinimo: _texto(dados['estoque_minimo']),
+      baixo: dados['baixo'] == true,
+      sku: dados['sku'] is String ? dados['sku'] as String : null,
       categoriaId: _inteiro(dados['categoria_custo_id']),
       categoriaNome: dados['categoria_nome'] is String
           ? dados['categoria_nome'] as String

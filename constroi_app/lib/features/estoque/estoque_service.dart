@@ -1,4 +1,4 @@
-import '../api/api_client.dart';
+import '../../core/api/api_client.dart';
 import 'item_estoque.dart';
 
 const limiteMinimo = 1;

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:constroi_app/core/api/api_client.dart';
 import 'package:constroi_app/core/api/api_config.dart';
 import 'package:constroi_app/core/auth/session_manager.dart';
-import 'package:constroi_app/core/estoque/estoque_service.dart';
+import 'package:constroi_app/features/estoque/estoque_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
