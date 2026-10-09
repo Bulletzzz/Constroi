@@ -6,6 +6,8 @@ import 'core/api/api_config.dart';
 import 'core/auth/auth_service.dart';
 import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
+import 'features/estoque/estoque_screen.dart';
+import 'features/estoque/estoque_service.dart';
 import 'features/painel/painel_service.dart';
 import 'navigation/app_route.dart';
 import 'navigation/perfil_usuario.dart';
@@ -132,6 +134,13 @@ class _ConstroiAppState extends State<ConstroiApp> {
         service: PainelService(_api!),
         perfil: perfil,
         onSair: _sessoes!.signOut,
+      );
+    }
+    if (rota == AppRoute.estoque) {
+      return EstoqueScreen(
+        service: EstoqueService(api: _api!),
+        painel: PainelService(_api!),
+        perfil: perfil,
       );
     }
     return ModuleScreen(rota: rota, perfil: perfil);

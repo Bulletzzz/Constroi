@@ -14,7 +14,7 @@ class ModuleScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppHeader(title: rota.rotulo.toUpperCase()),
+    appBar: AppHeader(perfil: perfil),
     body: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
