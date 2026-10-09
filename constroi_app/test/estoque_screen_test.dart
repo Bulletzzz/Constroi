@@ -428,4 +428,49 @@ void main() {
     final depois = tudo.chamadas.where((u) => u.path.endsWith('/painel')).length;
     expect(depois, antes + 1);
   });
+
+  testWidgets('falha ao carregar mais nao apaga o que ja estava na tela', (
+    tester,
+  ) async {
+    final chamadas = <Uri>[];
+    final api = ApiClient(
+      config: ApiConfig('https://api.constroi.test'),
+      sessions: SessionManager(MemoryTokenStorage()),
+      httpClient: MockClient((requisicao) async {
+        chamadas.add(requisicao.url);
+        if (chamadas.length == 1) {
+          return http.Response(
+            jsonEncode({
+              'estoque': List.generate(50, (i) => item(i + 1, sku: 'SKU-$i')),
+            }),
+            200,
+          );
+        }
+        return http.Response(jsonEncode({'erro': 'Banco indisponivel.'}), 503);
+      }),
+    );
+    await abrir(tester, EstoqueService(api: api));
+
+    await tester.ensureVisible(find.text('CARREGAR MAIS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CARREGAR MAIS'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Banco indisponivel.'), findsOneWidget);
+    expect(find.text('SKU-0'), findsOneWidget);
+    expect(find.text('TENTAR CARREGAR DE NOVO'), findsOneWidget);
+  });
+
+  testWidgets('submeter a busca nao dispara duas consultas', (tester) async {
+    final tudo = montar((_) => [item(1)]);
+    await abrir(tester, tudo.service);
+
+    await tester.enterText(find.byType(TextField), 'cim');
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(tudo.chamadas.length, 2);
+  });
 }

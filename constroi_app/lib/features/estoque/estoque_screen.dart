@@ -64,6 +64,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   bool _carregandoMais = false;
   bool _temMais = false;
   String? _erro;
+  String? _erroPagina;
 
   @override
   void initState() {
@@ -80,8 +81,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   }
 
   Future<void> _buscar({bool continuando = false}) async {
+    _aguardandoDigitacao?.cancel();
     final consulta = ++_consultaAtual;
     setState(() {
+      _erroPagina = null;
       if (continuando) {
         _carregandoMais = true;
       } else {
@@ -114,19 +117,13 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         _erro = null;
       });
     } on ApiException catch (erro) {
-      if (!mounted || consulta != _consultaAtual) return;
-      setState(() {
-        _erro = erro.message;
-        _carregando = false;
-        _carregandoMais = false;
-      });
+      _registrarFalha(consulta, continuando, erro.message);
     } catch (_) {
-      if (!mounted || consulta != _consultaAtual) return;
-      setState(() {
-        _erro = 'Não foi possível falar com o servidor. Confira a conexão.';
-        _carregando = false;
-        _carregandoMais = false;
-      });
+      _registrarFalha(
+        consulta,
+        continuando,
+        'Não foi possível falar com o servidor. Confira a conexão.',
+      );
     }
   }
 
@@ -176,6 +173,19 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   }
 
   String _numero(int? valor) => valor == null ? '—' : '$valor';
+
+  void _registrarFalha(int consulta, bool continuando, String mensagem) {
+    if (!mounted || consulta != _consultaAtual) return;
+    setState(() {
+      if (continuando) {
+        _erroPagina = mensagem;
+      } else {
+        _erro = mensagem;
+      }
+      _carregando = false;
+      _carregandoMais = false;
+    });
+  }
 
   Future<void> _atualizarTudo() async {
     await Future.wait([_carregarIndicadores(), _buscar()]);
@@ -506,7 +516,8 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           _aviso('Nenhum material encontrado com esses filtros.')
         else ...[
           for (var i = 0; i < _itens.length; i++) _linha(_itens[i], i.isOdd),
-          if (_temMais) _carregarMais(),
+          if (_erroPagina != null) _falhaDaPagina(),
+          if (_temMais && _erroPagina == null) _carregarMais(),
         ],
       ],
     ),
@@ -597,6 +608,23 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
             child: Text('TENTAR DE NOVO', style: _mini(_tinta)),
           ),
         ],
+      ],
+    ),
+  );
+
+  Widget _falhaDaPagina() => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    child: Column(
+      children: [
+        Text(
+          _erroPagina!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: _perigo, fontSize: 12, height: 1.4),
+        ),
+        TextButton(
+          onPressed: () => _buscar(continuando: true),
+          child: Text('TENTAR CARREGAR DE NOVO', style: _mini(_tinta)),
+        ),
       ],
     ),
   );
