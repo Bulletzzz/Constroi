@@ -8,7 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:postgres/postgres.dart';
 import 'package:test/test.dart';
 
-import '../../routes/pedidos/[id].dart' as detalhe;
+import '../../routes/pedidos/[id]/index.dart' as detalhe;
 import '../../routes/pedidos/_middleware.dart' as protecao;
 import '../../routes/pedidos/index.dart' as lista;
 

@@ -14,6 +14,22 @@ Falhas internas registram o tipo, a causa e a pilha no stdout do servidor.
 URLs PostgreSQL são omitidas do diagnóstico para não registrar credenciais.
 A resposta HTTP 503 continua genérica, sem expor detalhes internos ao app.
 
+## Aprovação de pedido (RNF20)
+
+`POST /pedidos/{id}/aprovar` é restrito a engenheiro e master. Na mesma transação, a rota
+trava o pedido e as linhas de estoque da obra com `SELECT ... FOR UPDATE`, confere o saldo,
+dá baixa, marca o pedido como `aprovado` e grava uma linha em `log_sistema` por item.
+Sem saldo, responde 409 com a lista `faltando`, e o pedido continua `pendente`.
+O `CHECK (quantidade >= 0)` do estoque é a última barreira e também vira 409.
+
+O teste de concorrência roda contra um Postgres descartável, porque recria o schema:
+
+```sh
+TESTE_DATABASE_URL=postgres://postgres:senha@localhost:5432/constroi dart test test/integracao
+```
+
+Sem a variável, o teste é pulado. Nunca aponte para o Neon.
+
 ## Migrations
 
 As migrations ficam em `migrations/` e são executadas em ordem numérica. A tabela `schema_migrations` registra cada arquivo aplicado, impedindo a execução duplicada.
