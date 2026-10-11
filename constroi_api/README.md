@@ -146,17 +146,25 @@ node test/sql/estoque_contract.mjs
 A dependência fica na pasta ignorada `.dart_tool`, fora do runtime da API.
 PGlite não valida TLS/pool do driver Dart nem a integração HTTP; o teste remove
 apenas a declaração de extensão pgcrypto, indisponível nesse ambiente.
-Para validar a integração com um banco configurado e API em execução, rode
-`./testar_rotas.ps1 -BaseUrl http://localhost:8080`.
-O banco é lido de `.env` (ou `DATABASE_ENV_FILE`), da variável `DATABASE_URL`
-ou do parâmetro `-DatabaseUrl`, que prevalece sobre o arquivo. Use o mesmo banco
-da API. O runner chama `dart run bin/testar_banco.dart` para verificar os vínculos
-e preparar saldos/categoria, usando o driver já instalado para as migrations;
-não precisa de `psql` nem de Node.js para a suíte HTTP.
+Para validar a integração com um banco configurado e API em execução, rode a
+suíte da pasta `testes/` na raiz do repositório.
 
-O preparo é obrigatório: configuração ausente, falha de conexão ou de SQL
-encerra a suíte com erro, sem pular os casos de estoque nem anunciar sucesso.
-O cenário usa um pedreiro próprio, saldo igual ao mínimo (5) e depois acima dele
-(6), verificando nome, unidade, SKU, mínimo, indicador de estoque baixo, categoria
-com acentos, filtros e encerramento do vínculo. O helper limita o preparo à
-obra/produto informados e exige que pertençam à mesma empresa.
+```powershell
+.\testes\executar.ps1
+.\testes\executar.ps1 -Listar
+.\testes\executar.ps1 -Caso 14_consulta_de_estoque -Detalhado
+```
+
+Cada arquivo em `testes/casos/` é um caso independente: monta o próprio cenário
+com uma marca única, roda as asserções e apaga o que criou. Casos não compartilham
+dados, então uma falha aponta um defeito real e não contaminação de um caso anterior.
+O runner mostra ok/FALHA por caso, lista as asserções quebradas, imprime o comando
+para repetir só aquele caso e sai com código 1 se algo falhou. `-SemLimpeza` preserva
+os dados no banco e informa as marcas usadas.
+
+O banco é lido de `.env` (ou `DATABASE_ENV_FILE`), da variável `DATABASE_URL` ou do
+parâmetro `-DatabaseUrl`, que prevalece sobre o arquivo. Use o mesmo banco da API.
+Os casos chamam `dart run bin/testar_banco.dart` para conferir o que a resposta HTTP
+não mostra e para preparar saldos/categoria; não precisa de `psql` nem de Node.js.
+O preparo é obrigatório: configuração ausente ou falha de conexão encerra a suíte
+antes de criar qualquer dado, sem pular caso nem anunciar sucesso.
