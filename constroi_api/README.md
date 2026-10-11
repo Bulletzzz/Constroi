@@ -28,9 +28,10 @@ e um registro `BAIXA_ESTOQUE` por material em `log_sistema` são confirmados na
 mesma transação. O log registra ator, pedido, obra, produto, quantidade, saldo
 final e protocolo. Comparação e subtração usam NUMERIC no PostgreSQL.
 
-Pedido inexistente/de outra empresa retorna 404. Pedido já decidido, itens
-inválidos ou falta de saldo (inclusive registro ausente) retornam 409. Uma
-falha em qualquer item, log ou aprovação reverte tudo; falta de saldo mantém
+Pedido inexistente/de outra empresa retorna 404. Pedido sem itens ou com
+materiais inválidos retorna 400. Pedido já decidido ou falta de saldo
+(inclusive registro ausente) retornam 409. Uma falha em qualquer item, log ou
+aprovação reverte tudo; falta de saldo mantém
 o pedido pendente. Aprovações concorrentes do mesmo pedido não duplicam a
 baixa. Não há nova migration: a proteção `ck_estoque_quantidade` já existe.
 

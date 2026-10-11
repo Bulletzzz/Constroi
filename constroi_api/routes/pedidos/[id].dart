@@ -100,7 +100,9 @@ Future<Response> _aprovar(RequestContext context, String idDaRota) async {
     final status = switch (erro.motivo) {
       MotivoFalhaBaixa.perfilNaoPermitido => HttpStatus.forbidden,
       MotivoFalhaBaixa.pedidoNaoEncontrado => HttpStatus.notFound,
-      _ => HttpStatus.conflict,
+      MotivoFalhaBaixa.itensInvalidos => HttpStatus.badRequest,
+      MotivoFalhaBaixa.pedidoDecidido ||
+      MotivoFalhaBaixa.saldoInsuficiente => HttpStatus.conflict,
     };
     return _erro(status, erro.mensagem);
   }
