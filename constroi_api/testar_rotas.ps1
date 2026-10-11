@@ -481,6 +481,40 @@ if ($acima.estoque | Where-Object { $_.produto_id -eq $produto.id }) {
     $falhas += 'Saldo acima do minimo apareceu como baixo'
 }
 
+Secao 'APROVACAO E BAIXA DE ESTOQUE'
+ExecutarBanco -Argumentos @('estoque', "$($obra.id)", "$($produto.id)", '2.50') | Out-Null
+$pedidoBaixa = Chamar POST $rotaPedidos $tokenPedreiroEstoque @{
+    pedido = @{ obra_id = $obra.id; itens = @(@{ produto_id = $produto.id; quantidade = 1.25 }) }
+} 201 'cria pedido para baixa'
+if ($null -eq $pedidoBaixa.id) { throw 'Falha ao criar pedido para baixa.' }
+$rotaBaixa = "$rotaPedidos/$($pedidoBaixa.id)"
+$aprovar = @{ pedido = @{ status = 'aprovado' } }
+Chamar PATCH $rotaBaixa $null $aprovar 401 'aprovar sem token' | Out-Null
+Chamar PATCH $rotaBaixa $tokenPedreiroEstoque $aprovar 403 'pedreiro nao aprova' | Out-Null
+Chamar PATCH $rotaBaixa $masterB $aprovar 404 'empresa B nao aprova pedido da A' | Out-Null
+Chamar PATCH $rotaBaixa $engenheiro @{} 400 'aprovacao com corpo invalido' | Out-Null
+$aprovado = Chamar PATCH $rotaBaixa $engenheiro $aprovar 200 'engenheiro aprova e baixa'
+if ($aprovado.status -ne 'aprovado' -or @($aprovado.baixas).Count -ne 1 -or
+    [decimal]$aprovado.baixas[0].quantidade -ne 1.25 -or [decimal]$aprovado.baixas[0].saldo -ne 1.25) {
+    $falhas += 'Aprovacao nao retornou a baixa decimal esperada'
+}
+$detalheBaixa = Chamar GET $rotaBaixa $tokenPedreiroEstoque $null 200 'pedreiro acompanha aprovacao'
+if ($detalheBaixa.status -ne 'aprovado') { $falhas += 'Pedido aprovado ainda aparece como pendente' }
+Chamar PATCH $rotaBaixa $engenheiro $aprovar 409 'reaprovacao nao duplica baixa' | Out-Null
+$logsBaixa = ExecutarBanco -Argumentos @('consultar', "SELECT COUNT(*) FROM log_sistema WHERE acao LIKE 'BAIXA_ESTOQUE pedido=$($pedidoBaixa.id) %'")
+if ([int]$logsBaixa.resultado -ne 1) { $falhas += 'Baixa nao registrou exatamente um log' }
+$pedidoSemSaldo = Chamar POST $rotaPedidos $tokenPedreiroEstoque @{
+    pedido = @{ obra_id = $obra.id; itens = @(@{ produto_id = $produto.id; quantidade = 2 }) }
+} 201 'cria pedido acima do saldo'
+if ($null -eq $pedidoSemSaldo.id) { throw 'Falha ao criar pedido sem saldo.' }
+Chamar PATCH "$rotaPedidos/$($pedidoSemSaldo.id)" $engenheiro $aprovar 409 'saldo insuficiente nao aprova' | Out-Null
+$pendenteBaixa = Chamar GET "$rotaPedidos/$($pedidoSemSaldo.id)" $tokenPedreiroEstoque $null 200 'pedido sem saldo continua pendente'
+if ($pendenteBaixa.status -ne 'pendente') { $falhas += 'Pedido sem saldo mudou de status' }
+$saldoBaixa = Chamar GET "$rotaEstoque&busca=cim-$marca" $engenheiro $null 200 'estoque apos aprovacao e conflito'
+if (@($saldoBaixa.estoque).Count -ne 1 -or [decimal]$saldoBaixa.estoque[0].quantidade -ne 1.25) {
+    $falhas += 'Reaprovacao ou falta de saldo alterou o estoque'
+}
+
 $encerradoEstoque = Chamar DELETE "$rotaEquipe/$($pedreiroEstoque.id)" $engenheiro $null 200 'encerra vinculo do cenario de estoque'
 if ($null -eq $encerradoEstoque.data_fim) { $falhas += 'Vinculo do estoque nao foi encerrado' }
 Chamar GET $rotaEstoque $tokenPedreiroEstoque $null 404 'GET estoque vinculo encerrado' | Out-Null
@@ -505,6 +539,7 @@ Write-Host "  DELETE FROM pedido WHERE obra_id IN (SELECT id FROM obra WHERE nom
 Write-Host "  DELETE FROM obra WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM produto WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM equipamento WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray
+Write-Host "  DELETE FROM log_sistema WHERE usuario_id IN (SELECT id FROM usuario WHERE email LIKE '%$marca@teste.com');" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM usuario WHERE email LIKE '%$marca@teste.com';" -ForegroundColor DarkGray
 Write-Host "  DELETE FROM empresa WHERE nome LIKE '%$marca';" -ForegroundColor DarkGray
 

@@ -14,6 +14,45 @@ Falhas internas registram o tipo, a causa e a pilha no stdout do servidor.
 URLs PostgreSQL são omitidas do diagnóstico para não registrar credenciais.
 A resposta HTTP 503 continua genérica, sem expor detalhes internos ao app.
 
+## Baixa de estoque em transação (RNF20, card 66)
+
+`PATCH /pedidos/{id}` com `{"pedido":{"status":"aprovado"}}` aprova o pedido
+e baixa seus materiais. Exige engenheiro/master e restringe pedido, obra,
+solicitante e produtos à empresa autenticada. O GET de detalhe continua igual.
+A recusa pertence ao card 65 e pode ser integrada depois no mesmo PATCH.
+
+O serviço `lib/baixa_estoque.dart` bloqueia o pedido com `FOR UPDATE`, exige
+status pendente, bloqueia os itens e depois os saldos em ordem de produto.
+Quantidades de itens repetidos são somadas no SQL. Aprovação, todas as baixas
+e um registro `BAIXA_ESTOQUE` por material em `log_sistema` são confirmados na
+mesma transação. O log registra ator, pedido, obra, produto, quantidade, saldo
+final e protocolo. Comparação e subtração usam NUMERIC no PostgreSQL.
+
+Pedido inexistente/de outra empresa retorna 404. Pedido sem itens ou com
+materiais inválidos retorna 400. Pedido já decidido ou falta de saldo
+(inclusive registro ausente) retornam 409. Uma falha em qualquer item, log ou
+aprovação reverte tudo; falta de saldo mantém
+o pedido pendente. Aprovações concorrentes do mesmo pedido não duplicam a
+baixa. Não há nova migration: a proteção `ck_estoque_quantidade` já existe.
+
+Além de `dart test`, há uma suíte explícita de integração com PostgreSQL real
+e servidor HTTP local usando o handler e middleware de pedidos. Ela valida
+duas requisições realmente bloqueadas ao mesmo tempo no banco, a disputa pelo
+último material, reaprovação concorrente, ordem oposta de itens, decimais,
+isolamento de empresas, permissões, rollback após falhas injetadas e o CHECK
+contra saldo negativo. PGlite não substitui essa validação de concorrência.
+
+Execute na pasta `constroi_api`, com um banco local **descartável** já criado.
+A suíte exige host loopback e nome `constroi_test_*`, não lê `.env` e recria
+o schema `public` com `Database/schema.sql`; todos os dados desse schema são
+apagados. Configuração ausente/inadequada ou falha no banco faz a suíte falhar,
+sem pular os cenários.
+
+```powershell
+$env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres@127.0.0.1:55434/constroi_test_baixa?sslmode=require&max_connection_count=10'
+dart test integration_test/baixa_estoque_test.dart --reporter expanded
+```
+
 ## Migrations
 
 As migrations ficam em `migrations/` e são executadas em ordem numérica. A tabela `schema_migrations` registra cada arquivo aplicado, impedindo a execução duplicada.
