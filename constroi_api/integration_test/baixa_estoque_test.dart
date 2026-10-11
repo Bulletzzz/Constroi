@@ -270,7 +270,11 @@ void main() {
 
   test('produto ou solicitante de outra empresa nao recebe baixa', () async {
     final produtoAlheio = await pedido([(3, '1.00')]);
-    expect((await aprovar(produtoAlheio)).status, 409);
+    final antes = await estado(produtoAlheio);
+    final resposta = await aprovar(produtoAlheio);
+    expect(resposta.status, 400);
+    expect(resposta.dados['erro'], contains('materiais validos'));
+    expect(await estado(produtoAlheio), antes);
     final solicitanteAlheio = await pedido([(1, '1.00')], usuario: 5);
     expect((await aprovar(solicitanteAlheio)).status, 404);
     expect((await estado(produtoAlheio))['saldos'], [
@@ -281,10 +285,20 @@ void main() {
   });
 
   test(
-    'pedido vazio, sem registro de estoque e com saldo zero retorna 409',
+    'pedido sem itens retorna 400 e preserva pedido, saldos e logs',
     () async {
       final vazio = await pedido([]);
-      expect((await aprovar(vazio)).status, 409);
+      final antes = await estado(vazio);
+      final resposta = await aprovar(vazio);
+      expect(resposta.status, 400);
+      expect(resposta.dados['erro'], contains('materiais validos'));
+      expect(await estado(vazio), antes);
+    },
+  );
+
+  test(
+    'pedido sem registro de estoque ou com saldo zero retorna 409',
+    () async {
       final id = await pedido([(1, '1.00')]);
       await sql('DELETE FROM estoque WHERE obra_id = 1 AND produto_id = 1');
       expect((await aprovar(id)).status, 409);
