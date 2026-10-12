@@ -132,9 +132,10 @@ O que existe hoje em `constroi_api/test/`:
 pull request #1 passou na análise estática e nos testes com o projeto sem compilar — o defeito
 só aparecia ao executar.
 
-Os fluxos ficam cobertos por teste manual, em `constroi_api/testar_rotas.ps1`: 25 chamadas
-cobrindo os três CRUDs, os códigos de permissão e os corpos inválidos. É melhor que nada, mas
-depende de alguém lembrar de rodar.
+Os fluxos ficam cobertos pela suíte de integração em `testes/`: 16 casos e 325 chamadas
+cobrindo os CRUDs, os códigos de permissão, os corpos inválidos, o isolamento entre empresas,
+a consulta de estoque, a baixa em transação e a concorrência do RNF20. Rode com
+`.\testes\executar.ps1`. Ainda depende de alguém lembrar de rodar.
 
 ### Requisitos não funcionais com evidência
 
