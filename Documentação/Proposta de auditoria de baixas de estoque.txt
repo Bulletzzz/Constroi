@@ -1,0 +1,242 @@
+PROPOSTA DE AUDITORIA DE BAIXAS DE ESTOQUE
+Data: 12/10/2026
+Cartão: Avaliar logs estruturados de baixa de estoque
+Referência: https://github.com/Bulletzzz/Constroi/pull/17
+
+ESCOPO DESTA ENTREGA
+Decisão de modelagem para revisão da equipe. Não implementa tabela,
+migration, alteração na API, tela ou mudança no Neon.
+A implementação deve ser feita em outro cartão e outro PR, após a revisão.
+
+1. CONSULTAS QUE A AUDITORIA DEVE RESPONDER
+
+- Quais produtos saíram de uma obra no mês e em quais quantidades?
+- Quem aprovou cada saída, quando e para qual pedido/protocolo?
+- Qual era o saldo antes e depois de cada baixa?
+- Qual é o histórico de baixas de um produto, obra ou aprovador no período?
+- Houve mais de uma baixa para o mesmo produto do mesmo pedido?
+
+Todas as consultas usam a empresa da sessão validada no servidor.
+O filtro de obra respeita a permissão do usuário. Não se somam quantidades
+de unidades diferentes, por exemplo metros com sacos.
+Períodos usam início inclusivo e fim exclusivo, com limites convertidos do
+fuso do relatório para UTC; não aplicar funções sobre a coluna de data
+para filtrar.
+
+Relatório paginado de auditoria só cobre período fechado. Antes da primeira
+página, o horário do banco deve ser maior que fim do período + margem de
+segurança. Essa margem deve ser estritamente maior que o tempo máximo
+permitido e efetivamente imposto às transações que gravam movimentos,
+desde o BEGIN até o commit ou rollback, incluindo esperas e inatividade.
+Usar o maior limite entre todos os escritores. Uma média observada, um
+timeout HTTP ou um timeout de uma query isolada não comprovam esse limite.
+Sem limite validado, ou antes da margem, não emitir o relatório como fechado.
+
+ocorrido_em e id são atribuídos antes do commit. Uma transação pode gravar
+primeiro e confirmar depois de outra; só ordenar por esses campos não
+evita perder registros ao paginar enquanto ainda há commits pendentes.
+Após o fechamento, paginar por ocorrido_em DESC e id DESC, com cursor
+do último par retornado e comparação estrita menor que esse par. Manter
+empresa, filtros, início e fim fixos em todas as páginas; não avançar o fim
+junto com o relógio. Não usar a ordem dos IDs como ordem de commit.
+
+O período em andamento pode ter consulta provisória, claramente identificada
+como incompleta e sem garantia de paginação auditável. Não inserir movimentos
+retroativos em período já fechado; eventual importação ou correção histórica
+exige reabertura e nova geração do relatório, sem continuar o cursor antigo.
+Não haverá novo endpoint de auditoria nesta entrega.
+
+2. COMPARAÇÃO E ESCOLHA
+
+Opção A: adicionar colunas em log_sistema
+Vantagem: aproveita a tabela e o ponto de gravação existentes.
+Desvantagens: mistura eventos gerais com movimentos de estoque; exige
+campos nulos e regras condicionais para cada tipo de ação. A coluna acao
+continua necessária para eventos que não têm produto, quantidade ou saldo.
+
+Opção B: tabela própria movimentacao_estoque
+Vantagens: campos obrigatórios, vínculos verificáveis, consultas diretas e
+índices específicos, sem interpretar texto nem misturar eventos gerais.
+Desvantagem: exige migration nova, gravação adicional na transação e testes
+de regressão do fluxo de aprovação.
+
+Escolha proposta: opção B, tabela movimentacao_estoque.
+O primeiro uso será apenas a saída por aprovação de pedido. Entradas,
+ajustes, estornos e novas telas/consultas da API ficam em cartões próprios.
+log_sistema continua sendo o log geral. Manter inicialmente a mensagem
+BAIXA_ESTOQUE atual para compatibilidade; relatórios novos usam somente a
+tabela estruturada, sem somar seus registros aos logs em texto.
+
+3. CAMPOS OBRIGATÓRIOS E INTEGRIDADE
+
+id: bigint identity, chave primária
+empresa_id: integer, empresa da operação
+obra_id: integer, obra do pedido aprovado
+produto_id: integer, produto debitado
+pedido_id: integer, pedido que originou a saída
+registrado_por_usuario_id: integer, usuário que aprovou, não o solicitante
+tipo: varchar(30), inicialmente somente saida_pedido
+quantidade: numeric(12,2), quantidade positiva efetivamente debitada
+saldo_anterior: numeric(12,2), saldo imediatamente antes da baixa
+saldo_posterior: numeric(12,2), saldo retornado após a baixa
+ocorrido_em: timestamptz, clock_timestamp() do servidor no momento do insert
+protocolo_pedido: varchar(50), cópia do protocolo no momento da operação
+produto_nome: varchar(150), cópia do nome no momento da operação
+unidade: varchar(30), cópia da unidade no momento da operação
+
+Todos os campos acima são NOT NULL. Nome, unidade e protocolo são cópias
+históricas: alterações posteriores no cadastro não reescrevem a auditoria.
+ocorrido_em registra a gravação dentro da transação, não o instante exato
+do commit. Não usar datas enviadas pelo aplicativo.
+
+Regras a implementar no banco:
+- quantidade maior que zero; saldos não negativos; todos até 9999999999,99.
+  Limites verificáveis também devem rejeitar NaN/infinito.
+- saldo_anterior - quantidade = saldo_posterior, com aritmética decimal.
+- tipo limitado a saida_pedido nesta primeira implementação.
+- UNIQUE (empresa_id, pedido_id, produto_id, tipo): um movimento de cada
+  tipo por produto/pedido; hoje só saida_pedido, então continua sendo uma saída.
+  Itens repetidos antigos são agregados por produto, como no fluxo atual.
+  Incluir tipo agora evita que um futuro estorno de outro tipo seja barrado
+  pela unicidade da saída. Isso não implementa estornos nem decide como
+  tratar vários estornos parciais: esses casos continuam em cartão próprio.
+- Chaves estrangeiras compostas de (obra_id, empresa_id),
+  (produto_id, empresa_id) e (registrado_por_usuario_id, empresa_id), para
+  impedir referências a obra, produto ou aprovador de outra empresa.
+- Chave estrangeira (pedido_id, obra_id) para garantir que o movimento
+  pertence à obra do pedido. Usar ON DELETE RESTRICT nos vínculos da auditoria.
+
+O schema atual já tem UNIQUE (id, empresa_id) em obra e usuario. A migration
+futura precisa adicionar UNIQUE (id, empresa_id) em produto e UNIQUE
+(id, obra_id) em pedido para sustentar as novas chaves estrangeiras.
+Não vincular o movimento a um único item_pedido: a baixa atual agrega itens
+por produto e o histórico não deve desaparecer com uma exclusão em cascata.
+
+Índices propostos, além da chave primária:
+- UNIQUE (empresa_id, pedido_id, produto_id, tipo): duplicidade e busca por pedido.
+- (empresa_id, obra_id, ocorrido_em DESC, id DESC): obra no período.
+- (empresa_id, produto_id, ocorrido_em DESC, id DESC): histórico do produto.
+- (empresa_id, ocorrido_em DESC, id DESC): período de toda a empresa.
+- (empresa_id, registrado_por_usuario_id, ocorrido_em DESC, id DESC): aprovador.
+
+4. GRAVAÇÃO, TRANSAÇÃO E SEGURANÇA
+
+Implementar dentro de aprovarPedidoComBaixa, no mesmo banco.runTx que já
+trava o pedido/estoque, debita, grava log_sistema e aprova o pedido.
+Gravar uma linha estruturada para cada produto debitado, após o UPDATE do
+saldo e antes do commit. Se qualquer insert falhar, lançar o erro e reverter
+toda a transação: saldos, mensagens de log, movimentos e status do pedido.
+Não gravar em segundo plano, depois do commit ou por outra conexão.
+
+Preservar a ordem dos locks por produto, o UPDATE condicionado ao saldo,
+a agregação dos itens e o bloqueio de pedido já decidido do PR #17.
+Usar empresa e aprovador da sessão validada e obra/pedido já conferidos,
+nunca identificadores de empresa ou aprovador recebidos no corpo da chamada.
+Calcular os saldos em SQL numeric, sem converter a baixa para double Dart.
+
+O fluxo normal pode inserir e consultar movimentos autorizados, não editar
+ou apagar o histórico. O papel de execução deve ficar sem UPDATE/DELETE
+nessa tabela, separado do papel que aplica migrations.
+Hoje a aplicação usa uma única DATABASE_URL; a separação ainda não existe.
+Ela será um cartão de infraestrutura vinculado, não uma alteração escondida
+na migration da auditoria. O cartão deve cobrir credenciais e permissões de
+execução/migration, configuração local, Docker e implantação no Neon.
+Também deve estabelecer e testar o limite total de duração das transações
+usado no fechamento dos relatórios. Não presumir esses controles configurados
+apenas porque a proposta foi aprovada.
+Isso não impede alterações por um administrador do banco; não descrever a
+tabela como inviolável. O roteiro do cartão de infraestrutura está abaixo.
+Não registrar senha, token ou XML fiscal nos movimentos.
+
+5. DESTINO DOS REGISTROS ANTIGOS
+
+Manter os textos de log_sistema intactos. Não fazer parsing automático nem
+reconstruir saldos antigos com base no estoque ou nos pedidos atuais.
+Esses dados não comprovam todas as informações históricas necessárias.
+
+Registrar, na implantação futura, o início real da cobertura estruturada
+(quando o novo escritor estiver ativo, não apenas quando a tabela existir).
+Relatórios devem informar esse início e a ausência de cobertura anterior;
+ausência de registros antigos não significa ausência de saídas.
+Os textos antigos continuam disponíveis como histórico legado separado.
+
+Uma eventual importação será outra decisão: regra verificável, conferência
+de empresa/vínculos/valores, vínculo único ao log original e isolamento dos
+registros ambíguos. Sem essas garantias, não converter nem inventar valores.
+
+6. CARTÃO FUTURO DE IMPLEMENTAÇÃO - TEXTO PRONTO PARA COPIAR
+
+Título: Implementar auditoria estruturada das baixas de estoque
+Dependência: revisão da proposta deste cartão e fluxo aprovado no PR #17.
+
+Descrição:
+Criar movimentacao_estoque conforme esta proposta, por migration nova e
+com gravação na mesma transação da aprovação. Preservar os logs antigos e
+a proteção contra baixa duplicada/concorrente. Não ampliar para entradas,
+ajustes, estornos ou novas telas neste cartão.
+
+Checklist:
+- Vincular o cartão de infraestrutura descrito abaixo. Antes da implantação,
+  validar os papéis separados; antes de habilitar relatórios fechados,
+  validar o limite total de transação e a margem de fechamento.
+- Escolher o próximo número livre de migration ao iniciar; não renumerar
+  nem editar migrations já aplicadas. Conferir constraints e índices.
+- Implementar o insert no banco.runTx existente e manter o log compatível.
+- Testar migração em banco vazio e banco com schema/histórico anteriores.
+- Repetir em PostgreSQL real a regressão documentada no review do PR #17:
+  saldo 1, oito pedidos distintos de 1 aprovados em paralelo; exatamente
+  um 200, sete 409, nenhum 5xx, saldo final 0, um movimento estruturado e
+  um log BAIXA_ESTOQUE; nenhuma gravação para as sete tentativas perdedoras.
+- Testar reaprovando o mesmo pedido: conflito sem outra baixa ou movimento.
+- Testar pedido com vários produtos e falha posterior: rollback completo.
+- Forçar falha no insert estruturado e conferir rollback de saldo, pedido,
+  log geral e movimentos. Não limitar o teste a mocks do repositório.
+- Testar quantidade fracionada, agregação de itens repetidos, constraints
+  de saldo, referências cruzadas entre empresas e consulta por período.
+- Conferir consultas por obra/produto/aprovador, unidades e limites do mês.
+- Para o futuro relatório paginado, reproduzir dois inserts com commits em
+  ordem inversa. Antes de fim + margem, recusar o fechamento; depois, listar
+  ambos exatamente uma vez, inclusive entre páginas de tamanho 1. Conferir
+  cursor por data/id, empates de data, filtros fixos e exclusão do próximo
+  período. Sem limite total validado, não anunciar relatório completo.
+- Atualizar Database/schema.sql e o diagrama/DBML com o resultado efetivo.
+- Abrir PR de implementação com evidências de migration e concorrência.
+- Após implantação autorizada, registrar início da cobertura e avisar a
+  equipe. Não aplicar migration no Neon apenas por aprovar esta proposta.
+
+Cartão de infraestrutura vinculado:
+Título: Separar conexões e limitar transações para a auditoria de estoque
+
+Descrição:
+Preparar as permissões e conexões necessárias para a auditoria estruturada,
+sem trocar credenciais nem configurar produção como parte desta proposta.
+
+Checklist:
+- Separar papel de execução da API e papel de migrations; o primeiro não
+  pode ser dono da tabela de auditoria nem ter UPDATE/DELETE nela.
+- Definir como o runner de migrations recebe sua conexão privilegiada sem
+  repassá-la à API; conferir configuração local, Docker e implantação.
+- Manter segredos fora do Git e dos logs, com credenciais distintas por ambiente.
+- Testar INSERT e SELECT autorizados e a recusa de UPDATE/DELETE usando
+  a conexão real de execução; testar migrations com o papel próprio.
+- Impor e testar limite finito da transação inteira, incluindo espera e
+  inatividade; verificar o encerramento/rollback ao ultrapassar o limite.
+- Registrar o maior limite dos escritores e uma margem estritamente maior;
+  publicar essa configuração para o futuro fechamento dos relatórios.
+- Abrir PR próprio e planejar a troca das conexões com a equipe antes de
+  qualquer implantação. Não mudar a conexão atual apenas por aprovar o texto.
+
+PUBLICAÇÃO NO TRELLO
+Este arquivo fornece a proposta e o texto do cartão futuro. A inclusão no
+cartão atual e a abertura dos cartões vinculados precisam ser realizadas por
+quem tiver acesso ao quadro; não foram executadas por esta entrega.
+
+BASE DA PROPOSTA
+Schema e fluxo de aprovação da main, revisão de 12/10/2026, base 9e67e39.
+O teste real de oito aprovações é evidência do review do PR #17; não foi
+reexecutado nesta entrega documental e será regressão da implementação.
+Referências técnicas (constraints, índices e horário do servidor):
+https://www.postgresql.org/docs/current/ddl-constraints.html
+https://www.postgresql.org/docs/current/indexes-multicolumn.html
+https://www.postgresql.org/docs/current/functions-datetime.html
+https://www.postgresql.org/docs/current/transaction-iso.html
