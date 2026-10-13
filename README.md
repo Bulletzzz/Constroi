@@ -102,6 +102,7 @@ acesso daquele trecho.
 | `GET` `PATCH` | `/equipamentos/{id}` | engenheiro |
 | `GET` `POST` | `/pedidos` | pedreiro |
 | `GET` | `/pedidos/{id}` | pedreiro |
+| `PATCH` | `/pedidos/{id}` | engenheiro |
 
 Nas rotas de escrita, o objeto vai dentro de uma chave com o nome do recurso:
 
@@ -155,6 +156,27 @@ Essas regras valem também para buscas por protocolo e pelo ID do pedido.
 O `GET /pedidos/{id}` retorna o pedido com a lista `itens`, incluindo
 `id`, `produto_id`, `produto_nome`, `unidade` e `quantidade` em texto.
 Pedidos inexistentes ou sem permissão de acesso retornam `404`.
+
+Para aprovar um pedido, envie `PATCH /pedidos/{id}` com o token de engenheiro
+ou master:
+
+```json
+{ "pedido": { "status": "aprovado" } }
+```
+
+Para recusar, a justificativa é obrigatória:
+
+```json
+{ "pedido": { "status": "recusado", "justificativa": "Material não necessário nesta etapa" } }
+```
+
+A justificativa aceita até 255 caracteres e não pode conter apenas espaços na
+recusa. A aprovação sem justificativa mantém o texto informado na criação.
+Somente pedidos `pendente` podem ser decididos. A resposta `200` contém o pedido
+atualizado; dados inválidos retornam `400`, ausência de token válido retorna `401`,
+pedreiro retorna `403`, pedido inexistente ou de outra empresa retorna `404`
+e pedido já decidido retorna `409`. A decisão e o registro em `log_sistema`
+usam a mesma transação, com bloqueio do pedido para impedir decisões simultâneas.
 
 ## Rodando o projeto
 

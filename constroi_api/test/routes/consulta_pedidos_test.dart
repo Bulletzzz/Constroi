@@ -318,7 +318,7 @@ void main() {
       expect(parametros, isEmpty);
     });
 
-    test('metodo diferente de GET retorna 405', () async {
+    test('metodo diferente de GET e PATCH retorna 405', () async {
       when(() => contexto.request).thenReturn(
         Request.post(Uri.parse('http://localhost/pedidos/30')),
       );
