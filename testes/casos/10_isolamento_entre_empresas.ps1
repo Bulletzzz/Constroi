@@ -13,7 +13,7 @@ Chamar PATCH "/obras/$($c.obra.id)" $c.masterB @{ obra = @{ status = 'concluida'
 $euB = Chamar GET '/eu' $c.masterB $null 200 'GET /eu empresa B'
 Conferir ($euB.empresa_id -ne $c.pedreiroUsuario.empresa_id) 'empresas tem ids diferentes'
 
-Chamar POST $c.rotaEquipe $c.engenheiro @{ equipe = @{ usuario_id = $euB.id } } 400 'vincular usuario de outra empresa' | Out-Null
+Chamar POST $c.rotaEquipe $c.engenheiro @{ equipe = @{ usuario_id = $euB.id } } 404 'vincular usuario de outra empresa' | Out-Null
 VerificarBanco "SELECT COUNT(*)::text FROM usuario_obra WHERE obra_id = $($c.obra.id) AND usuario_id = $($euB.id)" '0' `
     'nenhum vinculo cruzado foi criado'
 

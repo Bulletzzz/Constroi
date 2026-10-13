@@ -120,24 +120,16 @@ Future<Response> _criar(RequestContext context, int obraId) async {
 
   final usuario = await banco.execute(
     Sql.named('''
-      SELECT empresa_id
+      SELECT id
       FROM usuario
-      WHERE id = @usuario
+      WHERE id = @usuario AND empresa_id = @empresa
       LIMIT 1
     '''),
-    parameters: {'usuario': usuarioId},
+    parameters: {'usuario': usuarioId, 'empresa': empresaId},
   );
 
   if (usuario.isEmpty) {
     return _erro(HttpStatus.notFound, 'Usuario nao encontrado.');
-  }
-
-  final empresaDoUsuario = usuario.first.toColumnMap()['empresa_id'] as int;
-  if (empresaDoUsuario != empresaId) {
-    return _erro(
-      HttpStatus.badRequest,
-      'Usuario e obra devem pertencer a mesma empresa.',
-    );
   }
 
   final criado = await banco.execute(
