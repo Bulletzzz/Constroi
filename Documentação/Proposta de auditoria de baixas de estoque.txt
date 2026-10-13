@@ -21,7 +21,29 @@ O filtro de obra respeita a permissão do usuário. Não se somam quantidades
 de unidades diferentes, por exemplo metros com sacos.
 Períodos usam início inclusivo e fim exclusivo, com limites convertidos do
 fuso do relatório para UTC; não aplicar funções sobre a coluna de data
-para filtrar. Paginação ordenada por ocorrido_em e id, ambos decrescentes.
+para filtrar.
+
+Relatório paginado de auditoria só cobre período fechado. Antes da primeira
+página, o horário do banco deve ser maior que fim do período + margem de
+segurança. Essa margem deve ser estritamente maior que o tempo máximo
+permitido e efetivamente imposto às transações que gravam movimentos,
+desde o BEGIN até o commit ou rollback, incluindo esperas e inatividade.
+Usar o maior limite entre todos os escritores. Uma média observada, um
+timeout HTTP ou um timeout de uma query isolada não comprovam esse limite.
+Sem limite validado, ou antes da margem, não emitir o relatório como fechado.
+
+ocorrido_em e id são atribuídos antes do commit. Uma transação pode gravar
+primeiro e confirmar depois de outra; só ordenar por esses campos não
+evita perder registros ao paginar enquanto ainda há commits pendentes.
+Após o fechamento, paginar por ocorrido_em DESC e id DESC, com cursor
+do último par retornado e comparação estrita menor que esse par. Manter
+empresa, filtros, início e fim fixos em todas as páginas; não avançar o fim
+junto com o relógio. Não usar a ordem dos IDs como ordem de commit.
+
+O período em andamento pode ter consulta provisória, claramente identificada
+como incompleta e sem garantia de paginação auditável. Não inserir movimentos
+retroativos em período já fechado; eventual importação ou correção histórica
+exige reabertura e nova geração do relatório, sem continuar o cursor antigo.
 Não haverá novo endpoint de auditoria nesta entrega.
 
 2. COMPARAÇÃO E ESCOLHA
@@ -72,8 +94,12 @@ Regras a implementar no banco:
   Limites verificáveis também devem rejeitar NaN/infinito.
 - saldo_anterior - quantidade = saldo_posterior, com aritmética decimal.
 - tipo limitado a saida_pedido nesta primeira implementação.
-- UNIQUE (empresa_id, pedido_id, produto_id): uma saída por produto/pedido.
+- UNIQUE (empresa_id, pedido_id, produto_id, tipo): um movimento de cada
+  tipo por produto/pedido; hoje só saida_pedido, então continua sendo uma saída.
   Itens repetidos antigos são agregados por produto, como no fluxo atual.
+  Incluir tipo agora evita que um futuro estorno de outro tipo seja barrado
+  pela unicidade da saída. Isso não implementa estornos nem decide como
+  tratar vários estornos parciais: esses casos continuam em cartão próprio.
 - Chaves estrangeiras compostas de (obra_id, empresa_id),
   (produto_id, empresa_id) e (registrado_por_usuario_id, empresa_id), para
   impedir referências a obra, produto ou aprovador de outra empresa.
@@ -87,7 +113,7 @@ Não vincular o movimento a um único item_pedido: a baixa atual agrega itens
 por produto e o histórico não deve desaparecer com uma exclusão em cascata.
 
 Índices propostos, além da chave primária:
-- UNIQUE (empresa_id, pedido_id, produto_id): duplicidade e busca por pedido.
+- UNIQUE (empresa_id, pedido_id, produto_id, tipo): duplicidade e busca por pedido.
 - (empresa_id, obra_id, ocorrido_em DESC, id DESC): obra no período.
 - (empresa_id, produto_id, ocorrido_em DESC, id DESC): histórico do produto.
 - (empresa_id, ocorrido_em DESC, id DESC): período de toda a empresa.
@@ -109,9 +135,17 @@ nunca identificadores de empresa ou aprovador recebidos no corpo da chamada.
 Calcular os saldos em SQL numeric, sem converter a baixa para double Dart.
 
 O fluxo normal pode inserir e consultar movimentos autorizados, não editar
-ou apagar o histórico. Prever papel de execução sem UPDATE/DELETE nessa
-tabela e papel separado para migrations. Isso não impede alterações por um
-administrador do banco; não descrever a tabela como inviolável.
+ou apagar o histórico. O papel de execução deve ficar sem UPDATE/DELETE
+nessa tabela, separado do papel que aplica migrations.
+Hoje a aplicação usa uma única DATABASE_URL; a separação ainda não existe.
+Ela será um cartão de infraestrutura vinculado, não uma alteração escondida
+na migration da auditoria. O cartão deve cobrir credenciais e permissões de
+execução/migration, configuração local, Docker e implantação no Neon.
+Também deve estabelecer e testar o limite total de duração das transações
+usado no fechamento dos relatórios. Não presumir esses controles configurados
+apenas porque a proposta foi aprovada.
+Isso não impede alterações por um administrador do banco; não descrever a
+tabela como inviolável. O roteiro do cartão de infraestrutura está abaixo.
 Não registrar senha, token ou XML fiscal nos movimentos.
 
 5. DESTINO DOS REGISTROS ANTIGOS
@@ -142,6 +176,9 @@ a proteção contra baixa duplicada/concorrente. Não ampliar para entradas,
 ajustes, estornos ou novas telas neste cartão.
 
 Checklist:
+- Vincular o cartão de infraestrutura descrito abaixo. Antes da implantação,
+  validar os papéis separados; antes de habilitar relatórios fechados,
+  validar o limite total de transação e a margem de fechamento.
 - Escolher o próximo número livre de migration ao iniciar; não renumerar
   nem editar migrations já aplicadas. Conferir constraints e índices.
 - Implementar o insert no banco.runTx existente e manter o log compatível.
@@ -157,14 +194,41 @@ Checklist:
 - Testar quantidade fracionada, agregação de itens repetidos, constraints
   de saldo, referências cruzadas entre empresas e consulta por período.
 - Conferir consultas por obra/produto/aprovador, unidades e limites do mês.
+- Para o futuro relatório paginado, reproduzir dois inserts com commits em
+  ordem inversa. Antes de fim + margem, recusar o fechamento; depois, listar
+  ambos exatamente uma vez, inclusive entre páginas de tamanho 1. Conferir
+  cursor por data/id, empates de data, filtros fixos e exclusão do próximo
+  período. Sem limite total validado, não anunciar relatório completo.
 - Atualizar Database/schema.sql e o diagrama/DBML com o resultado efetivo.
 - Abrir PR de implementação com evidências de migration e concorrência.
 - Após implantação autorizada, registrar início da cobertura e avisar a
   equipe. Não aplicar migration no Neon apenas por aprovar esta proposta.
 
+Cartão de infraestrutura vinculado:
+Título: Separar conexões e limitar transações para a auditoria de estoque
+
+Descrição:
+Preparar as permissões e conexões necessárias para a auditoria estruturada,
+sem trocar credenciais nem configurar produção como parte desta proposta.
+
+Checklist:
+- Separar papel de execução da API e papel de migrations; o primeiro não
+  pode ser dono da tabela de auditoria nem ter UPDATE/DELETE nela.
+- Definir como o runner de migrations recebe sua conexão privilegiada sem
+  repassá-la à API; conferir configuração local, Docker e implantação.
+- Manter segredos fora do Git e dos logs, com credenciais distintas por ambiente.
+- Testar INSERT e SELECT autorizados e a recusa de UPDATE/DELETE usando
+  a conexão real de execução; testar migrations com o papel próprio.
+- Impor e testar limite finito da transação inteira, incluindo espera e
+  inatividade; verificar o encerramento/rollback ao ultrapassar o limite.
+- Registrar o maior limite dos escritores e uma margem estritamente maior;
+  publicar essa configuração para o futuro fechamento dos relatórios.
+- Abrir PR próprio e planejar a troca das conexões com a equipe antes de
+  qualquer implantação. Não mudar a conexão atual apenas por aprovar o texto.
+
 PUBLICAÇÃO NO TRELLO
 Este arquivo fornece a proposta e o texto do cartão futuro. A inclusão no
-cartão atual e a abertura do próximo cartão precisam ser realizadas por
+cartão atual e a abertura dos cartões vinculados precisam ser realizadas por
 quem tiver acesso ao quadro; não foram executadas por esta entrega.
 
 BASE DA PROPOSTA
@@ -175,3 +239,4 @@ Referências técnicas (constraints, índices e horário do servidor):
 https://www.postgresql.org/docs/current/ddl-constraints.html
 https://www.postgresql.org/docs/current/indexes-multicolumn.html
 https://www.postgresql.org/docs/current/functions-datetime.html
+https://www.postgresql.org/docs/current/transaction-iso.html
