@@ -81,6 +81,10 @@ O arquivo `Database/schema.sql` representa o estado consolidado depois das migra
 
 Para criar uma alteração futura, adicione uma nova migration numerada. Não edite uma migration que já tenha sido aplicada.
 
+A única exceção é a migration que falha ao rodar em banco vazio mas já está registrada em todos os ambientes: nesse caso a correção não muda o estado final do schema nem afeta banco existente, porque o arquivo não volta a rodar onde já foi aplicado. Explique o motivo no PR e comprove com uma execução a partir de banco vazio. Qualquer alteração que mude o schema resultante exige migration nova, sem exceção.
+
+Para conferir o caminho de banco novo, suba um PostgreSQL vazio com TLS, aponte a `DATABASE_URL` para ele e rode `dart run bin/migrate.dart` duas vezes: a primeira deve aplicar todas, a segunda não deve aplicar nenhuma.
+
 ## Consulta de estoque (RF05)
 
 Após aplicar a migration 009, `GET /estoque` retorna os saldos das obras acessíveis,
