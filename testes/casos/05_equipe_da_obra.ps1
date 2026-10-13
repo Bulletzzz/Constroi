@@ -2,7 +2,7 @@
 
 IniciarCaso 'Equipe da obra: vinculo, duplicata e encerramento'
 
-$c = NovoCenario -ComObra
+$c = NovoCenario -ComObra -ComEmpresaB
 $rota = $c.rotaEquipe
 $pedreiroId = $c.pedreiroUsuario.id
 
@@ -16,6 +16,10 @@ Conferir ($vinculo.usuario_id -eq $pedreiroId -and $vinculo.obra_id -eq $c.obra.
 
 Chamar POST $rota $c.engenheiro @{ equipe = @{ usuario_id = $pedreiroId } } 409 'POST equipe duplicado' | Out-Null
 Chamar POST $rota $c.engenheiro @{ equipe = @{ usuario_id = 999999999 } } 404 'POST equipe usuario inexistente' | Out-Null
+$usuarioB = Chamar GET '/eu' $c.masterB $null 200 'GET usuario de outra empresa'
+Chamar POST $rota $c.engenheiro @{ equipe = @{ usuario_id = $usuarioB.id } } 404 'POST equipe usuario de outra empresa' | Out-Null
+VerificarBanco "SELECT COUNT(*)::text FROM usuario_obra WHERE obra_id = $($c.obra.id) AND usuario_id = $($usuarioB.id)" '0' `
+    'usuario de outra empresa nao recebe vinculo'
 Chamar POST $rota $c.engenheiro @{ usuario_id = $pedreiroId } 400 'POST equipe sem envelope' | Out-Null
 
 $ativa = Chamar GET $rota $c.pedreiro $null 200 'GET equipe com pedreiro vinculado'

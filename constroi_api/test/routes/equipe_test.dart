@@ -8,10 +8,19 @@ import 'package:postgres/postgres.dart';
 import 'package:test/test.dart';
 
 import '../../routes/obras/[id]/equipe/index.dart' as route;
+import '../../routes/obras/_middleware.dart' as protecao;
 
 class _ContextoFalso extends Mock implements RequestContext {}
 
 class _BancoFalso extends Mock implements Pool<void> {}
+
+class _LinhaFalsa extends Mock implements ResultRow {}
+
+Result _resultadoDados(Map<String, dynamic> dados) {
+  final linha = _LinhaFalsa();
+  when(linha.toColumnMap).thenReturn(dados);
+  return Result(rows: [linha], affectedRows: 1, schema: ResultSchema([]));
+}
 
 Result _resultado({bool obraEncontrada = false}) {
   final schema = ResultSchema([
@@ -88,4 +97,128 @@ void main() {
       });
     });
   }
+
+  group('POST equipe', () {
+    late _ContextoFalso contexto;
+    late _BancoFalso banco;
+    late List<Map<String, dynamic>> consultas;
+    late List<Result> resultados;
+
+    Future<Response> chamar() async => protecao.middleware(
+      (contexto) => route.onRequest(contexto, '7'),
+    )(contexto);
+
+    setUp(() {
+      contexto = _ContextoFalso();
+      banco = _BancoFalso();
+      consultas = [];
+      resultados = [
+        _resultado(obraEncontrada: true),
+        _resultado(obraEncontrada: true),
+        _resultadoDados({
+          'id': 11,
+          'empresa_id': 2,
+          'usuario_id': 9,
+          'obra_id': 7,
+          'data_inicio': DateTime.utc(2026, 10, 13),
+        }),
+      ];
+      when(() => contexto.request).thenReturn(
+        Request.post(
+          Uri.parse('http://localhost/obras/7/equipe'),
+          body: jsonEncode({
+            'equipe': {'usuario_id': 9, 'empresa_id': 99},
+          }),
+        ),
+      );
+      when(() => contexto.read<Pool<void>>()).thenReturn(banco);
+      when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(
+        const UsuarioAutenticado(id: 3, empresaId: 2, nivel: Nivel.engenheiro),
+      );
+      when(
+        () => banco.execute(any(), parameters: any(named: 'parameters')),
+      ).thenAnswer((chamada) async {
+        consultas.add(
+          chamada.namedArguments[#parameters]! as Map<String, dynamic>,
+        );
+        return resultados.removeAt(0);
+      });
+    });
+
+    for (final nivel in [Nivel.engenheiro, Nivel.master]) {
+      test('${nivel.name} cria vinculo usando a empresa da sessao', () async {
+        when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(
+          UsuarioAutenticado(id: 3, empresaId: 2, nivel: nivel),
+        );
+        final resposta = await chamar();
+        expect(resposta.statusCode, HttpStatus.created);
+        expect(consultas, [
+          {'obra': 7, 'empresa': 2},
+          {'usuario': 9, 'empresa': 2},
+          {'empresa': 2, 'usuario': 9, 'obra': 7},
+        ]);
+        expect(jsonDecode(await resposta.body()), {
+          'id': 11,
+          'empresa_id': 2,
+          'usuario_id': 9,
+          'obra_id': 7,
+          'data_inicio': '2026-10-13T00:00:00.000Z',
+          'data_fim': null,
+        });
+      });
+    }
+
+    test('usuario nao encontrado no escopo retorna 404 e nao insere', () async {
+      resultados[1] = _resultado();
+      final resposta = await chamar();
+      expect(resposta.statusCode, HttpStatus.notFound);
+      expect(jsonDecode(await resposta.body()), {
+        'erro': 'Usuario nao encontrado.',
+      });
+      expect(consultas, [
+        {'obra': 7, 'empresa': 2},
+        {'usuario': 9, 'empresa': 2},
+      ]);
+      expect(resultados, hasLength(1));
+    });
+
+    test(
+      'obra fora do escopo retorna 404 antes de consultar usuario',
+      () async {
+        resultados[0] = _resultado();
+        final resposta = await chamar();
+        expect(resposta.statusCode, HttpStatus.notFound);
+        expect(jsonDecode(await resposta.body()), {
+          'erro': 'Obra nao encontrada.',
+        });
+        expect(consultas, [
+          {'obra': 7, 'empresa': 2},
+        ]);
+      },
+    );
+
+    test('vinculo ativo duplicado continua recebendo 409', () async {
+      resultados[2] = _resultado();
+      final resposta = await chamar();
+      expect(resposta.statusCode, HttpStatus.conflict);
+      expect(jsonDecode(await resposta.body()), {
+        'erro': 'Usuario ja possui vinculo ativo com esta obra.',
+      });
+      expect(consultas, hasLength(3));
+    });
+
+    test('pedreiro continua sem permissao de criar vinculos', () async {
+      when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(
+        const UsuarioAutenticado(id: 3, empresaId: 2, nivel: Nivel.pedreiro),
+      );
+      expect((await chamar()).statusCode, HttpStatus.forbidden);
+      expect(consultas, isEmpty);
+    });
+
+    test('sem token continua recebendo 401 sem consultar o banco', () async {
+      when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(null);
+      expect((await chamar()).statusCode, HttpStatus.unauthorized);
+      expect(consultas, isEmpty);
+    });
+  });
 }
