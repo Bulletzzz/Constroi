@@ -54,6 +54,43 @@ Future<Response> onRequest(RequestContext context) async {
 
   final usuario = encontrados.first.toColumnMap();
   final usuarioId = usuario['id'] as int;
+  // So revelar o estado da conta depois de validar a senha.
+  final senhaValida = senhaConfere(senha, usuario['senha_hash'] as String);
+  final agora = DateTime.now().toUtc();
+  final bloqueadoAte = usuario['bloqueado_ate'] as DateTime?;
+  final bloqueado = bloqueadoAte != null && bloqueadoAte.isAfter(agora);
+
+  if (!senhaValida) {
+    // Uma tentativa durante o bloqueio nao pode limpa-lo nem prolonga-lo.
+    if (usuario['ativo'] != false && !bloqueado) {
+      final bloqueadoExpirou =
+          bloqueadoAte != null && !bloqueadoAte.isAfter(agora);
+      final tentativas = bloqueadoExpirou
+          ? 1
+          : ((usuario['tentativas_login'] as int? ?? 0) + 1);
+      final bloquear = tentativas >= 5;
+
+      await banco.execute(
+        Sql.named('''
+          UPDATE usuario
+          SET tentativas_login = @tentativas,
+              bloqueado_ate = @bloqueadoAte,
+              atualizado_em = CURRENT_TIMESTAMP
+          WHERE id = @id
+        '''),
+        parameters: {
+          'id': usuarioId,
+          'tentativas': bloquear ? 0 : tentativas,
+          'bloqueadoAte': bloquear
+              ? agora.add(const Duration(minutes: 10))
+              : null,
+        },
+      );
+    }
+
+    await _registrarTentativa(banco, usuarioId, emailResumido, ip, false);
+    return _credenciaisInvalidas();
+  }
 
   if (usuario['ativo'] == false) {
     await _registrarTentativa(banco, usuarioId, emailResumido, ip, false);
@@ -63,8 +100,7 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
 
-  final bloqueadoAte = usuario['bloqueado_ate'] as DateTime?;
-  if (bloqueadoAte != null && bloqueadoAte.isAfter(DateTime.now().toUtc())) {
+  if (bloqueado) {
     await _registrarTentativa(banco, usuarioId, emailResumido, ip, false);
     return _erro(
       HttpStatus.tooManyRequests,
@@ -72,39 +108,10 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
 
-  if (!senhaConfere(senha, usuario['senha_hash'] as String)) {
-    final bloqueadoExpirou =
-        bloqueadoAte != null && !bloqueadoAte.isAfter(DateTime.now().toUtc());
-    final tentativas = bloqueadoExpirou
-        ? 1
-        : ((usuario['tentativas_login'] as int? ?? 0) + 1);
-    final bloquear = tentativas >= 5;
-
-    await banco.execute(
-      Sql.named('''
-        UPDATE usuario
-        SET tentativas_login = @tentativas,
-            bloqueado_ate = @bloqueadoAte,
-            atualizado_em = CURRENT_TIMESTAMP
-        WHERE id = @id
-      '''),
-      parameters: {
-        'id': usuarioId,
-        'tentativas': bloquear ? 0 : tentativas,
-        'bloqueadoAte': bloquear
-            ? DateTime.now().toUtc().add(const Duration(minutes: 10))
-            : null,
-      },
-    );
-
-    await _registrarTentativa(banco, usuarioId, emailResumido, ip, false);
-    return _credenciaisInvalidas();
-  }
-
   final refreshToken = gerarRefreshToken();
   final expiraEm = DateTime.now().toUtc().add(duracaoDaSessao);
 
-  await banco.runTx((transacao) async {
+  await banco.runTx<void>((transacao) async {
     await transacao.execute(
       Sql.named('''
         UPDATE usuario
