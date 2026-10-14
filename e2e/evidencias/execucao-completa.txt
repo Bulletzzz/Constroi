@@ -27,10 +27,10 @@ Learn more: https://on.cypress.io/cypress-env-migration
 
 
   CT-E2E-01 Login com credenciais validas
-    √ autentica o engenheiro e abre o painel da empresa (23664ms)
+    √ autentica o engenheiro e abre o painel da empresa (23595ms)
 
 
-  1 passing (24s)
+  1 passing (25s)
 
 
   (Results)
@@ -43,7 +43,7 @@ Learn more: https://on.cypress.io/cypress-env-migration
   │ Skipped:      0                                                                                │
   │ Screenshots:  0                                                                                │
   │ Video:        true                                                                             │
-  │ Duration:     23 seconds                                                                       │
+  │ Duration:     25 seconds                                                                       │
   │ Spec Ran:     01_login_valido.cy.js                                                            │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -59,10 +59,10 @@ Learn more: https://on.cypress.io/cypress-env-migration
 
 
   CT-E2E-02 Login com senha incorreta
-    √ recusa a entrada, informa o motivo e mantem a tela de login (21386ms)
+    √ recusa a entrada, informa o motivo e mantem a tela de login (21198ms)
 
 
-  1 passing (21s)
+  1 passing (23s)
 
 
   (Results)
@@ -75,7 +75,7 @@ Learn more: https://on.cypress.io/cypress-env-migration
   │ Skipped:      0                                                                                │
   │ Screenshots:  0                                                                                │
   │ Video:        true                                                                             │
-  │ Duration:     21 seconds                                                                       │
+  │ Duration:     22 seconds                                                                       │
   │ Spec Ran:     02_login_invalido.cy.js                                                          │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -91,10 +91,10 @@ Learn more: https://on.cypress.io/cypress-env-migration
 
 
   CT-E2E-03 Painel reflete os pedidos registrados na API
-    √ sai de zero requisicoes pendentes para duas apos criar dois pedidos (32219ms)
+    √ sai de zero requisicoes pendentes para duas apos criar dois pedidos (31607ms)
 
 
-  1 passing (32s)
+  1 passing (33s)
 
 
   (Results)
@@ -107,7 +107,7 @@ Learn more: https://on.cypress.io/cypress-env-migration
   │ Skipped:      0                                                                                │
   │ Screenshots:  0                                                                                │
   │ Video:        true                                                                             │
-  │ Duration:     32 seconds                                                                       │
+  │ Duration:     33 seconds                                                                       │
   │ Spec Ran:     03_painel_reflete_api.cy.js                                                      │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -123,11 +123,11 @@ Learn more: https://on.cypress.io/cypress-env-migration
 
 
   CT-E2E-04 Navegacao respeita o perfil do usuario
-    √ mostra Custos para o engenheiro e esconde do pedreiro (22618ms)
-    √ nao oferece Custos ao pedreiro, que mantem as rotas do seu nivel (4495ms)
+    √ mostra Custos para o engenheiro e esconde do pedreiro (22466ms)
+    √ nao oferece Custos ao pedreiro, que mantem as rotas do seu nivel (4515ms)
 
 
-  2 passing (27s)
+  2 passing (30s)
 
 
   (Results)
@@ -140,7 +140,7 @@ Learn more: https://on.cypress.io/cypress-env-migration
   │ Skipped:      0                                                                                │
   │ Screenshots:  0                                                                                │
   │ Video:        true                                                                             │
-  │ Duration:     27 seconds                                                                       │
+  │ Duration:     30 seconds                                                                       │
   │ Spec Ran:     04_autorizacao_por_perfil.cy.js                                                  │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -156,11 +156,11 @@ Learn more: https://on.cypress.io/cypress-env-migration
 
 
   CT-E2E-05 Rota protegida exige sessao
-    √ devolve ao login quando o estoque e aberto sem sessao (18898ms)
-    √ libera o estoque pela navegacao depois da autenticacao (4822ms)
+    √ devolve ao login quando o estoque e aberto sem sessao (18641ms)
+    √ libera o estoque pela navegacao depois da autenticacao (5014ms)
 
 
-  2 passing (24s)
+  2 passing (27s)
 
 
   (Results)
@@ -173,7 +173,7 @@ Learn more: https://on.cypress.io/cypress-env-migration
   │ Skipped:      0                                                                                │
   │ Screenshots:  0                                                                                │
   │ Video:        true                                                                             │
-  │ Duration:     24 seconds                                                                       │
+  │ Duration:     26 seconds                                                                       │
   │ Spec Ran:     05_rota_protegida.cy.js                                                          │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -190,15 +190,15 @@ Learn more: https://on.cypress.io/cypress-env-migration
 
        Spec                                              Tests  Passing  Failing  Pending  Skipped  
   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ ✔  01_login_valido.cy.js                    00:23        1        1        -        -        - │
+  │ ✔  01_login_valido.cy.js                    00:25        1        1        -        -        - │
   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ ✔  02_login_invalido.cy.js                  00:21        1        1        -        -        - │
+  │ ✔  02_login_invalido.cy.js                  00:22        1        1        -        -        - │
   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ ✔  03_painel_reflete_api.cy.js              00:32        1        1        -        -        - │
+  │ ✔  03_painel_reflete_api.cy.js              00:33        1        1        -        -        - │
   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ ✔  04_autorizacao_por_perfil.cy.js          00:27        2        2        -        -        - │
+  │ ✔  04_autorizacao_por_perfil.cy.js          00:30        2        2        -        -        - │
   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ ✔  05_rota_protegida.cy.js                  00:24        2        2        -        -        - │
+  │ ✔  05_rota_protegida.cy.js                  00:26        2        2        -        -        - │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
-    ✔  All specs passed!                        02:08        7        7        -        -        -  
+    ✔  All specs passed!                        02:17        7        7        -        -        -  
 

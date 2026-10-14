@@ -1,6 +1,10 @@
 const api = () => Cypress.env('apiUrl');
 const senha = () => Cypress.env('senhaPadrao');
 
+afterEach(() => {
+  if (Cypress.config('video')) cy.wait(1500);
+});
+
 function marca() {
   return Math.random().toString(36).slice(2, 8);
 }
