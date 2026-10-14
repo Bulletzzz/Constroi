@@ -193,6 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
           dica: 'operador@construtora.com',
           teclado: TextInputType.emailAddress,
           aoConcluir: () => _focoSenha.requestFocus(),
+          identificador: 'login-email',
         ),
         const SizedBox(height: 22),
         Text('SENHA DE SEGURANÇA', style: _mini(_rotulo)),
@@ -204,16 +205,21 @@ class _LoginScreenState extends State<LoginScreen> {
           dica: '',
           escondido: true,
           aoConcluir: _entrar,
+          identificador: 'login-senha',
         ),
         if (_erro != null) ...[
           const SizedBox(height: 12),
-          Text(
-            _erro!,
-            style: const TextStyle(
-              color: _vermelho,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              height: 1.4,
+          Semantics(
+            identifier: 'login-erro',
+            liveRegion: true,
+            child: Text(
+              _erro!,
+              style: const TextStyle(
+                color: _vermelho,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -286,43 +292,48 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData icone,
     required String dica,
     required VoidCallback aoConcluir,
+    required String identificador,
     bool escondido = false,
     TextInputType teclado = TextInputType.text,
-  }) => Container(
-    height: 44,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: _tinta, width: 2),
-    ),
-    child: Row(
-      children: [
-        const SizedBox(width: 13),
-        Icon(icone, size: 20, color: _rotulo),
-        const SizedBox(width: 14),
-        Expanded(
-          child: TextField(
-            controller: controlador,
-            focusNode: foco,
-            obscureText: escondido,
-            keyboardType: teclado,
-            enabled: !_enviando,
-            onSubmitted: (_) => aoConcluir(),
-            textInputAction: escondido
-                ? TextInputAction.done
-                : TextInputAction.next,
-            style: TextStyle(
-              color: escondido ? _pontos : _tinta,
-              fontSize: 13,
-              letterSpacing: escondido ? 5 : 0,
-            ),
-            decoration: InputDecoration.collapsed(
-              hintText: dica,
-              hintStyle: const TextStyle(color: _dica, fontSize: 13),
+  }) => Semantics(
+    identifier: identificador,
+    textField: true,
+    child: Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _tinta, width: 2),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 13),
+          Icon(icone, size: 20, color: _rotulo),
+          const SizedBox(width: 14),
+          Expanded(
+            child: TextField(
+              controller: controlador,
+              focusNode: foco,
+              obscureText: escondido,
+              keyboardType: teclado,
+              enabled: !_enviando,
+              onSubmitted: (_) => aoConcluir(),
+              textInputAction: escondido
+                  ? TextInputAction.done
+                  : TextInputAction.next,
+              style: TextStyle(
+                color: escondido ? _pontos : _tinta,
+                fontSize: 13,
+                letterSpacing: escondido ? 5 : 0,
+              ),
+              decoration: InputDecoration.collapsed(
+                hintText: dica,
+                hintStyle: const TextStyle(color: _dica, fontSize: 13),
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-      ],
+          const SizedBox(width: 12),
+        ],
+      ),
     ),
   );
 
@@ -341,44 +352,50 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
   );
 
-  Widget _botao() => SizedBox(
-    height: 52,
-    child: Material(
-      color: _destaque,
-      child: InkWell(
-        onTap: _enviando ? null : _entrar,
-        child: DecoratedBox(
-          decoration: BoxDecoration(border: Border.all(color: _tinta, width: 2)),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: EdgeInsets.only(left: 18),
-                  child: Icon(Icons.arrow_forward, size: 20, color: _tinta),
-                ),
-              ),
-              if (_enviando)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    valueColor: AlwaysStoppedAnimation(_tinta),
-                  ),
-                )
-              else
-                const Text(
-                  'ENTRAR',
-                  style: TextStyle(
-                    color: _tinta,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
+  Widget _botao() => Semantics(
+    identifier: 'login-entrar',
+    button: true,
+    child: SizedBox(
+      height: 52,
+      child: Material(
+        color: _destaque,
+        child: InkWell(
+          onTap: _enviando ? null : _entrar,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: _tinta, width: 2),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 18),
+                    child: Icon(Icons.arrow_forward, size: 20, color: _tinta),
                   ),
                 ),
-            ],
+                if (_enviando)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      valueColor: AlwaysStoppedAnimation(_tinta),
+                    ),
+                  )
+                else
+                  const Text(
+                    'ENTRAR',
+                    style: TextStyle(
+                      color: _tinta,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

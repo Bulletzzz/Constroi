@@ -1,0 +1,204 @@
+
+Warning: The allowCypressEnv configuration option is enabled. This allows any browser code to read values from Cypress.env(). This is insecure and will be removed in a future major version.
+
+1. Replace Cypress.env() calls with cy.env() (for sensitive values) or Cypress.expose() (for public configuration)
+2. Set allowCypressEnv: false in your Cypress configuration to disable Cypress.env()
+
+Learn more: https://on.cypress.io/cypress-env-migration
+
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        15.21.1                                                                        │
+  │ Browser:        Electron 138 (headless)                                                        │
+  │ Node Version:   v24.16.0 (C:\Program Files\nodejs\node.exe)                                    │
+  │ Specs:          5 found (01_login_valido.cy.js, 02_login_invalido.cy.js, 03_painel_reflete_api │
+  │                 .cy.js, 04_autorizacao_por_perfil.cy.js, 05_rota_protegida.cy.js)              │
+  │ Searched:       cypress/e2e/**/*.cy.js                                                         │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  01_login_valido.cy.js                                                           (1 of 5)
+
+
+  CT-E2E-01 Login com credenciais validas
+    √ autentica o engenheiro e abre o painel da empresa (23664ms)
+
+
+  1 passing (24s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        1                                                                                │
+  │ Passing:      1                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        true                                                                             │
+  │ Duration:     23 seconds                                                                       │
+  │ Spec Ran:     01_login_valido.cy.js                                                            │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Video)
+
+  -  Video output: D:\Projetos\Optativa2\GitHub\Constroi\e2e\evidencias\01_login_valido.cy.js (1).mp4
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  02_login_invalido.cy.js                                                         (2 of 5)
+
+
+  CT-E2E-02 Login com senha incorreta
+    √ recusa a entrada, informa o motivo e mantem a tela de login (21386ms)
+
+
+  1 passing (21s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        1                                                                                │
+  │ Passing:      1                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        true                                                                             │
+  │ Duration:     21 seconds                                                                       │
+  │ Spec Ran:     02_login_invalido.cy.js                                                          │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Video)
+
+  -  Video output: D:\Projetos\Optativa2\GitHub\Constroi\e2e\evidencias\02_login_invalido.cy.js (1).mp4
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  03_painel_reflete_api.cy.js                                                     (3 of 5)
+
+
+  CT-E2E-03 Painel reflete os pedidos registrados na API
+    √ sai de zero requisicoes pendentes para duas apos criar dois pedidos (32219ms)
+
+
+  1 passing (32s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        1                                                                                │
+  │ Passing:      1                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        true                                                                             │
+  │ Duration:     32 seconds                                                                       │
+  │ Spec Ran:     03_painel_reflete_api.cy.js                                                      │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Video)
+
+  -  Video output: D:\Projetos\Optativa2\GitHub\Constroi\e2e\evidencias\03_painel_reflete_api.cy.js (1).mp4
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  04_autorizacao_por_perfil.cy.js                                                 (4 of 5)
+
+
+  CT-E2E-04 Navegacao respeita o perfil do usuario
+    √ mostra Custos para o engenheiro e esconde do pedreiro (22618ms)
+    √ nao oferece Custos ao pedreiro, que mantem as rotas do seu nivel (4495ms)
+
+
+  2 passing (27s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        2                                                                                │
+  │ Passing:      2                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        true                                                                             │
+  │ Duration:     27 seconds                                                                       │
+  │ Spec Ran:     04_autorizacao_por_perfil.cy.js                                                  │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Video)
+
+  -  Video output: D:\Projetos\Optativa2\GitHub\Constroi\e2e\evidencias\04_autorizacao_por_perfil.cy.js (1).mp4
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  05_rota_protegida.cy.js                                                         (5 of 5)
+
+
+  CT-E2E-05 Rota protegida exige sessao
+    √ devolve ao login quando o estoque e aberto sem sessao (18898ms)
+    √ libera o estoque pela navegacao depois da autenticacao (4822ms)
+
+
+  2 passing (24s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        2                                                                                │
+  │ Passing:      2                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        true                                                                             │
+  │ Duration:     24 seconds                                                                       │
+  │ Spec Ran:     05_rota_protegida.cy.js                                                          │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Video)
+
+  -  Video output: D:\Projetos\Optativa2\GitHub\Constroi\e2e\evidencias\05_rota_protegida.cy.js (1).mp4
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ ✔  01_login_valido.cy.js                    00:23        1        1        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✔  02_login_invalido.cy.js                  00:21        1        1        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✔  03_painel_reflete_api.cy.js              00:32        1        1        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✔  04_autorizacao_por_perfil.cy.js          00:27        2        2        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✔  05_rota_protegida.cy.js                  00:24        2        2        -        -        - │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    ✔  All specs passed!                        02:08        7        7        -        -        -  
+

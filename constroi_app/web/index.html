@@ -41,6 +41,35 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    (function () {
+      var atributo = 'flt-semantics-identifier';
+      function espelhar(raiz) {
+        if (!raiz || raiz.nodeType !== 1) return;
+        if (raiz.hasAttribute(atributo)) {
+          raiz.setAttribute('data-cy', raiz.getAttribute(atributo));
+        }
+        raiz.querySelectorAll('[' + atributo + ']').forEach(function (no) {
+          no.setAttribute('data-cy', no.getAttribute(atributo));
+        });
+      }
+      new MutationObserver(function (mudancas) {
+        mudancas.forEach(function (mudanca) {
+          if (mudanca.type === 'attributes') {
+            espelhar(mudanca.target);
+            return;
+          }
+          mudanca.addedNodes.forEach(espelhar);
+        });
+      }).observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: [atributo],
+      });
+      espelhar(document.body);
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

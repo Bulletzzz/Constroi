@@ -26,6 +26,7 @@ class AppBottomNavigation extends StatelessWidget {
           ))
             Expanded(
               child: Semantics(
+                identifier: 'nav-${rota.name}',
                 selected: rota == rotaAtual,
                 button: true,
                 child: InkWell(
