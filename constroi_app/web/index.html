@@ -44,14 +44,22 @@
   <script>
     (function () {
       var atributo = 'flt-semantics-identifier';
+      function marcarCampos(no, nome) {
+        no.querySelectorAll('input, textarea').forEach(function (campo) {
+          campo.setAttribute('data-cy', nome + (campo.disabled ? '-inativo' : '-campo'));
+        });
+      }
+      function marcar(no) {
+        var nome = no.getAttribute(atributo);
+        no.setAttribute('data-cy', nome);
+        marcarCampos(no, nome);
+      }
       function espelhar(raiz) {
         if (!raiz || raiz.nodeType !== 1) return;
-        if (raiz.hasAttribute(atributo)) {
-          raiz.setAttribute('data-cy', raiz.getAttribute(atributo));
-        }
-        raiz.querySelectorAll('[' + atributo + ']').forEach(function (no) {
-          no.setAttribute('data-cy', no.getAttribute(atributo));
-        });
+        if (raiz.hasAttribute(atributo)) marcar(raiz);
+        raiz.querySelectorAll('[' + atributo + ']').forEach(marcar);
+        var dono = raiz.closest ? raiz.closest('[' + atributo + ']') : null;
+        if (dono) marcar(dono);
       }
       new MutationObserver(function (mudancas) {
         mudancas.forEach(function (mudanca) {

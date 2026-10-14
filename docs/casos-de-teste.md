@@ -25,17 +25,20 @@ A solução tem três partes:
    acessibilidade, que o Flutter publica como elementos `flt-semantics` no DOM.
 2. Os widgets testados recebem `Semantics(identifier: 'nome')`, que o motor
    renderiza como `flt-semantics-identifier="nome"`.
-3. Um observador no `web/index.html` espelha esse atributo para `data-cy`.
+3. Um observador no `web/index.html` espelha esse atributo para `data-cy`, e marca
+   também os `input` que o Flutter cria dentro de um campo de texto: o habilitado
+   recebe o sufixo `-campo` e o desabilitado, `-inativo`.
 
-Resultado: os testes usam exclusivamente `[data-cy=...]`, e o app ganhou de brinde
-a árvore de acessibilidade que antes não existia, passando a ser legível por leitor
-de tela.
+Resultado: os testes usam exclusivamente `[data-cy=...]`, sem nenhum seletor por
+classe, texto, posição ou tipo de elemento. E o app ganhou de brinde a árvore de
+acessibilidade que antes não existia, passando a ser legível por leitor de tela.
 
 ## Identificadores disponíveis
 
 | Identificador | Onde |
 |---|---|
 | `login-email`, `login-senha` | campos da tela de acesso |
+| `login-email-campo`, `login-senha-campo` | o `input` editável dentro de cada campo |
 | `login-entrar` | botão de envio |
 | `login-erro` | mensagem de falha de autenticação |
 | `painel-total-itens` | indicador de materiais distintos |

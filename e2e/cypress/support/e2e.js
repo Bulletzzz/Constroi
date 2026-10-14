@@ -142,7 +142,7 @@ Cypress.Commands.add('abrirApp', (caminho = '/') => {
 
 Cypress.Commands.add('preencher', (identificador, texto) => {
   cy.get(`[data-cy=${identificador}]`).click();
-  cy.get(`[data-cy=${identificador}] input:enabled`).clear().type(texto);
+  cy.get(`[data-cy=${identificador}-campo]`).clear().type(texto);
 });
 
 Cypress.Commands.add('entrarNaTela', (email) => {

@@ -110,10 +110,12 @@ A ponte tem três partes:
 2. Os widgets testados usam `Semantics(identifier: 'nome')`, que vira
    `flt-semantics-identifier="nome"`.
 3. Um `MutationObserver` em `constroi_app/web/index.html` espelha esse atributo
-   para `data-cy`.
+   para `data-cy`, e também marca os `input` que o Flutter cria dentro de um campo
+   de texto, com os sufixos `-campo` e `-inativo`.
 
-Por isso os testes selecionam apenas por `[data-cy=...]`, sem recorrer a classe,
-texto ou posição. A lista de identificadores está em `docs/casos-de-teste.md`.
+Por isso os testes selecionam **exclusivamente** por `[data-cy=...]`, sem recorrer
+a classe, texto, posição ou tipo de elemento. A lista de identificadores está em
+`docs/casos-de-teste.md`.
 
 Para instrumentar um elemento novo, envolva o widget em `Semantics(identifier: ...)`
 e reconstrua a imagem do app. Campos de texto merecem `textField: true` e botões,
@@ -123,8 +125,10 @@ e reconstrua a imagem do app. Campos de texto merecem `textField: true` e botõe
 
 Campos de texto do Flutter publicam dois `input` dentro do nó semântico: um
 desabilitado, que é a representação estática, e outro habilitado, criado quando o
-campo recebe foco. Por isso `cy.preencher` clica antes de digitar e mira em
-`input:enabled`.
+campo recebe foco. O espelho marca os dois, para que nenhum teste precise recorrer
+a seletor de elemento: o habilitado vira `nome-campo` e o desabilitado,
+`nome-inativo`. Por isso `cy.preencher` clica no nó e depois digita em
+`[data-cy=nome-campo]`.
 
 A sessão do Constrói vive apenas em memória. Recarregar a página desconecta o
 usuário, então para atualizar uma tela navegue para outra e volte, em vez de usar
