@@ -331,12 +331,14 @@ class _AppHomeState extends State<AppHome> {
     return [
       _Indicador(
         titulo: 'TOTAL DE ITENS',
+        identificador: 'painel-total-itens',
         valor: formatarNumero(indicadores.totalItens),
         apoio: 'Materiais distintos cadastrados no estoque',
         icone: Icons.inventory_2,
       ),
       _Indicador(
         titulo: 'RUPTURAS CRÍTICAS',
+        identificador: 'painel-rupturas-criticas',
         valor: formatarNumero(indicadores.rupturasCriticas),
         apoio: indicadores.rupturasCriticas == 0
             ? 'Nenhum saldo zerado'
@@ -346,6 +348,7 @@ class _AppHomeState extends State<AppHome> {
       ),
       _Indicador(
         titulo: 'REQUISIÇÕES PENDENTES',
+        identificador: 'painel-requisicoes-pendentes',
         valor: formatarNumero(indicadores.requisicoesPendentes),
         apoio: widget.perfil == PerfilUsuario.pedreiro
             ? 'Suas requisições aguardando aprovação'
@@ -355,6 +358,7 @@ class _AppHomeState extends State<AppHome> {
       if (widget.perfil.possuiNivel(PerfilUsuario.engenheiro))
         _Indicador(
           titulo: 'VALOR ESTIMADO',
+          identificador: 'painel-valor-estimado',
           valor: indicadores.valorEstimado == null
               ? 'Não informado'
               : 'R\$ ${formatarNumero(indicadores.valorEstimado!, casas: 2)}',
@@ -468,66 +472,71 @@ class _Indicador extends StatelessWidget {
     required this.valor,
     required this.apoio,
     required this.icone,
+    required this.identificador,
     this.destaque = false,
   });
   final String titulo;
   final String valor;
   final String apoio;
   final IconData icone;
+  final String identificador;
   final bool destaque;
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF9F9F9),
-      border: Border(
-        top: BorderSide(color: destaque ? _amarelo : _tinta, width: 4),
-        left: const BorderSide(color: Color(0xFFE5E5E5)),
-        right: const BorderSide(color: Color(0xFFE5E5E5)),
-        bottom: const BorderSide(color: Color(0xFFE5E5E5)),
+  Widget build(BuildContext context) => Semantics(
+    identifier: identificador,
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9F9),
+        border: Border(
+          top: BorderSide(color: destaque ? _amarelo : _tinta, width: 4),
+          left: const BorderSide(color: Color(0xFFE5E5E5)),
+          right: const BorderSide(color: Color(0xFFE5E5E5)),
+          bottom: const BorderSide(color: Color(0xFFE5E5E5)),
+        ),
       ),
-    ),
-    padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                titulo,
-                style: const TextStyle(
-                  color: Color(0xFF4D4732),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  titulo,
+                  style: const TextStyle(
+                    color: Color(0xFF4D4732),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-            Icon(
-              icone,
-              color: destaque ? const Color(0xFF9B7200) : _tinta,
-              size: 22,
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            valor,
-            style: const TextStyle(
-              color: _tinta,
-              fontSize: 38,
-              height: 1.2,
-              fontWeight: FontWeight.w800,
+              Icon(
+                icone,
+                color: destaque ? const Color(0xFF9B7200) : _tinta,
+                size: 22,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              valor,
+              style: const TextStyle(
+                color: _tinta,
+                fontSize: 38,
+                height: 1.2,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(apoio, style: const TextStyle(color: _cinza, fontSize: 11)),
-      ],
+          const SizedBox(height: 8),
+          Text(apoio, style: const TextStyle(color: _cinza, fontSize: 11)),
+        ],
+      ),
     ),
   );
 }

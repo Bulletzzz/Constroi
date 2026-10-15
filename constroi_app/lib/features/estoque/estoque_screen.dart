@@ -203,7 +203,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     final nomes = _categoriasVistas.entries.toList()
       ..sort((a, b) => a.value.compareTo(b.value));
     return [
-      const DropdownMenuItem<int?>(value: null, child: Text('Todos os materiais')),
+      const DropdownMenuItem<int?>(
+        value: null,
+        child: Text('Todos os materiais'),
+      ),
       for (final e in nomes)
         DropdownMenuItem<int?>(value: e.key, child: Text(e.value)),
     ];
@@ -356,7 +359,9 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       child: InkWell(
         onTap: aoTocar,
         child: DecoratedBox(
-          decoration: BoxDecoration(border: Border.all(color: _tinta, width: 2)),
+          decoration: BoxDecoration(
+            border: Border.all(color: _tinta, width: 2),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -393,14 +398,18 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         const Icon(Icons.search, size: 20, color: _tinta),
         const SizedBox(width: 12),
         Expanded(
-          child: TextField(
-            controller: _busca,
-            onChanged: _digitou,
-            onSubmitted: (_) => _buscar(),
-            style: const TextStyle(color: _tinta, fontSize: 13),
-            decoration: const InputDecoration.collapsed(
-              hintText: 'Buscar SKU ou nome',
-              hintStyle: TextStyle(color: _dica, fontSize: 13),
+          child: Semantics(
+            identifier: 'estoque-busca',
+            textField: true,
+            child: TextField(
+              controller: _busca,
+              onChanged: _digitou,
+              onSubmitted: (_) => _buscar(),
+              style: const TextStyle(color: _tinta, fontSize: 13),
+              decoration: const InputDecoration.collapsed(
+                hintText: 'Buscar SKU ou nome',
+                hintStyle: TextStyle(color: _dica, fontSize: 13),
+              ),
             ),
           ),
         ),
@@ -509,7 +518,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         else if (_erro != null)
           _aviso(_erro!, aoTentar: _buscar)
         else if (_itens.isEmpty)
-          _aviso('Nenhum material encontrado com esses filtros.')
+          Semantics(
+            identifier: 'estoque-vazio',
+            child: _aviso('Nenhum material encontrado com esses filtros.'),
+          )
         else ...[
           for (var i = 0; i < _itens.length; i++) _linha(_itens[i], i.isOdd),
           if (_erroPagina != null) _falhaDaPagina(),
@@ -519,71 +531,76 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     ),
   );
 
-  Widget _linha(ItemEstoque item, bool alternada) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: alternada ? _linhaPar : Colors.white,
-      border: const Border(bottom: BorderSide(color: _separador)),
-    ),
-    child: SizedBox(
-      height: 56,
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 40,
-            color: item.baixo ? _perigo : _tinta,
-          ),
-          const SizedBox(width: 9),
-          SizedBox(
-            width: 35,
-            child: Semantics(
-              label: item.baixo
-                  ? 'Abaixo do mínimo de ${item.estoqueMinimo}'
-                  : 'Saldo normal',
-              child: Icon(
-                item.baixo ? Icons.warning_rounded : Icons.square_rounded,
-                size: item.baixo ? 18 : 12,
-                color: item.baixo ? _perigo : _tinta,
-              ),
+  Widget _linha(ItemEstoque item, bool alternada) => Semantics(
+    identifier: 'estoque-linha',
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: alternada ? _linhaPar : Colors.white,
+        border: const Border(bottom: BorderSide(color: _separador)),
+      ),
+      child: SizedBox(
+        height: 56,
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 40,
+              color: item.baixo ? _perigo : _tinta,
             ),
-          ),
-          SizedBox(
-            width: 104,
-            child: Text(
-              item.identificacao,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _tinta,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.produtoNome,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _tinta, fontSize: 13),
+            const SizedBox(width: 9),
+            SizedBox(
+              width: 35,
+              child: Semantics(
+                label: item.baixo
+                    ? 'Abaixo do mínimo de ${item.estoqueMinimo}'
+                    : 'Saldo normal',
+                child: Icon(
+                  item.baixo ? Icons.warning_rounded : Icons.square_rounded,
+                  size: item.baixo ? 18 : 12,
+                  color: item.baixo ? _perigo : _tinta,
                 ),
-                Text(
-                  _detalheDaLinha(item),
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: item.baixo ? _perigo : _apoio,
-                    fontSize: 11,
-                    fontWeight: item.baixo ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+            SizedBox(
+              width: 104,
+              child: Text(
+                item.identificacao,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _tinta,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.produtoNome,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _tinta, fontSize: 13),
                   ),
-                ),
-              ],
+                  Text(
+                    _detalheDaLinha(item),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: item.baixo ? _perigo : _apoio,
+                      fontSize: 11,
+                      fontWeight: item.baixo
+                          ? FontWeight.w700
+                          : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-        ],
+            const SizedBox(width: 12),
+          ],
+        ),
       ),
     ),
   );

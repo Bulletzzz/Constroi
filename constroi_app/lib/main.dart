@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:http/http.dart' as http;
 
 import 'core/api/api_client.dart';
@@ -19,6 +20,7 @@ import 'widgets/app_home.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SemanticsBinding.instance.ensureSemantics();
   runApp(const ConstroiApp());
 }
 
