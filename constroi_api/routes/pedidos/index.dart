@@ -16,16 +16,20 @@ Future<Response> _listar(RequestContext context) async {
   final filtros = context.request.uri.queryParameters;
   final limite = int.tryParse(filtros['limit'] ?? '50');
   final offset = int.tryParse(filtros['offset'] ?? '0');
+  final pedidoComItens = filtros['com_itens'] ?? 'false';
   if (limite == null ||
       limite < 1 ||
       limite > 200 ||
       offset == null ||
-      offset < 0) {
+      offset < 0 ||
+      (pedidoComItens != 'true' && pedidoComItens != 'false')) {
     return _erro(
       HttpStatus.badRequest,
-      'Informe limit entre 1 e 200 e offset maior ou igual a zero.',
+      'Informe limit entre 1 e 200, offset maior ou igual a zero e '
+      'com_itens true ou false.',
     );
   }
+  final comItens = pedidoComItens == 'true';
 
   final usuario = context.usuario;
   final condicoes = <String>[
@@ -68,10 +72,12 @@ Future<Response> _listar(RequestContext context) async {
     parametros['protocolo'] = protocolo;
   }
 
-  final linhas = await context.read<Pool<void>>().execute(
+  final banco = context.read<Pool<void>>();
+  final linhas = await banco.execute(
     Sql.named('''
       SELECT p.id, p.usuario_id, p.obra_id, p.protocolo,
-             p.status, p.justificativa, p.data
+             p.status, p.justificativa, p.local_obra, p.urgencia, p.data,
+             u.nome AS solicitante_nome, o.nome AS obra_nome
       FROM pedido p
       JOIN obra o ON o.id = p.obra_id
       JOIN usuario u ON u.id = p.usuario_id
@@ -82,11 +88,42 @@ Future<Response> _listar(RequestContext context) async {
     parameters: parametros,
   );
 
+  final pedidos = linhas
+      .map((linha) => dadosDoPedido(linha.toColumnMap()))
+      .toList();
+
+  if (!comItens || pedidos.isEmpty) {
+    return Response.json(body: {'pedidos': pedidos});
+  }
+
+  final itens = await banco.execute(
+    Sql.named('''
+      SELECT i.pedido_id, i.id, i.produto_id, pr.nome AS produto_nome,
+             pr.unidade, i.quantidade
+      FROM item_pedido i
+      JOIN produto pr ON pr.id = i.produto_id
+      WHERE i.pedido_id = ANY(@pedidos) AND pr.empresa_id = @empresaItens
+      ORDER BY i.pedido_id, i.id
+    '''),
+    parameters: {
+      'pedidos': pedidos.map((pedido) => pedido['id'] as int).toList(),
+      'empresaItens': usuario.empresaId,
+    },
+  );
+
+  final porPedido = <int, List<Map<String, dynamic>>>{};
+  for (final linha in itens) {
+    final dados = linha.toColumnMap();
+    final pedidoId = dados.remove('pedido_id') as int;
+    porPedido.putIfAbsent(pedidoId, () => []).add(dadosDoItemPedido(dados));
+  }
+
   return Response.json(
     body: {
-      'pedidos': linhas
-          .map((linha) => dadosDoPedido(linha.toColumnMap()))
-          .toList(),
+      'pedidos': [
+        for (final pedido in pedidos)
+          {...pedido, 'itens': porPedido[pedido['id']] ?? const []},
+      ],
     },
   );
 }
@@ -123,6 +160,25 @@ Future<Response> _criar(RequestContext context) async {
     return _erro(
       HttpStatus.badRequest,
       'A justificativa deve ser um texto com ate 255 caracteres.',
+    );
+  }
+
+  final localObra = dados['local_obra'];
+  if (localObra != null &&
+      (localObra is! String ||
+          localObra.trim().isEmpty ||
+          localObra.trim().length > limiteLocalObra)) {
+    return _erro(
+      HttpStatus.badRequest,
+      'O local da obra deve ser um texto de 1 a $limiteLocalObra caracteres.',
+    );
+  }
+
+  final urgencia = dados['urgencia'] ?? 'padrao';
+  if (!urgenciasAceitas.contains(urgencia)) {
+    return _erro(
+      HttpStatus.badRequest,
+      'A urgencia deve ser ${urgenciasAceitas.join(' ou ')}.',
     );
   }
 
@@ -187,16 +243,21 @@ Future<Response> _criar(RequestContext context) async {
       final pedidos = await transacao.execute(
         Sql.named('''
           INSERT INTO pedido
-            (usuario_id, obra_id, protocolo, status, justificativa)
-          VALUES (@usuario, @obra, @protocolo, 'pendente', @justificativa)
+            (usuario_id, obra_id, protocolo, status, justificativa,
+             local_obra, urgencia)
+          VALUES (@usuario, @obra, @protocolo, 'pendente', @justificativa,
+             @local, @urgencia)
           ON CONFLICT (protocolo) DO NOTHING
-          RETURNING id, usuario_id, obra_id, protocolo, status, justificativa, data
+          RETURNING id, usuario_id, obra_id, protocolo, status, justificativa,
+            local_obra, urgencia, data
         '''),
         parameters: {
           'usuario': usuario.id,
           'obra': obraId,
           'protocolo': gerar(),
           'justificativa': (justificativa as String?)?.trim(),
+          'local': (localObra as String?)?.trim(),
+          'urgencia': urgencia,
         },
       );
       if (pedidos.isEmpty) continue;
