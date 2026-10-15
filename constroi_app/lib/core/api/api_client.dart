@@ -78,6 +78,9 @@ class ApiClient {
   Future<dynamic> post(String path, {Object? body}) =>
       request('POST', path, body: body);
 
+  Future<dynamic> patch(String path, {Object? body}) =>
+      request('PATCH', path, body: body);
+
   void close() {
     if (_ownsClient) _http.close();
   }

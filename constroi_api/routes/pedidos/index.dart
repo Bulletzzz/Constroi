@@ -68,10 +68,12 @@ Future<Response> _listar(RequestContext context) async {
     parametros['protocolo'] = protocolo;
   }
 
-  final linhas = await context.read<Pool<void>>().execute(
+  final banco = context.read<Pool<void>>();
+  final linhas = await banco.execute(
     Sql.named('''
       SELECT p.id, p.usuario_id, p.obra_id, p.protocolo,
-             p.status, p.justificativa, p.local_obra, p.urgencia, p.data
+             p.status, p.justificativa, p.local_obra, p.urgencia, p.data,
+             u.nome AS solicitante_nome, o.nome AS obra_nome
       FROM pedido p
       JOIN obra o ON o.id = p.obra_id
       JOIN usuario u ON u.id = p.usuario_id
@@ -82,11 +84,42 @@ Future<Response> _listar(RequestContext context) async {
     parameters: parametros,
   );
 
+  final pedidos = linhas
+      .map((linha) => dadosDoPedido(linha.toColumnMap()))
+      .toList();
+
+  if (pedidos.isEmpty) {
+    return Response.json(body: {'pedidos': pedidos});
+  }
+
+  final itens = await banco.execute(
+    Sql.named('''
+      SELECT i.pedido_id, i.id, i.produto_id, pr.nome AS produto_nome,
+             pr.unidade, i.quantidade
+      FROM item_pedido i
+      JOIN produto pr ON pr.id = i.produto_id
+      WHERE i.pedido_id = ANY(@pedidos) AND pr.empresa_id = @empresaItens
+      ORDER BY i.pedido_id, i.id
+    '''),
+    parameters: {
+      'pedidos': pedidos.map((pedido) => pedido['id'] as int).toList(),
+      'empresaItens': usuario.empresaId,
+    },
+  );
+
+  final porPedido = <int, List<Map<String, dynamic>>>{};
+  for (final linha in itens) {
+    final dados = linha.toColumnMap();
+    final pedidoId = dados.remove('pedido_id') as int;
+    porPedido.putIfAbsent(pedidoId, () => []).add(dadosDoItemPedido(dados));
+  }
+
   return Response.json(
     body: {
-      'pedidos': linhas
-          .map((linha) => dadosDoPedido(linha.toColumnMap()))
-          .toList(),
+      'pedidos': [
+        for (final pedido in pedidos)
+          {...pedido, 'itens': porPedido[pedido['id']] ?? const []},
+      ],
     },
   );
 }

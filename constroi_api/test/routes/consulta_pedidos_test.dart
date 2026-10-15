@@ -63,6 +63,10 @@ void main() {
       'protocolo': 'PED-0123456789ABCDEF0123456789ABCDEF',
       'status': 'pendente',
       'justificativa': null,
+      'local_obra': null,
+      'urgencia': 'padrao',
+      'solicitante_nome': 'Pedreiro Teste',
+      'obra_nome': 'Obra Alpha',
       'data': DateTime.utc(2026, 10, 4),
     };
     resultados = [
@@ -83,6 +87,21 @@ void main() {
   });
 
   group('GET /pedidos', () {
+    setUp(() {
+      resultados.add(
+        _resultado([
+          {
+            'pedido_id': 30,
+            'id': 40,
+            'produto_id': 20,
+            'produto_nome': 'Cimento',
+            'unidade': 'saco',
+            'quantidade': '2.50',
+          },
+        ]),
+      );
+    });
+
     for (final nivel in Nivel.values) {
       test('aplica empresa e visibilidade do perfil ${nivel.name}', () async {
         autenticar(nivel);
@@ -90,9 +109,21 @@ void main() {
         final corpo = jsonDecode(await resposta.body()) as Map<String, dynamic>;
         expect(resposta.statusCode, HttpStatus.ok);
         expect(corpo['pedidos'], [
-          {...pedido, 'data': '2026-10-04T00:00:00.000Z'},
+          {
+            ...pedido,
+            'data': '2026-10-04T00:00:00.000Z',
+            'itens': [
+              {
+                'id': 40,
+                'produto_id': 20,
+                'produto_nome': 'Cimento',
+                'unidade': 'saco',
+                'quantidade': '2.50',
+              },
+            ],
+          },
         ]);
-        expect(parametros.single, {
+        expect(parametros.first, {
           'empresa': 3,
           'usuario': 7,
           'todos': nivel != Nivel.pedreiro,
@@ -108,7 +139,7 @@ void main() {
       );
       final resposta = await lista.onRequest(contexto);
       expect(resposta.statusCode, HttpStatus.ok);
-      expect(parametros.single, {
+      expect(parametros.first, {
         'empresa': 3,
         'usuario': 7,
         'todos': false,
@@ -128,8 +159,8 @@ void main() {
       test('aceita filtro isolado ${filtro.$2}', () async {
         requisicao('/pedidos?${filtro.$1}');
         expect((await lista.onRequest(contexto)).statusCode, HttpStatus.ok);
-        expect(parametros.single[filtro.$2], filtro.$3);
-        expect(parametros.single, hasLength(6));
+        expect(parametros.first[filtro.$2], filtro.$3);
+        expect(parametros.first, hasLength(6));
       });
     }
 
@@ -147,7 +178,7 @@ void main() {
     test('aceita paginacao com filtros e limite maximo', () async {
       requisicao('/pedidos?limit=200&offset=200&status=pendente');
       expect((await lista.onRequest(contexto)).statusCode, HttpStatus.ok);
-      expect(parametros.single, {
+      expect(parametros.first, {
         'empresa': 3,
         'usuario': 7,
         'todos': false,
@@ -208,7 +239,7 @@ void main() {
       () async {
         requisicao('/pedidos?usuario_id=99&empresa_id=99&todos=true');
         expect((await lista.onRequest(contexto)).statusCode, HttpStatus.ok);
-        expect(parametros.single, {
+        expect(parametros.first, {
           'empresa': 3,
           'usuario': 7,
           'todos': false,
@@ -292,8 +323,8 @@ void main() {
             'erro': 'Pedido nao encontrado.',
           });
           expect(parametros, hasLength(1));
-          expect(parametros.single['empresa'], 3);
-          expect(parametros.single['todos'], nivel != Nivel.pedreiro);
+          expect(parametros.first['empresa'], 3);
+          expect(parametros.first['todos'], nivel != Nivel.pedreiro);
         },
       );
     }
