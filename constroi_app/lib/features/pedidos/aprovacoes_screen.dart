@@ -97,10 +97,7 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
     await _decidir(() => widget.service.recusar(pedido.id, motivo), pedido);
   }
 
-  Future<void> _decidir(
-    Future<Pedido> Function() acao,
-    Pedido pedido,
-  ) async {
+  Future<void> _decidir(Future<Pedido> Function() acao, Pedido pedido) async {
     try {
       await acao();
       if (!mounted) return;
@@ -128,54 +125,64 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
 
   Future<String?> _pedirJustificativa(Pedido pedido) {
     final controlador = TextEditingController();
+    var faltaMotivo = false;
     return showDialog<String>(
       context: context,
-      builder: (contexto) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(),
-        title: Text(
-          'RECUSAR ${pedido.protocoloCurto}',
-          style: const TextStyle(
-            color: _tinta,
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.6,
-          ),
-        ),
-        content: Semantics(
-          identifier: 'aprovacoes-justificativa',
-          textField: true,
-          child: TextField(
-            controller: controlador,
-            autofocus: true,
-            maxLines: 3,
-            maxLength: 255,
-            style: const TextStyle(color: _tinta, fontSize: 13),
-            decoration: const InputDecoration(
-              hintText: 'Explique o motivo da recusa',
-              hintStyle: TextStyle(color: _dica, fontSize: 13),
-              border: OutlineInputBorder(),
+      builder: (contexto) => StatefulBuilder(
+        builder: (contexto, redesenhar) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(),
+          title: Text(
+            'RECUSAR ${pedido.protocoloCurto}',
+            style: const TextStyle(
+              color: _tinta,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(contexto).pop(),
-            child: Text('CANCELAR', style: _mini(_apoio)),
-          ),
-          Semantics(
-            identifier: 'aprovacoes-confirmar-recusa',
-            button: true,
-            child: TextButton(
-              onPressed: () {
-                final texto = controlador.text.trim();
-                if (texto.isEmpty) return;
-                Navigator.of(contexto).pop(texto);
+          content: Semantics(
+            identifier: 'aprovacoes-justificativa',
+            textField: true,
+            child: TextField(
+              controller: controlador,
+              autofocus: true,
+              maxLines: 3,
+              maxLength: 255,
+              onChanged: (_) {
+                if (faltaMotivo) redesenhar(() => faltaMotivo = false);
               },
-              child: Text('RECUSAR', style: _mini(_perigo)),
+              style: const TextStyle(color: _tinta, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Explique o motivo da recusa',
+                hintStyle: const TextStyle(color: _dica, fontSize: 13),
+                border: const OutlineInputBorder(),
+                errorText: faltaMotivo ? 'A recusa exige justificativa.' : null,
+              ),
             ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(contexto).pop(),
+              child: Text('CANCELAR', style: _mini(_apoio)),
+            ),
+            Semantics(
+              identifier: 'aprovacoes-confirmar-recusa',
+              button: true,
+              child: TextButton(
+                onPressed: () {
+                  final texto = controlador.text.trim();
+                  if (texto.isEmpty) {
+                    redesenhar(() => faltaMotivo = true);
+                    return;
+                  }
+                  Navigator.of(contexto).pop(texto);
+                },
+                child: Text('RECUSAR', style: _mini(_perigo)),
+              ),
+            ),
+          ],
+        ),
       ),
     ).whenComplete(controlador.dispose);
   }
@@ -194,6 +201,7 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
         color: _tinta,
         onRefresh: _carregar,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
           children: [
             _titulo(),
@@ -260,13 +268,19 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
           Text(
             _carregando
                 ? '...'
-                : '${_pendentes.length} ${_pendentes.length == 1 ? 'PENDENTE' : 'PENDENTES'}',
+                : _contagem(),
             style: _mini(_destaque),
           ),
         ],
       ),
     ),
   );
+
+  String _contagem() {
+    final total = _pendentes.length;
+    final palavra = total == 1 ? 'PENDENTE' : 'PENDENTES';
+    return total >= limiteDaFila ? '$total+ $palavra' : '$total $palavra';
+  }
 
   Widget _cartao(Pedido pedido) {
     final decidindo = _decidindo == pedido.id;

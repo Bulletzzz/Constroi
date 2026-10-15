@@ -54,6 +54,8 @@ class ObraDisponivel {
   }
 }
 
+const limiteDaFila = 50;
+
 class PedidosService {
   PedidosService({required ApiClient api}) : _api = api;
 
@@ -108,7 +110,10 @@ class PedidosService {
   }
 
   Future<List<Pedido>> pendentes({int? obraId}) async {
-    final consulta = <String, String>{'status': 'pendente', 'limit': '50'};
+    final consulta = <String, String>{
+      'status': 'pendente',
+      'limit': '$limiteDaFila',
+    };
     if (obraId != null) consulta['obra_id'] = '$obraId';
     final resposta = await _api.get('pedidos', query: consulta);
     return _lista(resposta, 'pedidos')

@@ -169,6 +169,11 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
     }
   }
 
+  void _sair() {
+    _novaRequisicao();
+    Navigator.of(context).pushReplacementNamed(AppRoute.painel.caminho);
+  }
+
   void _novaRequisicao() {
     setState(() {
       _quantidade.clear();
@@ -407,7 +412,7 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
             child: _botao(
               identificador: 'requisicao-cancelar',
               rotulo: 'CANCELAR',
-              aoTocar: _novaRequisicao,
+              aoTocar: _sair,
               primario: false,
             ),
           ),
