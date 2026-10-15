@@ -16,16 +16,20 @@ Future<Response> _listar(RequestContext context) async {
   final filtros = context.request.uri.queryParameters;
   final limite = int.tryParse(filtros['limit'] ?? '50');
   final offset = int.tryParse(filtros['offset'] ?? '0');
+  final pedidoComItens = filtros['com_itens'] ?? 'false';
   if (limite == null ||
       limite < 1 ||
       limite > 200 ||
       offset == null ||
-      offset < 0) {
+      offset < 0 ||
+      (pedidoComItens != 'true' && pedidoComItens != 'false')) {
     return _erro(
       HttpStatus.badRequest,
-      'Informe limit entre 1 e 200 e offset maior ou igual a zero.',
+      'Informe limit entre 1 e 200, offset maior ou igual a zero e '
+      'com_itens true ou false.',
     );
   }
+  final comItens = pedidoComItens == 'true';
 
   final usuario = context.usuario;
   final condicoes = <String>[
@@ -88,7 +92,7 @@ Future<Response> _listar(RequestContext context) async {
       .map((linha) => dadosDoPedido(linha.toColumnMap()))
       .toList();
 
-  if (pedidos.isEmpty) {
+  if (!comItens || pedidos.isEmpty) {
     return Response.json(body: {'pedidos': pedidos});
   }
 

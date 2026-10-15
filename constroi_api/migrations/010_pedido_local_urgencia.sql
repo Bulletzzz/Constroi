@@ -17,6 +17,3 @@ ALTER TABLE pedido
 ALTER TABLE pedido
     ADD CONSTRAINT ck_pedido_local_obra
     CHECK (local_obra IS NULL OR LENGTH(TRIM(local_obra)) > 0);
-
-CREATE INDEX IF NOT EXISTS ix_pedido_urgencia
-    ON pedido (obra_id, urgencia, data DESC);

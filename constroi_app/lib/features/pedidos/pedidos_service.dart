@@ -112,6 +112,7 @@ class PedidosService {
   Future<List<Pedido>> pendentes({int? obraId}) async {
     final consulta = <String, String>{
       'status': 'pendente',
+      'com_itens': 'true',
       'limit': '$limiteDaFila',
     };
     if (obraId != null) consulta['obra_id'] = '$obraId';

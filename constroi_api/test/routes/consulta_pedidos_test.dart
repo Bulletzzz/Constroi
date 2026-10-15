@@ -88,6 +88,7 @@ void main() {
 
   group('GET /pedidos', () {
     setUp(() {
+      requisicao('/pedidos?com_itens=true');
       resultados.add(
         _resultado([
           {
@@ -163,6 +164,24 @@ void main() {
         expect(parametros.first, hasLength(6));
       });
     }
+
+    test('sem com_itens a listagem nao carrega itens', () async {
+      requisicao('/pedidos');
+      final resposta = await lista.onRequest(contexto);
+      final corpo = jsonDecode(await resposta.body()) as Map<String, dynamic>;
+      expect(resposta.statusCode, HttpStatus.ok);
+      expect((corpo['pedidos']! as List).single, isNot(contains('itens')));
+      expect(parametros, hasLength(1));
+    });
+
+    test('com_itens invalido retorna 400 sem consultar o banco', () async {
+      requisicao('/pedidos?com_itens=1');
+      expect(
+        (await lista.onRequest(contexto)).statusCode,
+        HttpStatus.badRequest,
+      );
+      expect(parametros, isEmpty);
+    });
 
     test('retorna lista vazia quando nenhum pedido e visivel', () async {
       resultados = [_resultado([])];

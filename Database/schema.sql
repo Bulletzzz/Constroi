@@ -108,9 +108,6 @@ CREATE TABLE IF NOT EXISTS pedido (
         CHECK (local_obra IS NULL OR LENGTH(TRIM(local_obra)) > 0)
 );
 
-CREATE INDEX IF NOT EXISTS ix_pedido_urgencia
-    ON pedido (obra_id, urgencia, data DESC);
-
 CREATE UNIQUE INDEX IF NOT EXISTS ux_pedido_protocolo
     ON pedido (protocolo);
 

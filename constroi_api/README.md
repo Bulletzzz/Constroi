@@ -63,6 +63,12 @@ dart test integration_test/baixa_estoque_test.dart --reporter expanded
 | `urgencia` | `padrao` ou `urgente`; assume `padrao` quando omitido |
 
 Os dois voltam em `GET /pedidos`, `GET /pedidos/{id}` e na resposta da aprovação.
+
+A listagem aceita `com_itens=true`, que acrescenta os itens de cada pedido numa única
+consulta extra, em vez de uma por pedido. Sem o parâmetro o corpo permanece como era,
+para quem só precisa de status e protocolo não pagar pelo peso dos itens. Valor
+diferente de `true` ou `false` retorna 400. `solicitante_nome` e `obra_nome` vêm sempre,
+porque saem das tabelas já associadas e não custam consulta nem linha adicional.
 Urgência fora da lista, local vazio ou acima do limite retornam 400 sem gravar nada.
 Acrescentar níveis de urgência é só alterar o CHECK da migration em uma nova.
 

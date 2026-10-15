@@ -41,6 +41,8 @@ class AprovacoesScreen extends StatefulWidget {
 
 class _AprovacoesScreenState extends State<AprovacoesScreen> {
   List<Pedido> _pendentes = const [];
+  List<ObraDisponivel> _obras = const [];
+  int? _obraId;
   bool _carregando = true;
   String? _erro;
   int? _decidindo;
@@ -58,7 +60,11 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
       _erro = null;
     });
     try {
-      final pendentes = await widget.service.pendentes();
+      if (_obras.isEmpty) {
+        final obras = await widget.service.obras();
+        if (mounted) setState(() => _obras = obras);
+      }
+      final pendentes = await widget.service.pendentes(obraId: _obraId);
       if (!mounted) return;
       setState(() {
         _pendentes = pendentes;
@@ -206,6 +212,10 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
           children: [
             _titulo(),
             const SizedBox(height: 20),
+            if (_obras.length > 1) ...[
+              _seletorDeObra(),
+              const SizedBox(height: 16),
+            ],
             _faixaDaFila(),
             const SizedBox(height: 16),
             if (_erroDaDecisao != null) ...[
@@ -256,6 +266,41 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
     ],
   );
 
+  Widget _seletorDeObra() => Semantics(
+    identifier: 'aprovacoes-obra',
+    button: true,
+    child: Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _tinta, width: 2),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int?>(
+          value: _obraId,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, color: _tinta),
+          style: const TextStyle(color: _tinta, fontSize: 13),
+          onChanged: _carregando
+              ? null
+              : (valor) {
+                  setState(() => _obraId = valor);
+                  _carregar();
+                },
+          items: [
+            const DropdownMenuItem<int?>(child: Text('Todas as obras')),
+            for (final obra in _obras)
+              DropdownMenuItem<int?>(
+                value: obra.id,
+                child: Text(obra.nome, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+
   Widget _faixaDaFila() => Semantics(
     identifier: 'aprovacoes-contador',
     child: Container(
@@ -265,12 +310,7 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('AGUARDANDO APROVAÇÃO', style: _mini(Colors.white)),
-          Text(
-            _carregando
-                ? '...'
-                : _contagem(),
-            style: _mini(_destaque),
-          ),
+          Text(_carregando ? '...' : _contagem(), style: _mini(_destaque)),
         ],
       ),
     ),
