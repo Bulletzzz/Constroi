@@ -71,7 +71,7 @@ Future<Response> _listar(RequestContext context) async {
   final linhas = await context.read<Pool<void>>().execute(
     Sql.named('''
       SELECT p.id, p.usuario_id, p.obra_id, p.protocolo,
-             p.status, p.justificativa, p.data
+             p.status, p.justificativa, p.local_obra, p.urgencia, p.data
       FROM pedido p
       JOIN obra o ON o.id = p.obra_id
       JOIN usuario u ON u.id = p.usuario_id
@@ -123,6 +123,25 @@ Future<Response> _criar(RequestContext context) async {
     return _erro(
       HttpStatus.badRequest,
       'A justificativa deve ser um texto com ate 255 caracteres.',
+    );
+  }
+
+  final localObra = dados['local_obra'];
+  if (localObra != null &&
+      (localObra is! String ||
+          localObra.trim().isEmpty ||
+          localObra.trim().length > limiteLocalObra)) {
+    return _erro(
+      HttpStatus.badRequest,
+      'O local da obra deve ser um texto de 1 a $limiteLocalObra caracteres.',
+    );
+  }
+
+  final urgencia = dados['urgencia'] ?? 'padrao';
+  if (!urgenciasAceitas.contains(urgencia)) {
+    return _erro(
+      HttpStatus.badRequest,
+      'A urgencia deve ser ${urgenciasAceitas.join(' ou ')}.',
     );
   }
 
@@ -187,16 +206,21 @@ Future<Response> _criar(RequestContext context) async {
       final pedidos = await transacao.execute(
         Sql.named('''
           INSERT INTO pedido
-            (usuario_id, obra_id, protocolo, status, justificativa)
-          VALUES (@usuario, @obra, @protocolo, 'pendente', @justificativa)
+            (usuario_id, obra_id, protocolo, status, justificativa,
+             local_obra, urgencia)
+          VALUES (@usuario, @obra, @protocolo, 'pendente', @justificativa,
+             @local, @urgencia)
           ON CONFLICT (protocolo) DO NOTHING
-          RETURNING id, usuario_id, obra_id, protocolo, status, justificativa, data
+          RETURNING id, usuario_id, obra_id, protocolo, status, justificativa,
+            local_obra, urgencia, data
         '''),
         parameters: {
           'usuario': usuario.id,
           'obra': obraId,
           'protocolo': gerar(),
           'justificativa': (justificativa as String?)?.trim(),
+          'local': (localObra as String?)?.trim(),
+          'urgencia': urgencia,
         },
       );
       if (pedidos.isEmpty) continue;

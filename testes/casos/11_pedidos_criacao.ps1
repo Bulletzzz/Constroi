@@ -68,9 +68,30 @@ Chamar POST '/pedidos' $c.pedreiro @{
 $itensDemais = 1..201 | ForEach-Object { @{ produto_id = $_; quantidade = 1 } }
 Chamar POST '/pedidos' $c.pedreiro @{ pedido = @{ obra_id = $obraId; itens = $itensDemais } } 400 'POST pedido com 201 itens' | Out-Null
 
+$comCampos = Chamar POST '/pedidos' $c.pedreiro @{
+    pedido = @{
+        obra_id = $obraId
+        local_obra = '  Setor 4 - Fundacao  '
+        urgencia = 'urgente'
+        itens = @(@{ produto_id = $produtoId; quantidade = 1 })
+    }
+} 201 'POST pedido com local e urgencia'
+Conferir ($comCampos.local_obra -eq 'Setor 4 - Fundacao') "local da obra aparado (veio '$($comCampos.local_obra)')"
+Conferir ($comCampos.urgencia -eq 'urgente') "urgencia gravada (veio '$($comCampos.urgencia)')"
+Conferir ($pedido.urgencia -eq 'padrao') "pedido sem urgencia nasce padrao (veio '$($pedido.urgencia)')"
+Conferir ($null -eq $pedido.local_obra) 'pedido sem local fica nulo'
+
+Chamar POST '/pedidos' $c.pedreiro @{
+    pedido = @{ obra_id = $obraId; urgencia = 'altissima'; itens = @(@{ produto_id = $produtoId; quantidade = 1 }) }
+} 400 'POST pedido com urgencia invalida' | Out-Null
+
+Chamar POST '/pedidos' $c.pedreiro @{
+    pedido = @{ obra_id = $obraId; local_obra = '   '; itens = @(@{ produto_id = $produtoId; quantidade = 1 }) }
+} 400 'POST pedido com local em branco' | Out-Null
+
 Chamar PUT '/pedidos' $c.pedreiro $null 405 'PUT /pedidos nao permitido' | Out-Null
 
-VerificarBanco "SELECT COUNT(*)::text FROM pedido WHERE obra_id = $obraId" '1' `
-    'apenas o pedido valido foi gravado'
+VerificarBanco "SELECT COUNT(*)::text FROM pedido WHERE obra_id = $obraId" '2' `
+    'apenas os dois pedidos validos foram gravados'
 
 FinalizarCaso

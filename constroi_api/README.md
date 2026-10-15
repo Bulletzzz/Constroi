@@ -53,6 +53,24 @@ $env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres@127.0.0.1:55434/constro
 dart test integration_test/baixa_estoque_test.dart --reporter expanded
 ```
 
+## Requisição de material (RF06, Figma 04)
+
+`POST /pedidos` aceita dois campos opcionais além dos itens:
+
+| Campo | Regra |
+|---|---|
+| `local_obra` | Texto de 1 a 120 caracteres, aparado; `null` quando omitido |
+| `urgencia` | `padrao` ou `urgente`; assume `padrao` quando omitido |
+
+Os dois voltam em `GET /pedidos`, `GET /pedidos/{id}` e na resposta da aprovação.
+Urgência fora da lista, local vazio ou acima do limite retornam 400 sem gravar nada.
+Acrescentar níveis de urgência é só alterar o CHECK da migration em uma nova.
+
+A leitura do catálogo passou a exigir apenas nível de pedreiro: quem requisita
+precisa escolher o material. Criar, editar e remover produto continuam exigindo
+engenheiro. A mudança está no `routes/produtos/_middleware.dart`, que decide o
+nível pelo método da requisição.
+
 ## Migrations
 
 As migrations ficam em `migrations/` e são executadas em ordem numérica. A tabela `schema_migrations` registra cada arquivo aplicado, impedindo a execução duplicada.
@@ -66,6 +84,7 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `007_corrige_colunas_legadas.sql`: alinha `pedido.protocolo` e as colunas de data com o que a `001` declara, recriando as views de custo
 - `008_protege_estoque.sql`: devolve ao `estoque` o `CHECK (quantidade >= 0)` e o `UNIQUE (obra_id, produto_id)` que a `001` declara
 - `009_consulta_estoque.sql`: SKU opcional e estoque mínimo por produto, com SKU único por empresa (sem diferenciar maiúsculas)
+- `010_pedido_local_urgencia.sql`: local da obra e nível de urgência no pedido, com urgência restrita a `padrao` ou `urgente`
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
 

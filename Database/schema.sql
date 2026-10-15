@@ -100,8 +100,16 @@ CREATE TABLE IF NOT EXISTS pedido (
     protocolo VARCHAR(50) NOT NULL,
     status VARCHAR(30) NOT NULL,
     justificativa VARCHAR(255),
-    data TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    local_obra VARCHAR(120),
+    urgencia VARCHAR(20) NOT NULL DEFAULT 'padrao',
+    data TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_pedido_urgencia CHECK (urgencia IN ('padrao', 'urgente')),
+    CONSTRAINT ck_pedido_local_obra
+        CHECK (local_obra IS NULL OR LENGTH(TRIM(local_obra)) > 0)
 );
+
+CREATE INDEX IF NOT EXISTS ix_pedido_urgencia
+    ON pedido (obra_id, urgencia, data DESC);
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_pedido_protocolo
     ON pedido (protocolo);
@@ -354,5 +362,6 @@ INSERT INTO schema_migrations (versao) VALUES
     ('006_usuario_tipo.sql'),
     ('007_corrige_colunas_legadas.sql'),
     ('008_protege_estoque.sql'),
-    ('009_consulta_estoque.sql')
+    ('009_consulta_estoque.sql'),
+    ('010_pedido_local_urgencia.sql')
 ON CONFLICT (versao) DO NOTHING;
