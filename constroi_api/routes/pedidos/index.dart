@@ -71,7 +71,7 @@ Future<Response> _listar(RequestContext context) async {
   final linhas = await context.read<Pool<void>>().execute(
     Sql.named('''
       SELECT p.id, p.usuario_id, p.obra_id, p.protocolo,
-             p.status, p.justificativa, p.data
+             p.status, p.justificativa, p.justificativa_recusa, p.data
       FROM pedido p
       JOIN obra o ON o.id = p.obra_id
       JOIN usuario u ON u.id = p.usuario_id
@@ -190,7 +190,8 @@ Future<Response> _criar(RequestContext context) async {
             (usuario_id, obra_id, protocolo, status, justificativa)
           VALUES (@usuario, @obra, @protocolo, 'pendente', @justificativa)
           ON CONFLICT (protocolo) DO NOTHING
-          RETURNING id, usuario_id, obra_id, protocolo, status, justificativa, data
+          RETURNING id, usuario_id, obra_id, protocolo, status,
+                    justificativa, justificativa_recusa, data
         '''),
         parameters: {
           'usuario': usuario.id,
