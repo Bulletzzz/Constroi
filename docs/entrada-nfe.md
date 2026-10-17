@@ -57,3 +57,32 @@ materiais pendentes, reenvio/concorrência, limites e rollback após falha no lo
 O runner de migrations deve ser executado duas vezes em outro banco local vazio:
 primeira aplicação completa, segunda sem alterações. Nenhum comando exige Neon
 ou implantação Docker para validar esta entrega.
+
+## Anexar XML a uma entrada existente (RF10, card 76)
+
+`PATCH /entradas/{id}/xml`, com o mesmo multipart (`xml`) e perfil
+engenheiro/master, anexa o documento original e sua chave à entrada da empresa.
+Não exige `obra_id`: a obra é a da entrada já registrada. Os itens e quantidades
+do XML são lidos e validados, mas não substituem o lançamento manual. O fluxo
+não insere itens nem altera qualquer saldo de estoque.
+
+Retorna **200** com `id`, `obra_id`, `chave_nfe` e `xml_anexado: true`.
+ID inválido retorna **400**; entrada inexistente ou de outra empresa, **404**.
+Entrada que já possui XML (inclusive legado) e chave já usada na empresa retornam
+**409**, sem sobrescrever documento ou repetir log. As validações de upload e
+XML são as mesmas do POST. O log `ANEXO_NFE` usa o ator autenticado e é confirmado
+na mesma transação do anexo; falha no log reverte XML e metadados.
+
+O bloqueio de linha serializa anexações à mesma entrada. A constraint da
+migration 011 impede anexações da mesma nota em entradas diferentes, inclusive
+em concorrência com importações pelo POST. Não requer outra migration.
+
+```powershell
+curl.exe -X PATCH http://localhost:8080/entradas/7/xml `
+  -H "Authorization: Bearer SEU_TOKEN" `
+  -F "xml=@nota.xml;type=application/xml"
+```
+
+A suíte `integration_test/nfe_test.dart` também cobre anexação, reenvio, disputa
+pela mesma entrada/chave, XML legado, isolamento, permissões e rollback do log,
+verificando que as linhas de itens e estoque permanecem iguais.

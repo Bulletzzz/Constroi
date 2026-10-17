@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:constroi_api/anexo_nfe.dart';
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/entrada_nfe.dart';
 import 'package:constroi_api/nfe.dart';
@@ -9,6 +10,7 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:postgres/postgres.dart';
 import 'package:test/test.dart';
 
+import '../routes/entradas/[id]/xml.dart' as rota_anexo;
 import '../routes/entradas/_middleware.dart' as protecao;
 import '../routes/entradas/xml.dart' as rota;
 import '../test/fixtures/nfe.dart';
@@ -37,10 +39,15 @@ void main() {
     int empresa = 1,
     Nivel? nivel = Nivel.engenheiro,
     String? corpoBruto,
+    String? entrada,
   }) async {
-    final req = await cliente.postUrl(
-      Uri.parse('http://127.0.0.1:${servidor.port}/entradas/xml'),
-    );
+    final caminho = entrada == null
+        ? '/entradas/xml'
+        : '/entradas/$entrada/xml';
+    final uri = Uri.parse('http://127.0.0.1:${servidor.port}$caminho');
+    final req = entrada == null
+        ? await cliente.postUrl(uri)
+        : await cliente.patchUrl(uri);
     if (nivel != null) {
       final token = JWT(
         {'empresa_id': empresa, 'tipo': nivel.name},
@@ -92,7 +99,12 @@ void main() {
       queryMode: QueryMode.simple,
     );
     final handler = protecao
-        .middleware(rota.onRequest)
+        .middleware((context) {
+          final partes = context.request.uri.pathSegments;
+          return partes.length == 3
+              ? rota_anexo.onRequest(context, partes[1])
+              : rota.onRequest(context);
+        })
         .use(provider<Pool<void>>((_) => banco))
         .use(
           provider<UsuarioAutenticado?>(
@@ -266,5 +278,160 @@ void main() {
     final antes = await estado();
     expect((await enviar()).status, 409);
     expect(await estado(), antes);
+  });
+
+  Future<int> entradaManual({int obra = 1, int usuario = 1}) async {
+    final id =
+        (await sql(
+              'INSERT INTO entrada_estoque (usuario_id,obra_id,justificativa) '
+              "VALUES (@usuario,@obra,'manual') RETURNING id",
+              {'usuario': usuario, 'obra': obra},
+            )).single[0]!
+            as int;
+    await sql(
+      'INSERT INTO item_entrada (entrada_id,produto_id,quantidade) '
+      'VALUES (@entrada,@produto,1.25)',
+      {'entrada': id, 'produto': obra == 1 ? 1 : 3},
+    );
+    return id;
+  }
+
+  test(
+    'PATCH anexa XML original sem somar ou reescrever itens/estoque',
+    () async {
+      final id = await entradaManual();
+      final saldoAntes = await sql('SELECT * FROM estoque ORDER BY id');
+      final itensAntes = await sql('SELECT * FROM item_entrada ORDER BY id');
+      final xml = xmlNfe();
+      final res = await enviar(entrada: '$id', xml: xml);
+      expect(res.status, 200, reason: '${res.body}');
+      expect(res.body['xml_anexado'], true);
+      expect(
+        (await sql(
+          'SELECT xml_nota_fiscal,justificativa FROM entrada_estoque',
+        )).single.toList(),
+        [xml, 'manual'],
+      );
+      expect(
+        (await sql('SELECT * FROM estoque ORDER BY id')).map((r) => r.toList()),
+        saldoAntes.map((r) => r.toList()),
+      );
+      expect(
+        (await sql(
+          'SELECT * FROM item_entrada ORDER BY id',
+        )).map((r) => r.toList()),
+        itensAntes.map((r) => r.toList()),
+      );
+      expect(
+        (await sql('SELECT acao FROM log_sistema')).single[0],
+        contains('ANEXO_NFE'),
+      );
+    },
+  );
+
+  test('repeticao e duas anexacoes simultaneas nao sobrescrevem XML', () async {
+    final id = await entradaManual();
+    final respostas = await Future.wait([
+      enviar(entrada: '$id'),
+      enviar(entrada: '$id'),
+    ]);
+    expect(respostas.map((r) => r.status).toList()..sort(), [200, 409]);
+    final depois = await estado();
+    expect(
+      (await enviar(
+        entrada: '$id',
+        xml: xmlNfe(chave: '2' * 44),
+      )).status,
+      409,
+    );
+    expect(await estado(), depois);
+    expect(depois.single, [1, 1, 1, '5.00']);
+  });
+
+  test('anexo restringe perfil, empresa e ids sem alterar entrada', () async {
+    final alheia = await entradaManual(obra: 2, usuario: 2);
+    final antes = await estado();
+    expect((await enviar(entrada: '$alheia')).status, 404);
+    expect((await enviar(entrada: '999')).status, 404);
+    for (final id in ['0', 'abc', '2147483648']) {
+      expect((await enviar(entrada: id)).status, 400);
+    }
+    expect((await enviar(entrada: '$alheia', nivel: null)).status, 401);
+    expect(
+      (await enviar(entrada: '$alheia', nivel: Nivel.pedreiro)).status,
+      403,
+    );
+    expect(await estado(), antes);
+  });
+
+  test(
+    'entrada legada com XML e XML malformado nao sao sobrescritos',
+    () async {
+      final id = await entradaManual();
+      expect((await enviar(entrada: '$id', xml: '<NFe>')).status, 400);
+      await sql("UPDATE entrada_estoque SET xml_nota_fiscal='<legado/>'");
+      expect((await enviar(entrada: '$id')).status, 409);
+      expect(
+        (await sql('SELECT xml_nota_fiscal FROM entrada_estoque')).single[0],
+        '<legado/>',
+      );
+      expect((await sql('SELECT count(*) FROM log_sistema')).single[0], 0);
+    },
+  );
+
+  test('mesma chave em entradas diferentes permite so um anexo', () async {
+    final a = await entradaManual();
+    final b = await entradaManual();
+    final respostas = await Future.wait([
+      enviar(entrada: '$a'),
+      enviar(entrada: '$b'),
+    ]);
+    expect(respostas.map((r) => r.status).toList()..sort(), [200, 409]);
+    expect(
+      (await sql(
+        'SELECT count(*) FROM entrada_estoque '
+        'WHERE xml_nota_fiscal IS NOT NULL',
+      )).single[0],
+      1,
+    );
+    expect((await estado()).single, [2, 2, 1, '5.00']);
+  });
+
+  test('anexo nao reutiliza chave ja importada pelo POST', () async {
+    expect((await enviar()).status, 201);
+    final id = await entradaManual();
+    final antes = await estado();
+    expect((await enviar(entrada: '$id')).status, 409);
+    expect(await estado(), antes);
+  });
+
+  test('falha no log do anexo reverte XML e metadados', () async {
+    final id = await entradaManual();
+    await banco.execute(r'''
+      CREATE FUNCTION falha_nfe_teste() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'falha injetada'; END; $$ LANGUAGE plpgsql;
+      CREATE TRIGGER falha_nfe BEFORE INSERT ON log_sistema
+      FOR EACH ROW EXECUTE FUNCTION falha_nfe_teste();
+    ''', queryMode: QueryMode.simple);
+    await expectLater(
+      anexarNfe(
+        banco,
+        usuario: const UsuarioAutenticado(
+          id: 1,
+          empresaId: 1,
+          nivel: Nivel.engenheiro,
+        ),
+        entradaId: id,
+        nota: lerNfe(utf8.encode(xmlNfe())),
+      ),
+      throwsA(isA<ServerException>()),
+    );
+    expect(
+      (await sql(
+        'SELECT xml_nota_fiscal,empresa_nfe_id,chave_nfe FROM entrada_estoque',
+      )).single.toList(),
+      [null, null, null],
+    );
+    expect((await estado()).single, [1, 1, 0, '5.00']);
   });
 }
