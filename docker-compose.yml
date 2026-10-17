@@ -26,14 +26,27 @@ services:
     container_name: constroi-api
     ports:
       - "8080:8080"
-    env_file:
-      - ./constroi_api/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Configure a conexao de execucao}
+      DATABASE_TRANSACTION_TIMEOUT_MS: ${DATABASE_TRANSACTION_TIMEOUT_MS:-30000}
+      JWT_SECRET: ${JWT_SECRET:?Configure JWT_SECRET}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+  migrate:
+    build:
+      context: ./constroi_api
+      target: build
+    profiles: ["tools"]
+    working_dir: /app
+    env_file:
+      - path: ./constroi_api/.env.migrations
+        required: false
+    command: ["dart", "run", "bin/migrate.dart"]
 
   dev:
     build:

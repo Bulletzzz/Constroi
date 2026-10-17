@@ -16,3 +16,4 @@ build/
 coverage/
 # o .env.example serve de modelo e precisa ir pro git
 !.env.example
+!.env.migrations.example
