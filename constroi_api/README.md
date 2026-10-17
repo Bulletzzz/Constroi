@@ -66,6 +66,7 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `007_corrige_colunas_legadas.sql`: alinha `pedido.protocolo` e as colunas de data com o que a `001` declara, recriando as views de custo
 - `008_protege_estoque.sql`: devolve ao `estoque` o `CHECK (quantidade >= 0)` e o `UNIQUE (obra_id, produto_id)` que a `001` declara
 - `009_consulta_estoque.sql`: SKU opcional e estoque mínimo por produto, com SKU único por empresa (sem diferenciar maiúsculas)
+- `011_entrada_nfe.sql`: chave da NF-e única por empresa e vínculo com a obra da empresa; entradas antigas permanecem intactas
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
 
@@ -77,7 +78,7 @@ dart pub get
 dart run bin/migrate.dart
 ```
 
-O arquivo `Database/schema.sql` representa o estado consolidado depois das migrations 001 a 009 e serve para inicializar um banco vazio. Bancos existentes devem ser atualizados exclusivamente pelo executor de migrations.
+O arquivo `Database/schema.sql` representa o estado consolidado das migrations listadas acima e serve para inicializar um banco vazio. Bancos existentes devem ser atualizados exclusivamente pelo executor de migrations.
 
 Para criar uma alteração futura, adicione uma nova migration numerada. Não edite uma migration que já tenha sido aplicada.
 
