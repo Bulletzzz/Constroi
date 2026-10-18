@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS pedido (
     protocolo VARCHAR(50) NOT NULL,
     status VARCHAR(30) NOT NULL,
     justificativa VARCHAR(255),
+    justificativa_recusa VARCHAR(255),
     data TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -344,7 +345,7 @@ FROM obra AS o
 LEFT JOIN vw_lancamento_custo AS l ON l.obra_id = o.id
 GROUP BY o.id, o.orcamento_total;
 
--- Este arquivo representa o estado final depois das migrations 001 a 009.
+-- Este arquivo representa o estado final depois das migrations 001 a 010.
 INSERT INTO schema_migrations (versao) VALUES
     ('001_schema_inicial.sql'),
     ('002_tabelas_login.sql'),
@@ -354,5 +355,6 @@ INSERT INTO schema_migrations (versao) VALUES
     ('006_usuario_tipo.sql'),
     ('007_corrige_colunas_legadas.sql'),
     ('008_protege_estoque.sql'),
-    ('009_consulta_estoque.sql')
+    ('009_consulta_estoque.sql'),
+    ('010_justificativa_recusa.sql')
 ON CONFLICT (versao) DO NOTHING;

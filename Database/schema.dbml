@@ -73,6 +73,7 @@ Table pedido {
   protocolo varchar(50) [not null, unique]
   status varchar(30) [not null]
   justificativa varchar(255)
+  justificativa_recusa varchar(255)
   data timestamptz [not null]
 }
 
