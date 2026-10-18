@@ -29,7 +29,10 @@ $codigos = @()
 try {
     $tarefas = @($pedidos | ForEach-Object {
         $conteudo = [System.Net.Http.StringContent]::new($json, [System.Text.Encoding]::UTF8, 'application/json')
-        $cliente.PatchAsync("$global:BaseUrl/pedidos/$($_.id)", $conteudo)
+        $requisicao = [System.Net.Http.HttpRequestMessage]::new(
+            [System.Net.Http.HttpMethod]::new('PATCH'), "$global:BaseUrl/pedidos/$($_.id)")
+        $requisicao.Content = $conteudo
+        $cliente.SendAsync($requisicao)
     })
     [System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]$tarefas)
     foreach ($tarefa in $tarefas) { $codigos += [int]$tarefa.Result.StatusCode }

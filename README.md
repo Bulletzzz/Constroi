@@ -103,6 +103,7 @@ acesso daquele trecho.
 | `GET` `PATCH` | `/equipamentos/{id}` | engenheiro |
 | `GET` `POST` | `/pedidos` | pedreiro |
 | `GET` | `/pedidos/{id}` | pedreiro |
+| `PATCH` | `/pedidos/{id}` | engenheiro |
 
 Nas rotas de escrita, o objeto vai dentro de uma chave com o nome do recurso:
 
@@ -156,6 +157,15 @@ Essas regras valem também para buscas por protocolo e pelo ID do pedido.
 O `GET /pedidos/{id}` retorna o pedido com a lista `itens`, incluindo
 `id`, `produto_id`, `produto_nome`, `unidade` e `quantidade` em texto.
 Pedidos inexistentes ou sem permissão de acesso retornam `404`.
+
+O `PATCH /pedidos/{id}` aceita `{"pedido":{"status":"aprovado"}}` para aprovar
+com baixa atômica de estoque, ou
+`{"pedido":{"status":"recusado","justificativa":"Material desnecessário"}}`
+para recusar. Exige engenheiro/master. A recusa exige justificativa aparada de
+1 a 255 caracteres; dados inválidos retornam `400`. O motivo da recusa fica em
+`justificativa_recusa`, preservando a justificativa original. A decisão fica
+registrada em `log_sistema` na mesma transação. Pedido já decidido retorna `409`,
+inclusive em decisões concorrentes. Aplique a migration 010 antes de usar.
 
 ## Rodando o projeto
 
