@@ -14,7 +14,8 @@ Chamar POST '/login' $null @{ email = "ninguem.$marca@teste.com"; senha = $globa
 Chamar POST '/login' $null @{ email = "master.$marca@teste.com" } 400 'corpo incompleto' | Out-Null
 Chamar POST '/login' $null @{} 400 'corpo vazio' | Out-Null
 
-Chamar GET '/produtos' $c.pedreiro $null 403 'pedreiro nao le produtos' | Out-Null
+Chamar GET '/produtos' $c.pedreiro $null 200 'pedreiro le o catalogo para requisitar' | Out-Null
+Chamar POST '/produtos' $c.pedreiro @{ produto = @{ nome = 'X'; unidade = 'un' } } 403 'pedreiro nao cadastra produto' | Out-Null
 Chamar GET '/usuarios' $c.engenheiro $null 403 'engenheiro nao le usuarios' | Out-Null
 Chamar GET '/produtos' $c.engenheiro $null 200 'engenheiro le produtos' | Out-Null
 Chamar GET '/usuarios' $c.master $null 200 'master le usuarios' | Out-Null

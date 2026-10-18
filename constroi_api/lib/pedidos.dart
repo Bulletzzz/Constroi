@@ -3,6 +3,9 @@ import 'dart:math';
 typedef GeradorProtocolo = String Function();
 typedef ItemPedido = ({int produtoId, num quantidade});
 
+const urgenciasAceitas = {'padrao', 'urgente'};
+const limiteLocalObra = 120;
+
 String gerarProtocolo() {
   final aleatorio = Random.secure();
   final codigo = List.generate(

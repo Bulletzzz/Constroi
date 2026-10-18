@@ -27,7 +27,8 @@ Future<Response> onRequest(RequestContext context, String idDaRota) async {
   final pedidos = await banco.execute(
     Sql.named('''
       SELECT p.id, p.usuario_id, p.obra_id, p.protocolo,
-             p.status, p.justificativa, p.justificativa_recusa, p.data
+             p.status, p.justificativa, p.justificativa_recusa,
+             p.local_obra, p.urgencia, p.data
       FROM pedido p
       JOIN obra o ON o.id = p.obra_id
       JOIN usuario u ON u.id = p.usuario_id
@@ -160,8 +161,8 @@ Future<Response> _recusar(
           UPDATE pedido
           SET status = 'recusado', justificativa_recusa = @justificativa
           WHERE id = @pedido
-          RETURNING id, usuario_id, obra_id, protocolo, status,
-                    justificativa, justificativa_recusa, data
+          RETURNING id, usuario_id, obra_id, protocolo, status, justificativa,
+                    justificativa_recusa, local_obra, urgencia, data
         '''),
         parameters: {'pedido': id, 'justificativa': justificativa},
       );

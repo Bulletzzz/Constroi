@@ -276,6 +276,82 @@ void main() {
     verifyNever(() => banco.runTx<Response>(any()));
   });
 
+  test('sem local e urgencia o pedido nasce padrao e sem local', () async {
+    final resposta = await rota.onRequest(contexto);
+    expect(resposta.statusCode, HttpStatus.created);
+    expect(parametros[3]['local'], isNull);
+    expect(parametros[3]['urgencia'], 'padrao');
+  });
+
+  test('local e urgencia chegam aparados ao banco', () async {
+    requisicao({
+      'pedido': {
+        'obra_id': 10,
+        'local_obra': '  Setor 4 - Fundacao  ',
+        'urgencia': 'urgente',
+        'itens': [
+          {'produto_id': 20, 'quantidade': 2.5},
+          {'produto_id': 21, 'quantidade': 1},
+        ],
+      },
+    });
+    final resposta = await rota.onRequest(contexto);
+    expect(resposta.statusCode, HttpStatus.created);
+    expect(parametros[3]['local'], 'Setor 4 - Fundacao');
+    expect(parametros[3]['urgencia'], 'urgente');
+  });
+
+  for (final invalida in ['altissima', '', 'URGENTE', 7]) {
+    test('urgencia $invalida retorna 400 sem tocar o banco', () async {
+      requisicao({
+        'pedido': {
+          'obra_id': 10,
+          'urgencia': invalida,
+          'itens': [
+            {'produto_id': 20, 'quantidade': 1},
+          ],
+        },
+      });
+      final resposta = await rota.onRequest(contexto);
+      expect(resposta.statusCode, HttpStatus.badRequest);
+      verifyNever(() => banco.runTx<Response>(any()));
+    });
+  }
+
+  test('local da obra em branco retorna 400', () async {
+    requisicao({
+      'pedido': {
+        'obra_id': 10,
+        'local_obra': '   ',
+        'itens': [
+          {'produto_id': 20, 'quantidade': 1},
+        ],
+      },
+    });
+    expect(
+      (await rota.onRequest(contexto)).statusCode,
+      HttpStatus.badRequest,
+    );
+    verifyNever(() => banco.runTx<Response>(any()));
+  });
+
+  test('local da obra acima do limite retorna 400', () async {
+    requisicao({
+      'pedido': {
+        'obra_id': 10,
+        'local_obra': 'A' * (limiteLocalObra + 1),
+        'itens': [
+          {'produto_id': 20, 'quantidade': 1},
+        ],
+      },
+    });
+    expect(
+      (await rota.onRequest(contexto)).statusCode,
+      HttpStatus.badRequest,
+    );
+    verifyNever(() => banco.runTx<Response>(any()));
+  });
+
   test('metodos diferentes de GET e POST retornam 405', () async {
     when(() => contexto.request).thenReturn(
       Request.delete(Uri.parse('http://localhost/pedidos')),
