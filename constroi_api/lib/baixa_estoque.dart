@@ -159,7 +159,7 @@ Future<Map<String, dynamic>> aprovarPedidoComBaixa(
         UPDATE pedido SET status = 'aprovado'
         WHERE id = @pedido
         RETURNING id, usuario_id, obra_id, protocolo, status, justificativa,
-          local_obra, urgencia, data
+                  justificativa_recusa, local_obra, urgencia, data
       '''),
         parameters: {'pedido': pedidoId},
       );
