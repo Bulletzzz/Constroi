@@ -199,4 +199,34 @@ void main() {
     expect(find.text('REQUISIÇÃO ENVIADA'), findsNothing);
     expect(find.text('QUANTIDADE'), findsOneWidget);
   });
+
+  for (final tamanho in [
+    const Size(320, 900),
+    const Size(390, 900),
+  ]) {
+    testWidgets('requisicao sem overflow em $tamanho e texto ampliado', (
+      tester,
+    ) async {
+      final montagem = montar();
+      await tester.binding.setSurfaceSize(tamanho);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.4)),
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: RequisicaoScreen(
+              service: montagem.service,
+              perfil: PerfilUsuario.pedreiro,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView), const Offset(0, -900));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

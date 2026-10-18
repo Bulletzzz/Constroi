@@ -360,5 +360,5 @@ INSERT INTO schema_migrations (versao) VALUES
     ('007_corrige_colunas_legadas.sql'),
     ('008_protege_estoque.sql'),
     ('009_consulta_estoque.sql'),
-    ('010_pedido_local_urgencia.sql')
+    ('012_pedido_local_urgencia.sql')
 ON CONFLICT (versao) DO NOTHING;

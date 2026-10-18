@@ -47,6 +47,7 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
   String? _erro;
   int? _decidindo;
   String? _erroDaDecisao;
+  int _consultaAtual = 0;
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
   }
 
   Future<void> _carregar() async {
+    final consulta = ++_consultaAtual;
     setState(() {
       _carregando = true;
       _erro = null;
@@ -62,22 +64,23 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
     try {
       if (_obras.isEmpty) {
         final obras = await widget.service.obras();
-        if (mounted) setState(() => _obras = obras);
+        if (!mounted || consulta != _consultaAtual) return;
+        setState(() => _obras = obras);
       }
       final pendentes = await widget.service.pendentes(obraId: _obraId);
-      if (!mounted) return;
+      if (!mounted || consulta != _consultaAtual) return;
       setState(() {
         _pendentes = pendentes;
         _carregando = false;
       });
     } on ApiException catch (erro) {
-      if (!mounted) return;
+      if (!mounted || consulta != _consultaAtual) return;
       setState(() {
         _erro = erro.message;
         _carregando = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || consulta != _consultaAtual) return;
       setState(() {
         _erro = 'Não foi possível carregar a fila agora.';
         _carregando = false;
@@ -307,9 +310,16 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
       color: _tinta,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('AGUARDANDO APROVAÇÃO', style: _mini(Colors.white)),
+          Expanded(
+            child: Text(
+              'AGUARDANDO APROVAÇÃO',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _mini(Colors.white),
+            ),
+          ),
+          const SizedBox(width: 12),
           Text(_carregando ? '...' : _contagem(), style: _mini(_destaque)),
         ],
       ),
@@ -338,17 +348,21 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  pedido.protocoloCurto,
-                  style: const TextStyle(
-                    color: _tinta,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+                Expanded(
+                  child: Text(
+                    pedido.protocoloCurto,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _tinta,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,

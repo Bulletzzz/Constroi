@@ -297,9 +297,14 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            rotulos[passo]!,
-            style: _mini(atual || concluido ? _tinta : _inativo),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 76),
+            child: Text(
+              rotulos[passo]!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _mini(atual || concluido ? _tinta : _inativo),
+            ),
           ),
         ],
       ),
