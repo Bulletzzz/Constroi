@@ -18,8 +18,7 @@ A resposta HTTP 503 continua genérica, sem expor detalhes internos ao app.
 
 `PATCH /pedidos/{id}` com `{"pedido":{"status":"aprovado"}}` aprova o pedido
 e baixa seus materiais. Exige engenheiro/master e restringe pedido, obra,
-solicitante e produtos à empresa autenticada. O GET de detalhe continua igual.
-A recusa pertence ao card 65 e pode ser integrada depois no mesmo PATCH.
+solicitante e produtos à empresa autenticada.
 
 O serviço `lib/baixa_estoque.dart` bloqueia o pedido com `FOR UPDATE`, exige
 status pendente, bloqueia os itens e depois os saldos em ordem de produto.
@@ -33,13 +32,40 @@ materiais inválidos retorna 400. Pedido já decidido ou falta de saldo
 (inclusive registro ausente) retornam 409. Uma falha em qualquer item, log ou
 aprovação reverte tudo; falta de saldo mantém
 o pedido pendente. Aprovações concorrentes do mesmo pedido não duplicam a
-baixa. Não há nova migration: a proteção `ck_estoque_quantidade` já existe.
+baixa. A proteção `ck_estoque_quantidade` já existe.
+
+## Aprovar e recusar pedido (RF07, card 65)
+
+O mesmo `PATCH /pedidos/{id}` aceita
+`{"pedido":{"status":"recusado","justificativa":"Material desnecessário"}}`.
+A justificativa da recusa é obrigatória, aparada e limitada a 255 caracteres;
+ausência, texto vazio, tipo inválido ou tamanho excedido retornam 400.
+A permissão usa o middleware `exigirNivel(Nivel.engenheiro)` no PATCH desta rota,
+mantendo GET e POST disponíveis ao pedreiro conforme as regras existentes.
+
+A migration `010_justificativa_recusa.sql` acrescenta `pedido.justificativa_recusa`.
+O motivo enviado na recusa fica nesse campo, preservando `pedido.justificativa`,
+que contém o motivo original da solicitação. Os dois campos aparecem nas
+respostas de criação, decisão, listagem e detalhe.
+
+A recusa bloqueia o pedido com `FOR UPDATE OF p`, exige status pendente e grava
+status, justificativa da recusa e log `RECUSA_PEDIDO` na mesma transação.
+O log identifica o usuário autenticado, pedido, obra e protocolo; o motivo
+completo fica no pedido. A recusa não altera o estoque nem depende de saldo.
+Pedido inexistente/de outra empresa retorna 404 e pedido já decidido retorna 409.
+Recusas concorrentes e disputa entre aprovação e recusa confirmam uma única
+decisão. Uma falha no log reverte também o status e a justificativa da recusa.
+A aprovação continua usando `aprovarPedidoComBaixa` e seus logs `BAIXA_ESTOQUE`.
+
+Execute também `..\testes\executar.ps1 -Caso 17_recusa_de_pedido`, com a API em
+execução e o banco atualizado pela migration 010.
 
 Além de `dart test`, há uma suíte explícita de integração com PostgreSQL real
 e servidor HTTP local usando o handler e middleware de pedidos. Ela valida
 duas requisições realmente bloqueadas ao mesmo tempo no banco, a disputa pelo
 último material, reaprovação concorrente, ordem oposta de itens, decimais,
-isolamento de empresas, permissões, rollback após falhas injetadas e o CHECK
+isolamento de empresas, permissões, recusa, disputa entre decisões,
+rollback após falhas injetadas e o CHECK
 contra saldo negativo. PGlite não substitui essa validação de concorrência.
 
 Execute na pasta `constroi_api`, com um banco local **descartável** já criado.
@@ -52,6 +78,30 @@ sem pular os cenários.
 $env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres@127.0.0.1:55434/constroi_test_baixa?sslmode=require&max_connection_count=10'
 dart test integration_test/baixa_estoque_test.dart --reporter expanded
 ```
+
+## Requisição de material (RF06, Figma 04)
+
+`POST /pedidos` aceita dois campos opcionais além dos itens:
+
+| Campo | Regra |
+|---|---|
+| `local_obra` | Texto de 1 a 120 caracteres, aparado; `null` quando omitido |
+| `urgencia` | `padrao` ou `urgente`; assume `padrao` quando omitido |
+
+Os dois voltam em `GET /pedidos`, `GET /pedidos/{id}` e na resposta da aprovação.
+
+A listagem aceita `com_itens=true`, que acrescenta os itens de cada pedido numa única
+consulta extra, em vez de uma por pedido. Sem o parâmetro o corpo permanece como era,
+para quem só precisa de status e protocolo não pagar pelo peso dos itens. Valor
+diferente de `true` ou `false` retorna 400. `solicitante_nome` e `obra_nome` vêm sempre,
+porque saem das tabelas já associadas e não custam consulta nem linha adicional.
+Urgência fora da lista, local vazio ou acima do limite retornam 400 sem gravar nada.
+Acrescentar níveis de urgência é só alterar o CHECK da migration em uma nova.
+
+A leitura do catálogo passou a exigir apenas nível de pedreiro: quem requisita
+precisa escolher o material. Criar, editar e remover produto continuam exigindo
+engenheiro. A mudança está no `routes/produtos/_middleware.dart`, que decide o
+nível pelo método da requisição.
 
 ## Migrations
 
@@ -66,6 +116,8 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `007_corrige_colunas_legadas.sql`: alinha `pedido.protocolo` e as colunas de data com o que a `001` declara, recriando as views de custo
 - `008_protege_estoque.sql`: devolve ao `estoque` o `CHECK (quantidade >= 0)` e o `UNIQUE (obra_id, produto_id)` que a `001` declara
 - `009_consulta_estoque.sql`: SKU opcional e estoque mínimo por produto, com SKU único por empresa (sem diferenciar maiúsculas)
+- `010_justificativa_recusa.sql`: motivo da recusa separado da justificativa original do pedido
+- `012_pedido_local_urgencia.sql`: local da obra e nível de urgência no pedido, com urgência restrita a `padrao` ou `urgente`
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
 `DATABASE_URL` é exclusiva do papel de execução. O provisionamento de permissões
@@ -86,7 +138,7 @@ dart pub get
 dart run bin/migrate.dart
 ```
 
-O arquivo `Database/schema.sql` representa o estado consolidado depois das migrations 001 a 009 e serve para inicializar um banco vazio. Bancos existentes devem ser atualizados exclusivamente pelo executor de migrations.
+O arquivo `Database/schema.sql` representa o estado consolidado depois das migrations 001 a 010 e serve para inicializar um banco vazio. Bancos existentes devem ser atualizados exclusivamente pelo executor de migrations.
 
 Para criar uma alteração futura, adicione uma nova migration numerada. Não edite uma migration que já tenha sido aplicada.
 

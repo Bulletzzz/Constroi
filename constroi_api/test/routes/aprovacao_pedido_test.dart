@@ -66,7 +66,7 @@ void main() {
     verifyNever(() => contexto.read<Pool<void>>());
   });
 
-  test('corpo invalido ou outra decisao retorna 400 sem ler o banco', () async {
+  test('corpo ou status invalidos retornam 400 sem ler o banco', () async {
     for (final corpo in [
       null,
       <Object?>[],
@@ -89,6 +89,52 @@ void main() {
         HttpStatus.badRequest,
       );
     }
+    verifyNever(() => contexto.read<Pool<void>>());
+  });
+
+  test('recusa exige justificativa valida antes de ler o banco', () async {
+    for (final justificativa in [
+      null,
+      '',
+      ' \n\t ',
+      1,
+      true,
+      <Object?>[],
+      <String, dynamic>{},
+      'a' * 256,
+    ]) {
+      requisicao({
+        'pedido': {'status': 'recusado', 'justificativa': justificativa},
+      });
+      final resposta = await rota.onRequest(contexto, '1');
+      expect(resposta.statusCode, HttpStatus.badRequest);
+      expect(
+        (jsonDecode(await resposta.body()) as Map)['erro'],
+        contains('justificativa'),
+      );
+    }
+    verifyNever(() => contexto.read<Pool<void>>());
+  });
+
+  test('recusa tambem exige token e perfil engenheiro', () async {
+    requisicao({
+      'pedido': {
+        'status': 'recusado',
+        'justificativa': 'Material desnecessario',
+      },
+    });
+    when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(null);
+    expect(
+      (await rota.onRequest(contexto, '1')).statusCode,
+      HttpStatus.unauthorized,
+    );
+    when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(
+      const UsuarioAutenticado(id: 1, empresaId: 1, nivel: Nivel.pedreiro),
+    );
+    expect(
+      (await rota.onRequest(contexto, '1')).statusCode,
+      HttpStatus.forbidden,
+    );
     verifyNever(() => contexto.read<Pool<void>>());
   });
 
