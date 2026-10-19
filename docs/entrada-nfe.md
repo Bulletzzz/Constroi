@@ -66,6 +66,13 @@ Não exige `obra_id`: a obra é a da entrada já registrada. Os itens e quantida
 do XML são lidos e validados, mas não substituem o lançamento manual. O fluxo
 não insere itens nem altera qualquer saldo de estoque.
 
+O vínculo do anexo é **declaratório**: não há conferência dos produtos ou das
+quantidades da NF-e contra os itens da entrada. Por exemplo, o XML de uma nota
+de cimento pode ser anexado a uma entrada de vergalhão e será aceito se passar
+pelas validações do documento e de unicidade. Para auditoria, o anexo registra
+o documento informado pelo responsável; não comprova a correspondência com os
+materiais lançados nem representa uma conciliação automática.
+
 Retorna **200** com `id`, `obra_id`, `chave_nfe` e `xml_anexado: true`.
 ID inválido retorna **400**; entrada inexistente ou de outra empresa, **404**.
 Entrada que já possui XML (inclusive legado) e chave já usada na empresa retornam
