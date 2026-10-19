@@ -13,7 +13,7 @@ WITH obras_visiveis AS (
   SELECT * FROM obras_visiveis
   WHERE @obra::int IS NULL OR id = @obra
 ), saldos AS (
-  SELECT e.obra_id, e.produto_id, e.quantidade
+  SELECT e.obra_id, e.produto_id, e.quantidade, p.estoque_minimo
   FROM estoque e
   JOIN obras_filtradas o ON o.id = e.obra_id
   JOIN produto p ON p.id = e.produto_id AND p.empresa_id = @empresa
@@ -63,6 +63,10 @@ SELECT jsonb_build_object(
   'indicadores', jsonb_build_object(
     'total_itens', (SELECT COUNT(DISTINCT produto_id) FROM saldos),
     'rupturas_criticas', (SELECT COUNT(*) FROM saldos WHERE quantidade = 0),
+    -- Mesma regra do campo baixo de GET /estoque; inclui os zerados.
+    'estoque_baixo', (
+      SELECT COUNT(*) FROM saldos WHERE quantidade <= estoque_minimo
+    ),
     'requisicoes_pendentes', (
       SELECT COUNT(*) FROM pedido p
       JOIN obras_filtradas o ON o.id = p.obra_id

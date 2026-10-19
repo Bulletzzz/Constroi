@@ -11,6 +11,7 @@ class IndicadoresPainel {
   const IndicadoresPainel({
     required this.totalItens,
     required this.rupturasCriticas,
+    required this.estoqueBaixo,
     required this.requisicoesPendentes,
     required this.obrasAtivas,
     this.valorEstimado,
@@ -18,6 +19,7 @@ class IndicadoresPainel {
   });
   final int totalItens;
   final int rupturasCriticas;
+  final int estoqueBaixo;
   final int requisicoesPendentes;
   final int obrasAtivas;
   final num? valorEstimado;
@@ -27,6 +29,7 @@ class IndicadoresPainel {
       IndicadoresPainel(
         totalItens: _inteiro(json['total_itens']),
         rupturasCriticas: _inteiro(json['rupturas_criticas']),
+        estoqueBaixo: _inteiro(json['estoque_baixo']),
         requisicoesPendentes: _inteiro(json['requisicoes_pendentes']),
         obrasAtivas: _inteiro(json['obras_ativas']),
         valorEstimado: json['valor_estimado'] == null

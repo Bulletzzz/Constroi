@@ -76,6 +76,7 @@ Map<String, dynamic> item(
             'indicadores': {
               'total_itens': 1248,
               'rupturas_criticas': 12,
+              'estoque_baixo': 31,
               'requisicoes_pendentes': 4,
               'obras_ativas': 2,
             },
@@ -290,6 +291,7 @@ void main() {
 
     expect(find.text('1248'), findsOneWidget);
     expect(find.text('12'), findsOneWidget);
+    expect(find.text('31'), findsOneWidget);
     expect(find.text('4'), findsOneWidget);
   });
 
@@ -397,7 +399,7 @@ void main() {
     await abrir(tester, tudo.service);
 
     expect(
-      find.bySemanticsLabel(RegExp('Abaixo do mínimo')),
+      find.bySemanticsLabel(RegExp('No mínimo ou abaixo')),
       findsOneWidget,
     );
   });
