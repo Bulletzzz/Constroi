@@ -42,6 +42,11 @@ void main() {
         !uri.pathSegments.single.startsWith('constroi_test_')) {
       throw StateError('Use banco local descartavel constroi_test_*.');
     }
+    // A mesma URL atende as suites com pool; conexao direta/runner nao
+    // aceitam essa opcao do pool. Preserva TLS e as demais configuracoes.
+    final parametros = Map<String, String>.from(uri.queryParameters)
+      ..remove('max_connection_count');
+    url = uri.replace(queryParameters: parametros).toString();
     banco = await Connection.openFromUrl(url);
     addTearDown(() => banco.close());
   });
