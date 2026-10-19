@@ -352,7 +352,7 @@ class _AppHomeState extends State<AppHome> {
         valor: formatarNumero(indicadores.estoqueBaixo),
         apoio: indicadores.estoqueBaixo == 0
             ? 'Nenhum saldo no mínimo ou abaixo'
-            : 'No mínimo ou abaixo • inclui zerados',
+            : 'No mínimo ou abaixo, por obra • inclui zerados',
         icone: Icons.trending_down_rounded,
       ),
       _Indicador(

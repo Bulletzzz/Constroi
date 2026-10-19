@@ -63,7 +63,6 @@ SELECT jsonb_build_object(
   'indicadores', jsonb_build_object(
     'total_itens', (SELECT COUNT(DISTINCT produto_id) FROM saldos),
     'rupturas_criticas', (SELECT COUNT(*) FROM saldos WHERE quantidade = 0),
-    -- Mesma regra do campo baixo de GET /estoque; inclui os zerados.
     'estoque_baixo', (
       SELECT COUNT(*) FROM saldos WHERE quantidade <= estoque_minimo
     ),

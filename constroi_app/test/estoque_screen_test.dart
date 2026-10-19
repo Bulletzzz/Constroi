@@ -291,7 +291,6 @@ void main() {
 
     expect(find.text('1248'), findsOneWidget);
     expect(find.text('12'), findsOneWidget);
-    expect(find.text('31'), findsOneWidget);
     expect(find.text('4'), findsOneWidget);
   });
 
@@ -475,4 +474,39 @@ void main() {
 
     expect(tudo.chamadas.length, 2);
   });
+
+  for (final tamanho in [
+    const Size(320, 640),
+    const Size(844, 390),
+    const Size(1280, 800),
+  ]) {
+    testWidgets('layout sem overflow em $tamanho e texto ampliado', (
+      tester,
+    ) async {
+      final tudo = montarComPainel([item(1, baixo: true), item(2)]);
+      tester.view.physicalSize = tamanho;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.4)),
+            child: child!,
+          ),
+          home: EstoqueScreen(
+            service: tudo.estoque,
+            painel: tudo.painel,
+            perfil: PerfilUsuario.master,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView), const Offset(0, -1600));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

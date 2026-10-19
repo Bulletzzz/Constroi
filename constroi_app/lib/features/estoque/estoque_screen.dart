@@ -271,12 +271,6 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           ),
           const SizedBox(height: 16),
           _cartaoResumo(
-            rotulo: 'ESTOQUE BAIXO',
-            valor: _numero(_indicadores?.estoqueBaixo),
-            icone: Icons.trending_down_rounded,
-          ),
-          const SizedBox(height: 16),
-          _cartaoResumo(
             rotulo: 'ENTREGAS PENDENTES',
             valor: _numero(_indicadores?.requisicoesPendentes),
             icone: Icons.local_shipping_outlined,
