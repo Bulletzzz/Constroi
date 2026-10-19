@@ -79,6 +79,82 @@ $env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres@127.0.0.1:55434/constro
 dart test integration_test/baixa_estoque_test.dart --reporter expanded
 ```
 
+## Integração com PostgreSQL local e TLS
+
+`dart test` coleta apenas `test/`. Os testes em `integration_test/` precisam
+ser chamados explicitamente e usam um PostgreSQL **local descartável**, com
+banco chamado `constroi_test_*`. Eles apagam e recriam o schema `public`.
+Não use a conexão do Neon ou o banco de desenvolvimento com dados importantes.
+
+O PostgreSQL precisa aceitar **TLS**, e a URL precisa conter `sslmode=require`
+(ou `verify-full` com certificado confiável). Acrescentar o parâmetro à URL
+não habilita TLS no servidor. Um `postgres:17` sem configuração de certificado
+não atende esse requisito. O exemplo abaixo usa a
+[imagem oficial](https://github.com/docker-library/postgres/blob/master/17/bookworm/Dockerfile),
+certificado autoassinado e senha exclusivos do teste local.
+
+Com Docker em execução, rode em PowerShell (a porta 55435 deve estar livre):
+
+```powershell
+$iniciarPostgres = @'
+command -v openssl >/dev/null || {
+  apt-get update
+  apt-get install -y --no-install-recommends openssl
+}
+install -d -m 700 -o postgres -g postgres /tmp/constroi-tls
+openssl req -x509 -nodes -newkey rsa:2048 -days 7 -subj /CN=localhost \
+  -keyout /tmp/constroi-tls/server.key -out /tmp/constroi-tls/server.crt
+chown postgres:postgres /tmp/constroi-tls/server.key /tmp/constroi-tls/server.crt
+chmod 600 /tmp/constroi-tls/server.key
+exec docker-entrypoint.sh postgres -c ssl=on \
+  -c ssl_cert_file=/tmp/constroi-tls/server.crt \
+  -c ssl_key_file=/tmp/constroi-tls/server.key
+'@
+
+docker run --detach --name constroi-testes-pg `
+  --publish 127.0.0.1:55435:5432 `
+  --env POSTGRES_PASSWORD=senha-local-descartavel `
+  --env POSTGRES_DB=constroi_test_integracao `
+  postgres:17-bookworm bash -ceu $iniciarPostgres
+```
+
+Aguarde a inicialização (a primeira execução pode instalar o OpenSSL). Confira
+`docker logs constroi-testes-pg` se houver falha. O primeiro comando abaixo deve
+indicar que aceita conexões; o segundo deve retornar `ssl = t`, comprovando uma
+conexão TCP com TLS, antes de executar os testes:
+
+```powershell
+docker exec constroi-testes-pg pg_isready -h 127.0.0.1 -U postgres -d constroi_test_integracao
+docker exec --env PGPASSWORD=senha-local-descartavel constroi-testes-pg `
+  psql 'host=127.0.0.1 user=postgres dbname=constroi_test_integracao sslmode=require' `
+  -c 'SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();'
+```
+
+Na pasta `constroi_api`, instale as dependências e execute:
+
+```powershell
+dart pub get
+$env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres:senha-local-descartavel@127.0.0.1:55435/constroi_test_integracao?sslmode=require&max_connection_count=10'
+
+# Todas as suítes, uma por vez: elas compartilham e recriam o mesmo schema.
+dart test integration_test/ --concurrency=1 --reporter expanded
+
+# Somente a regressão da migration 011 (3 cenários).
+dart test integration_test/migrations_nfe_test.dart --reporter expanded
+```
+
+Mantenha `max_connection_count=10`: os cenários de concorrência precisam de mais
+de uma conexão. O teste de migrations remove essa opção somente da conexão
+direta e do ambiente do runner, mantendo TLS. A suíte verifica schema consolidado
+seguido do runner, reaplicação da 011 preservando XML/dados e aplicação em banco
+vazio seguida de uma segunda rodada sem alterações.
+Para encerrar e apagar **somente** o container e seu volume descartável:
+
+```powershell
+docker rm --force --volumes constroi-testes-pg
+Remove-Item Env:CONSTROI_TEST_DATABASE_URL
+```
+
 ## Requisição de material (RF06, Figma 04)
 
 `POST /pedidos` aceita dois campos opcionais além dos itens:
