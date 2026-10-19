@@ -33,7 +33,7 @@ O XML original permanece em `entrada_estoque.xml_nota_fiscal`. O ator vem do tok
 Os saldos são atualizados em ordem de produto com UPSERT e aritmética NUMERIC;
 materiais repetidos são agregados. Falha em qualquer escrita reverte tudo.
 A constraint da migration **011** impede reimportações, inclusive concorrentes.
-O número 010 está reservado pelo PR #26; as duas migrations são independentes.
+As migrations 010 (recusa) e 012 (campos do pedido) são independentes da 011.
 Não há dependência da futura entrada manual (`POST /entradas`, card 74).
 
 ```powershell

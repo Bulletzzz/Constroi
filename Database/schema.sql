@@ -100,7 +100,13 @@ CREATE TABLE IF NOT EXISTS pedido (
     protocolo VARCHAR(50) NOT NULL,
     status VARCHAR(30) NOT NULL,
     justificativa VARCHAR(255),
-    data TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    justificativa_recusa VARCHAR(255),
+    local_obra VARCHAR(120),
+    urgencia VARCHAR(20) NOT NULL DEFAULT 'padrao',
+    data TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_pedido_urgencia CHECK (urgencia IN ('padrao', 'urgente')),
+    CONSTRAINT ck_pedido_local_obra
+        CHECK (local_obra IS NULL OR LENGTH(TRIM(local_obra)) > 0)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_pedido_protocolo
@@ -344,21 +350,7 @@ FROM obra AS o
 LEFT JOIN vw_lancamento_custo AS l ON l.obra_id = o.id
 GROUP BY o.id, o.orcamento_total;
 
--- Este arquivo representa o estado final depois das migrations 001 a 009.
-INSERT INTO schema_migrations (versao) VALUES
-    ('001_schema_inicial.sql'),
-    ('002_tabelas_login.sql'),
-    ('003_catalogo_timestamps.sql'),
-    ('004_usuario_obra.sql'),
-    ('005_custos_obra.sql'),
-    ('006_usuario_tipo.sql'),
-    ('007_corrige_colunas_legadas.sql'),
-    ('008_protege_estoque.sql'),
-    ('009_consulta_estoque.sql')
-ON CONFLICT (versao) DO NOTHING;
-
 -- NF-e (migration 011)
--- 010 esta reservada pelo PR #26 (campos de pedido); nao altera essa entrega.
 ALTER TABLE entrada_estoque
   ADD COLUMN empresa_nfe_id INTEGER,
   ADD COLUMN chave_nfe VARCHAR(44),
@@ -370,3 +362,19 @@ ALTER TABLE entrada_estoque
       AND chave_nfe ~ '^[0-9]{44}$' AND xml_nota_fiscal IS NOT NULL)
   ),
   ADD CONSTRAINT ux_entrada_nfe_empresa UNIQUE (empresa_nfe_id, chave_nfe);
+
+-- Este arquivo representa o estado final depois das migrations 001 a 012.
+INSERT INTO schema_migrations (versao) VALUES
+    ('001_schema_inicial.sql'),
+    ('002_tabelas_login.sql'),
+    ('003_catalogo_timestamps.sql'),
+    ('004_usuario_obra.sql'),
+    ('005_custos_obra.sql'),
+    ('006_usuario_tipo.sql'),
+    ('007_corrige_colunas_legadas.sql'),
+    ('008_protege_estoque.sql'),
+    ('009_consulta_estoque.sql'),
+    ('010_justificativa_recusa.sql'),
+    ('011_entrada_nfe.sql'),
+    ('012_pedido_local_urgencia.sql')
+ON CONFLICT (versao) DO NOTHING;
