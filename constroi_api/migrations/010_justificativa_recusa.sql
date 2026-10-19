@@ -1,0 +1,1 @@
+ALTER TABLE pedido ADD COLUMN IF NOT EXISTS justificativa_recusa VARCHAR(255);

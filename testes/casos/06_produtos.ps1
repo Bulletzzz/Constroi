@@ -35,7 +35,9 @@ Chamar PATCH "/produtos/$($produto.id)" $c.engenheiro @{ produto = @{ estoque_mi
 $limpo = Chamar PATCH "/produtos/$($produto.id)" $c.engenheiro @{ produto = @{ sku = $null } } 200 'PATCH remove o SKU'
 Conferir ($null -eq $limpo.sku) 'SKU ficou nulo'
 
-Chamar GET '/produtos' $c.pedreiro $null 403 'GET /produtos como pedreiro' | Out-Null
+Chamar GET '/produtos' $c.pedreiro $null 200 'pedreiro le o catalogo para requisitar' | Out-Null
+Chamar GET "/produtos/$($produto.id)" $c.pedreiro $null 200 'pedreiro le o detalhe do produto' | Out-Null
+Chamar PATCH "/produtos/$($produto.id)" $c.pedreiro @{ produto = @{ unidade = 'un' } } 403 'pedreiro nao edita produto' | Out-Null
 Chamar POST '/produtos' $c.pedreiro @{ produto = @{ nome = "Furtivo $marca"; unidade = 'un' } } 403 'POST /produtos como pedreiro' | Out-Null
 
 VerificarBanco "SELECT estoque_minimo::text FROM produto WHERE id = $($produto.id)" '7.50' `

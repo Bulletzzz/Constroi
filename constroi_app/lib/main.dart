@@ -9,6 +9,9 @@ import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
 import 'features/estoque/estoque_screen.dart';
 import 'features/estoque/estoque_service.dart';
+import 'features/pedidos/aprovacoes_screen.dart';
+import 'features/pedidos/pedidos_service.dart';
+import 'features/pedidos/requisicao_screen.dart';
 import 'features/painel/painel_service.dart';
 import 'navigation/app_route.dart';
 import 'navigation/perfil_usuario.dart';
@@ -144,6 +147,12 @@ class _ConstroiAppState extends State<ConstroiApp> {
         painel: PainelService(_api!),
         perfil: perfil,
       );
+    }
+    if (rota == AppRoute.requisicoes) {
+      final service = PedidosService(api: _api!);
+      return perfil.possuiNivel(PerfilUsuario.engenheiro)
+          ? AprovacoesScreen(service: service, perfil: perfil)
+          : RequisicaoScreen(service: service, perfil: perfil);
     }
     return ModuleScreen(rota: rota, perfil: perfil);
   }
