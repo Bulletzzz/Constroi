@@ -53,6 +53,7 @@ void main() {
       'indicadores': {
         'total_itens': 2,
         'rupturas_criticas': 1,
+        'estoque_baixo': 3,
         'requisicoes_pendentes': 4,
         'obras_ativas': 1,
         'valor_estimado': '120.50',

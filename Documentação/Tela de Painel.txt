@@ -21,8 +21,9 @@ filtros nos argumentos da rota. As telas desses modulos ficam em seus cartoes.
 INDICADORES E LIMITES DOS DADOS ATUAIS
 Total de itens: quantidade de produtos distintos presentes no estoque das
 obras selecionadas. Nao soma sacos, metros e outras unidades diferentes.
-Rupturas criticas: registros de estoque com quantidade zero. Ainda nao existe
-estoque minimo cadastrado para calcular alertas por limite.
+Rupturas criticas: registros de estoque com quantidade zero.
+Estoque baixo: registros com quantidade <= estoque_minimo, mesma regra do
+campo baixo de GET /estoque. Inclui os zerados. Conta por obra e produto.
 Requisicoes pendentes: pedidos com status pendente no escopo permitido.
 O pedreiro ve apenas os proprios pedidos. Engenheiro e master veem os pedidos
 das obras da empresa dentro do filtro.

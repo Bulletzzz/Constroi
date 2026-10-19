@@ -43,6 +43,7 @@ acessibilidade que antes não existia, passando a ser legível por leitor de tel
 | `login-erro` | mensagem de falha de autenticação |
 | `painel-total-itens` | indicador de materiais distintos |
 | `painel-rupturas-criticas` | indicador de saldos zerados |
+| `painel-estoque-baixo` | indicador de saldos no mínimo ou abaixo |
 | `painel-requisicoes-pendentes` | indicador de pedidos aguardando |
 | `painel-valor-estimado` | indicador financeiro, só engenheiro e master |
 | `estoque-busca` | campo de busca por SKU ou nome |

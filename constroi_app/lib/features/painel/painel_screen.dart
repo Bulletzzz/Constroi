@@ -347,6 +347,15 @@ class _AppHomeState extends State<AppHome> {
         destaque: true,
       ),
       _Indicador(
+        titulo: 'ESTOQUE BAIXO',
+        identificador: 'painel-estoque-baixo',
+        valor: formatarNumero(indicadores.estoqueBaixo),
+        apoio: indicadores.estoqueBaixo == 0
+            ? 'Nenhum saldo no mínimo ou abaixo'
+            : 'No mínimo ou abaixo, por obra • inclui zerados',
+        icone: Icons.trending_down_rounded,
+      ),
+      _Indicador(
         titulo: 'REQUISIÇÕES PENDENTES',
         identificador: 'painel-requisicoes-pendentes',
         valor: formatarNumero(indicadores.requisicoesPendentes),
