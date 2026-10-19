@@ -62,7 +62,20 @@ String urlDeMigration(Map<String, String> ambiente) {
   return uri.replace(queryParameters: parametros).toString();
 }
 
-Pool<void> criarPoolApi(String url, {int limiteMs = limiteMaximoTransacaoMs}) {
+Pool<void> criarPoolApi(
+  String url, {
+  bool conexaoEstrita = false,
+  int limiteMs = limiteMaximoTransacaoMs,
+}) {
+  if (!conexaoEstrita) {
+    // Preserva o contrato atual ate o provisionamento coordenado da auditoria.
+    final uri = Uri.parse(normalizarDatabaseUrl(url));
+    final parametros = Map<String, String>.from(uri.queryParameters)
+      ..putIfAbsent('max_connection_count', () => '10');
+    return Pool<void>.withUrl(
+      uri.replace(queryParameters: parametros).toString(),
+    );
+  }
   final uri = validarUrlApi(url);
   if (limiteMs <= 0 || limiteMs > limiteMaximoTransacaoMs) {
     throw const FormatException(

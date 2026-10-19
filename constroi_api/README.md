@@ -120,15 +120,17 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `012_pedido_local_urgencia.sql`: local da obra e nível de urgência no pedido, com urgência restrita a `padrao` ou `urgente`
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
-`DATABASE_URL` é exclusiva do papel de execução. O provisionamento de permissões
-e limites deve ser combinado com a equipe antes da troca; siga
+`AUDITORIA_CONEXAO_ESTRITA` vem desligada por padrão, preservando a conexão
+atual. Ative com `true` somente depois de provisionar e validar o papel restrito,
+permissões e limites com a equipe, conforme
 [infra-auditoria.md](../docs/infra-auditoria.md).
 
 O pool abre até 10 conexões. Para mudar, acrescente `max_connection_count` na própria `DATABASE_URL`.
-O máximo aceito é 50. O servidor exige PostgreSQL 17+ e endpoint direto.
-Transações de execução têm limite máximo de 30 segundos e margem publicada
-de 31 segundos para o futuro fechamento dos relatórios. A configuração é
-validada em cada conexão física, antes de a disponibilizar às rotas.
+Com a flag ligada, o máximo aceito é 50 e o servidor exige PostgreSQL 17+,
+endpoint direto e papel restrito com timeout provisionado. Nesse modo, as
+transações têm limite máximo de 30 segundos e margem publicada de 31 segundos
+para o futuro fechamento dos relatórios. A configuração é validada em cada
+conexão física. Com a flag desligada, essas garantias ainda não estão ativas.
 
 ```powershell
 cd constroi_api

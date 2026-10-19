@@ -13,6 +13,10 @@ void main() {
   late String url;
   late String urlApi;
   late String papeis;
+  Pool<void> poolEstrito(
+    String conexao, {
+    int limiteMs = limiteMaximoTransacaoMs,
+  }) => criarPoolApi(conexao, conexaoEstrita: true, limiteMs: limiteMs);
   Future<void> configurar() =>
       administrador.execute(papeis, queryMode: QueryMode.simple);
   Future<ProcessResult> migrar({String? conexao}) => Process.run(
@@ -58,7 +62,7 @@ void main() {
       CREATE TABLE infra_bloqueio (id int PRIMARY KEY,valor int NOT NULL);
       INSERT INTO infra_bloqueio VALUES (1,0);
     ''', queryMode: QueryMode.simple);
-    final app = criarPoolApi(urlApi);
+    final app = poolEstrito(urlApi);
     try {
       await app.execute(
         "INSERT INTO movimentacao_estoque(evento) VALUES ('default_acl')",
@@ -86,9 +90,46 @@ void main() {
   }
 
   test(
+    'modo padrao aceita o dono atual sem exigir timeout provisionado',
+    () async {
+      final app = criarPoolApi(url);
+      addTearDown(app.close);
+      final estado = await app.execute('''
+      SELECT r.rolsuper, current_setting('transaction_timeout')
+      FROM pg_roles r WHERE r.rolname=current_user
+    ''');
+      expect(estado.single[0], isTrue);
+      expect(estado.single[1], '0');
+      await app.runTx((tx) => tx.execute('SELECT 1'));
+    },
+  );
+  test(
+    'flag desligada preserva timeout zero; ligada recusa a mesma credencial',
+    () async {
+      await administrador.execute(r'''
+      DO $$ BEGIN EXECUTE format(
+        'ALTER ROLE constroi_api_execucao IN DATABASE %I '
+        'SET transaction_timeout=0',current_database()); END $$;
+    ''');
+      final atual = criarPoolApi(urlApi);
+      final estrito = criarPoolApi(urlApi, conexaoEstrita: true);
+      addTearDown(atual.close);
+      addTearDown(estrito.close);
+      expect(
+        (await atual.execute('SHOW transaction_timeout')).single[0],
+        '0',
+      );
+      await expectLater(
+        estrito.execute('SELECT 1'),
+        throwsA(isA<StateError>()),
+      );
+    },
+  );
+
+  test(
     'papel real permite INSERT/SELECT e recusa UPDATE/DELETE/TRUNCATE e DDL',
     () async {
-      final app = criarPoolApi(urlApi);
+      final app = poolEstrito(urlApi);
       addTearDown(app.close);
       await app.execute(
         "INSERT INTO movimentacao_estoque(evento) VALUES ('ok')",
@@ -118,19 +159,19 @@ void main() {
   test(
     'pool rejeita usuario privilegiado e permissao de UPDATE indevida',
     () async {
-      final dono = criarPoolApi(url);
+      final dono = poolEstrito(url);
       addTearDown(dono.close);
       await expectLater(dono.execute('SELECT 1'), throwsA(isA<StateError>()));
       await administrador.execute(
         'GRANT UPDATE ON movimentacao_estoque TO constroi_api_execucao',
       );
-      final app = criarPoolApi(urlApi);
+      final app = poolEstrito(urlApi);
       addTearDown(app.close);
       await expectLater(app.execute('SELECT 1'), throwsA(isA<StateError>()));
     },
   );
   test('varias queries curtas nao reiniciam o limite da transacao', () async {
-    final app = criarPoolApi(urlApi, limiteMs: 300);
+    final app = poolEstrito(urlApi, limiteMs: 300);
     addTearDown(app.close);
     final relogio = Stopwatch()..start();
     await expectLater(
@@ -152,7 +193,7 @@ void main() {
   test(
     'limite inclui inatividade entre duas queries e reverte escrita',
     () async {
-      final app = criarPoolApi(urlApi, limiteMs: 300);
+      final app = poolEstrito(urlApi, limiteMs: 300);
       addTearDown(app.close);
       await expectLater(
         app.runTx((tx) async {
@@ -178,7 +219,7 @@ void main() {
     },
   );
   test('limite inclui espera real por lock e reverte o movimento', () async {
-    final app = criarPoolApi(urlApi, limiteMs: 700);
+    final app = poolEstrito(urlApi, limiteMs: 700);
     addTearDown(app.close);
     await administrador.runTx((bloqueador) async {
       await bloqueador.execute(
@@ -235,7 +276,7 @@ void main() {
         'ALTER ROLE constroi_api_execucao IN DATABASE %I '
         'SET transaction_timeout=0',current_database()); END $$;
     ''');
-    final app = criarPoolApi(urlApi);
+    final app = poolEstrito(urlApi);
     addTearDown(app.close);
     await expectLater(app.execute('SELECT 1'), throwsA(isA<StateError>()));
   });
@@ -249,7 +290,7 @@ void main() {
         'FROM constroi_api_execucao',
       ),
     );
-    final app = criarPoolApi(urlApi);
+    final app = poolEstrito(urlApi);
     addTearDown(app.close);
     await expectLater(app.execute('SELECT 1'), throwsA(isA<StateError>()));
   });
@@ -261,6 +302,7 @@ void main() {
         'API_ENV_FILE': '.env.api-inexistente-teste',
         'DATABASE_URL': urlApi,
         'DATABASE_TRANSACTION_TIMEOUT_MS': '30000',
+        'AUDITORIA_CONEXAO_ESTRITA': 'false',
       },
     );
     expect(resultado.exitCode, 0, reason: '${resultado.stderr}');
@@ -269,6 +311,24 @@ void main() {
     expect(json['margem_fechamento_ms'], 31000);
     expect('${resultado.stdout}', isNot(contains(urlApi)));
   });
+  test(
+    'diagnostico recusa dono mesmo quando a flag da API esta desligada',
+    () async {
+      final resultado = await Process.run(
+        Platform.resolvedExecutable,
+        ['run', 'bin/verificar_auditoria.dart'],
+        environment: {
+          'API_ENV_FILE': '.env.api-inexistente-teste',
+          'DATABASE_URL': url,
+          'AUDITORIA_CONEXAO_ESTRITA': 'false',
+        },
+      );
+      expect(resultado.exitCode, isNot(0));
+      expect('${resultado.stderr}', contains('Validacao recusada'));
+      expect('${resultado.stderr}', isNot(contains(url)));
+      expect('${resultado.stdout}', isNot(contains('margem_fechamento_ms')));
+    },
+  );
   test('membership de escrita irrestrita tambem e recusada', () async {
     await administrador.execute(
       'GRANT pg_write_all_data TO constroi_api_execucao',
@@ -278,7 +338,7 @@ void main() {
         'REVOKE pg_write_all_data FROM constroi_api_execucao',
       ),
     );
-    final app = criarPoolApi(urlApi);
+    final app = poolEstrito(urlApi);
     addTearDown(app.close);
     await expectLater(app.execute('SELECT 1'), throwsA(isA<StateError>()));
   });
@@ -298,7 +358,7 @@ void main() {
         VALUES (1,1,1,'TESTE-INFRA','pendente');
       INSERT INTO item_pedido(pedido_id,produto_id,quantidade) VALUES (1,1,1);
     ''', queryMode: QueryMode.simple);
-      final app = criarPoolApi(urlApi);
+      final app = poolEstrito(urlApi);
       addTearDown(app.close);
       final resposta = await aprovarPedidoComBaixa(
         app,

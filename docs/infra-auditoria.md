@@ -5,9 +5,25 @@ Neon/Docker deve ser combinada com a equipe e validada em branch de homologaçã
 antes de alterar o ambiente compartilhado. Não modifica a conexão ativa ao rodar
 tests/build; não cria a tabela da auditoria do card 83 nem habilita relatórios.
 
+## Ativação gradual
+
+`AUDITORIA_CONEXAO_ESTRITA` fica **desligada por padrão** (ausente ou `false`),
+inclusive no Compose. Nesse estado, a API mantém o contrato atual de conexão,
+com TLS e pool de 10 conexões por padrão: aceita a credencial existente, sem
+exigir o novo papel, PostgreSQL 17+, endpoint direto ou timeout provisionado.
+Não instala o guard nem altera `transaction_timeout` da sessão. Portanto, o
+limite de 30 s e a margem de 31 s ainda não estão garantidos para relatórios.
+
+Após provisionar e validar cada ambiente com a equipe, configure
+`AUDITORIA_CONEXAO_ESTRITA=true` junto da `DATABASE_URL` restrita e reinicie a
+API. Só esse valor habilita as verificações e o limite descritos abaixo.
+`DATABASE_TRANSACTION_TIMEOUT_MS` só é usado nesse modo. O diagnóstico
+`bin/verificar_auditoria.dart` sempre faz a validação estrita, mesmo com a flag
+desligada, para testar a configuração candidata antes de ativá-la no runtime.
+
 ## Papéis, ambientes e segredos
 
-- `DATABASE_URL`: conexão direta da API como `constroi_api_execucao`, sem
+- `DATABASE_URL` no modo estrito: conexão direta como `constroi_api_execucao`, sem
   administração, ownership ou possibilidade de assumir o papel de migrations.
 - `MIGRATION_DATABASE_URL`: conexão direta do dono das migrations, somente no
   job/terminal de manutenção. O runner usa `.env.migrations` ou o arquivo indicado
@@ -42,7 +58,7 @@ aceito pelo contrato existente.
 
 ## Limite efetivo e fechamento futuro
 
-Exige PostgreSQL **17+** com `transaction_timeout` configurado no papel/banco
+Com o modo estrito ligado, exige PostgreSQL **17+** com `transaction_timeout` configurado no papel/banco
 entre **1 e 30000 ms**. A API verifica o limite e o perfil em toda conexão física;
 recusa perfil administrativo, ownership, CREATE no banco/schema ou UPDATE na
 auditoria. O guard também rejeita membership em `neon_superuser` e grants de
@@ -64,7 +80,7 @@ Relatório futuro só pode fechar período quando o relógio do banco passar de
 `fim + margem`, mantendo período/filtros fixos conforme a proposta do PR #19.
 Esta entrega não anuncia um relatório como fechado.
 
-Use endpoint direto; o pool do driver já limita as conexões. Endpoints Neon com
+No modo estrito, use endpoint direto; o pool do driver já limita as conexões. Endpoints Neon com
 `-pooler` são rejeitados. Não passe por PgBouncer em modo transaction pooling:
 as validações/configurações de sessão devem valer para a conexão inteira.
 
@@ -85,13 +101,16 @@ as validações/configurações de sessão devem valer para a conexão inteira.
    `auditoria_instalada=false` significa que falta a migration do card 83.
 5. Executar a regressão em homologação com a conexão restrita. O checklist do
    card 83 continua necessário para schema/gravação e concorrência reais.
-6. Só após alinhamento, substituir DATABASE_URL no ambiente autorizado e
-   reiniciar a API. Validar o diagnóstico de cada ambiente (local, Docker, Neon).
-   Reverter a versão/configuração anterior se a validação falhar; não misturar
-   a conexão privilegiada com o runtime para contornar o guard.
+6. Só após alinhamento e diagnóstico aprovado, substituir DATABASE_URL pela
+   credencial restrita no ambiente autorizado, ativar
+   `AUDITORIA_CONEXAO_ESTRITA=true` e reiniciar a API. Validar cada ambiente
+   (local, Docker, Neon). Se a ativação falhar, restaurar a configuração anterior
+   completa (URL e flag) e investigar com a equipe. Enquanto a flag estiver
+   desligada, não considerar a conexão aprovada nem anunciar relatório fechado.
 
-No Docker, `api` recebe somente DATABASE_URL, DATABASE_TRANSACTION_TIMEOUT_MS e
-JWT_SECRET por whitelist. A credencial de migrations fica apenas no serviço
+No Docker, `api` recebe somente DATABASE_URL, AUDITORIA_CONEXAO_ESTRITA,
+DATABASE_TRANSACTION_TIMEOUT_MS e JWT_SECRET por whitelist. A flag tem padrão
+`false`; a credencial de migrations fica apenas no serviço
 opcional `migrate` (perfil `tools`), via `.env.migrations`:
 
 ```sh
@@ -112,7 +131,9 @@ dart test integration_test/infra_auditoria_test.dart --reporter expanded
 A suíte aplica migrations com o papel próprio, executa novamente como no-op,
 provisiona o papel restrito com o SQL real e cria uma **fixture** de auditoria
 para verificar permissões, inclusive os privilégios padrão de tabelas futuras.
-Cobre INSERT/SELECT permitidos; UPDATE/DELETE/TRUNCATE/DDL recusados; rejeição de
+Cobre compatibilidade com a credencial privilegiada e timeout zero quando a
+flag está desligada, e diagnóstico estrito independentemente da flag. Com a
+flag ligada, cobre INSERT/SELECT permitidos; UPDATE/DELETE/TRUNCATE/DDL recusados; rejeição de
 credencial privilegiada, UPDATE de coluna e timeout desligado; diagnóstico sem
 URL; encerramento/rollback em várias queries curtas, inatividade e lock real.
 Os testes usam limites menores para evidenciar o comportamento do mesmo guard

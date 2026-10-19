@@ -49,13 +49,23 @@ void main() {
     () async {
       for (final limite in [0, -1, 30001]) {
         expect(
-          () => criarPoolApi(runtime, limiteMs: limite),
+          () => criarPoolApi(runtime, conexaoEstrita: true, limiteMs: limite),
           throwsFormatException,
         );
       }
-      final pool = criarPoolApi(runtime);
+      final pool = criarPoolApi(runtime, conexaoEstrita: true);
       await pool.close();
       expect(margemFechamentoAuditoriaMs, greaterThan(limiteMaximoTransacaoMs));
     },
   );
+  test('pooler atual continua aceito ate ativar o modo estrito', () async {
+    const url =
+        'postgresql://app:segredo@ep-pooler.neon.tech/db?sslmode=require';
+    final padrao = criarPoolApi(url);
+    await padrao.close();
+    expect(
+      () => criarPoolApi(url, conexaoEstrita: true),
+      throwsFormatException,
+    );
+  });
 }

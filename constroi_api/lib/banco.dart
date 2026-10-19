@@ -10,14 +10,16 @@ Pool<void> get banco {
   if (url == null) {
     throw StateError('DATABASE_URL nao configurada. Confira o .env');
   }
-  final limite = int.tryParse(
-    variavel('DATABASE_TRANSACTION_TIMEOUT_MS') ?? '30000',
-  );
+  final estrita = variavel('AUDITORIA_CONEXAO_ESTRITA') == 'true';
+  final limite = estrita
+      ? int.tryParse(variavel('DATABASE_TRANSACTION_TIMEOUT_MS') ?? '30000')
+      : limiteMaximoTransacaoMs;
   if (limite == null) {
     throw StateError('DATABASE_TRANSACTION_TIMEOUT_MS invalido.');
   }
   return _pool ??= criarPoolApi(
     url,
+    conexaoEstrita: estrita,
     limiteMs: limite,
   );
 }

@@ -12,7 +12,8 @@ Future<void> main() async {
     final url = env['DATABASE_URL'];
     if (url == null || url.isEmpty) throw const FormatException();
     final limite = int.parse(env['DATABASE_TRANSACTION_TIMEOUT_MS'] ?? '30000');
-    final pool = criarPoolApi(url, limiteMs: limite);
+    // O diagnostico sempre valida a candidata, mesmo antes de ativar a flag.
+    final pool = criarPoolApi(url, conexaoEstrita: true, limiteMs: limite);
     try {
       final resultado = await pool.execute('''
         SELECT current_user AS papel,
