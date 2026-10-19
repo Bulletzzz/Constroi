@@ -12,6 +12,19 @@ String? variavel(String nome) {
   return (valor == null || valor.isEmpty) ? null : valor;
 }
 
+/// Ausencia desliga a flag; valor configurado precisa ser true ou false.
+bool variavelBooleana(String nome) =>
+    interpretarBooleano(nome, _ambiente[nome]);
+
+/// Ignora caixa/espacos nas bordas; rejeita vazio e valores desconhecidos.
+bool interpretarBooleano(String nome, String? valor) {
+  return switch (valor?.trim().toLowerCase()) {
+    null || 'false' => false,
+    'true' => true,
+    _ => throw FormatException('$nome invalida: use true ou false.'),
+  };
+}
+
 /// Valida o TLS e remove parâmetros que o console do Neon acrescenta, mas que
 /// ainda não são reconhecidos pelo package:postgres.
 String normalizarDatabaseUrl(String valor) {

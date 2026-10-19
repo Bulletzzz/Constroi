@@ -1,31 +1,33 @@
 import 'dart:io';
 
-import 'package:constroi_api/ambiente.dart';
+import 'package:constroi_api/conexao_api.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
 Future<void> main() async {
+  try {
+    await executar();
+  } on Object {
+    // Excecoes do driver podem conter a URL. Nunca imprimir credenciais.
+    stderr.writeln(
+      'Falha na migration. Confira MIGRATION_DATABASE_URL, '
+      'permissoes e SQL no ambiente exclusivo de migrations.',
+    );
+    exitCode = 1;
+  }
+}
+
+Future<void> executar() async {
   final envPath =
-      Platform.environment['DATABASE_ENV_FILE'] ?? '../constroi_api/.env';
+      Platform.environment['MIGRATION_ENV_FILE'] ?? '.env.migrations';
   final envFile = File(envPath);
   final ambiente = DotEnv(includePlatformEnvironment: true)
     ..load(envFile.existsSync() ? [envPath] : []);
-  final databaseUrl = ambiente['DATABASE_URL']?.trim();
-
-  if (databaseUrl == null || databaseUrl.isEmpty) {
-    stderr.writeln('DATABASE_URL nao configurada em $envPath');
-    exitCode = 1;
-    return;
-  }
-
-  late final String databaseUrlNormalizada;
-  try {
-    databaseUrlNormalizada = normalizarDatabaseUrl(databaseUrl);
-  } on FormatException catch (erro) {
-    stderr.writeln(erro.message);
-    exitCode = 1;
-    return;
-  }
+  final databaseUrlNormalizada = urlDeMigration({
+    if (ambiente['DATABASE_URL'] case final String valor) 'DATABASE_URL': valor,
+    if (ambiente['MIGRATION_DATABASE_URL'] case final String valor)
+      'MIGRATION_DATABASE_URL': valor,
+  });
 
   final conexao = await Connection.openFromUrl(
     databaseUrlNormalizada,

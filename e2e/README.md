@@ -7,14 +7,14 @@ Os casos estão descritos em [`docs/casos-de-teste.md`](../docs/casos-de-teste.m
 
 - Node.js 18 ou superior
 - Docker, para subir o app e a API
-- `constroi_api/.env` configurado com a `DATABASE_URL`
+- `constroi_api/.env` configurado com `DATABASE_URL` e `JWT_SECRET`
 
 ## Subir o sistema
 
 Na raiz do repositório:
 
 ```bash
-docker compose up -d --build
+docker compose --env-file constroi_api/.env up -d --build
 ```
 
 Isso publica o app em `http://localhost:8090` e a API em `http://localhost:8080`.

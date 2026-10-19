@@ -7,5 +7,6 @@ coverage
 test
 .env
 .env.example
+.env*
 Dockerfile
 .dockerignore
