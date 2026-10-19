@@ -1,7 +1,12 @@
--- 010 esta reservada pelo PR #26 (campos de pedido); nao altera essa entrega.
+-- Reexecucao preserva colunas/dados existentes e restaura as constraints.
 ALTER TABLE entrada_estoque
-  ADD COLUMN empresa_nfe_id INTEGER,
-  ADD COLUMN chave_nfe VARCHAR(44),
+  ADD COLUMN IF NOT EXISTS empresa_nfe_id INTEGER,
+  ADD COLUMN IF NOT EXISTS chave_nfe VARCHAR(44),
+  DROP CONSTRAINT IF EXISTS fk_entrada_nfe_empresa,
+  DROP CONSTRAINT IF EXISTS ck_entrada_nfe_chave,
+  DROP CONSTRAINT IF EXISTS ux_entrada_nfe_empresa;
+
+ALTER TABLE entrada_estoque
   ADD CONSTRAINT fk_entrada_nfe_empresa FOREIGN KEY (obra_id, empresa_nfe_id)
     REFERENCES obra (id, empresa_id),
   ADD CONSTRAINT ck_entrada_nfe_chave CHECK (
