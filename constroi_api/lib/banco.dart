@@ -10,7 +10,7 @@ Pool<void> get banco {
   if (url == null) {
     throw StateError('DATABASE_URL nao configurada. Confira o .env');
   }
-  final estrita = variavel('AUDITORIA_CONEXAO_ESTRITA') == 'true';
+  final estrita = variavelBooleana('AUDITORIA_CONEXAO_ESTRITA');
   final limite = estrita
       ? int.tryParse(variavel('DATABASE_TRANSACTION_TIMEOUT_MS') ?? '30000')
       : limiteMaximoTransacaoMs;

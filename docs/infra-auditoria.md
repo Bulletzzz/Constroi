@@ -7,7 +7,7 @@ tests/build; não cria a tabela da auditoria do card 83 nem habilita relatórios
 
 ## Ativação gradual
 
-`AUDITORIA_CONEXAO_ESTRITA` fica **desligada por padrão** (ausente ou `false`),
+`AUDITORIA_CONEXAO_ESTRITA` fica **desligada por padrão** quando ausente ou `false`,
 inclusive no Compose. Nesse estado, a API mantém o contrato atual de conexão,
 com TLS e pool de 10 conexões por padrão: aceita a credencial existente, sem
 exigir o novo papel, PostgreSQL 17+, endpoint direto ou timeout provisionado.
@@ -16,7 +16,11 @@ limite de 30 s e a margem de 31 s ainda não estão garantidos para relatórios.
 
 Após provisionar e validar cada ambiente com a equipe, configure
 `AUDITORIA_CONEXAO_ESTRITA=true` junto da `DATABASE_URL` restrita e reinicie a
-API. Só esse valor habilita as verificações e o limite descritos abaixo.
+API. A flag aceita `true`/`false` sem diferenciar maiúsculas e ignora espaços nas
+bordas. Valores diferentes, inclusive `1`, `0`, texto vazio ou somente espaços,
+geram erro de configuração com o nome da variável, sem expor o valor informado.
+`TRUE` habilita as mesmas verificações; um valor inválido impede o uso do pool
+em vez de desligar a proteção silenciosamente.
 `DATABASE_TRANSACTION_TIMEOUT_MS` só é usado nesse modo. O diagnóstico
 `bin/verificar_auditoria.dart` sempre faz a validação estrita, mesmo com a flag
 desligada, para testar a configuração candidata antes de ativá-la no runtime.

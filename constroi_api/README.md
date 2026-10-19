@@ -124,6 +124,8 @@ Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve cont
 atual. Ative com `true` somente depois de provisionar e validar o papel restrito,
 permissões e limites com a equipe, conforme
 [infra-auditoria.md](../docs/infra-auditoria.md).
+Aceita `true`/`false` sem diferenciar maiúsculas e com espaços nas bordas;
+outros valores, inclusive vazio, geram erro de configuração.
 
 O pool abre até 10 conexões. Para mudar, acrescente `max_connection_count` na própria `DATABASE_URL`.
 Com a flag ligada, o máximo aceito é 50 e o servidor exige PostgreSQL 17+,
