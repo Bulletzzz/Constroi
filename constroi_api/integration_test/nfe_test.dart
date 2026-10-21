@@ -28,6 +28,7 @@ Future<Object?> importarParaTeste(Pool<void> banco, String xml) => importarNfe(
 
 void main() {
   late Pool<void> banco;
+  late String urlDireta;
   late HttpServer servidor;
   late HttpClient cliente;
   const segredo = 'segredo-local-descartavel-nfe';
@@ -88,6 +89,9 @@ void main() {
         'Nunca le .env.',
       );
     }
+    final parametros = Map<String, String>.from(uri.queryParameters)
+      ..remove('max_connection_count');
+    urlDireta = uri.replace(queryParameters: parametros).toString();
     banco = Pool<void>.withUrl(url);
     addTearDown(() => banco.close());
     await banco.execute(
@@ -329,23 +333,83 @@ void main() {
     },
   );
 
-  test('repeticao e duas anexacoes simultaneas nao sobrescrevem XML', () async {
+  test('repeticao e lock externo nao sobrescrevem XML', () async {
     final id = await entradaManual();
-    final respostas = await Future.wait([
-      enviar(entrada: '$id'),
-      enviar(entrada: '$id'),
-    ]);
-    expect(respostas.map((r) => r.status).toList()..sort(), [200, 409]);
+    final antes = await estado();
+    final chaveConfirmada = '2' * 44;
+    final xmlConfirmado = xmlNfe(chave: chaveConfirmada);
+    final xmlConcorrente = xmlNfe(chave: '3' * 44);
+    // Conexao independente: nao ocupa o pool compartilhado com a rota HTTP.
+    final bloqueador = await Connection.openFromUrl(urlDireta);
+    Future<({int status, Map<String, dynamic> body})>? patch;
+    try {
+      await bloqueador.runTx((tx) async {
+        await tx.execute(
+          Sql.named('SELECT id FROM entrada_estoque WHERE id=@id FOR UPDATE'),
+          parameters: {'id': id},
+        );
+        patch = enviar(entrada: '$id', xml: xmlConcorrente);
+        final prazo = Stopwatch()..start();
+        var aguardandoLock = false;
+        while (prazo.elapsed < const Duration(seconds: 5)) {
+          final espera = await tx.execute('''
+            SELECT EXISTS (
+              SELECT 1 FROM pg_locks l
+              WHERE NOT l.granted
+                AND pg_backend_pid() = ANY(pg_blocking_pids(l.pid))
+            )
+          ''');
+          if (espera.single[0] == true) {
+            aguardandoLock = true;
+            break;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+        }
+        // Barreira no PostgreSQL, sem depender de atraso artificial na rota.
+        // Sem FOR UPDATE, o PATCH le NULL e chega ao UPDATE antes deste commit.
+        expect(
+          aguardandoLock,
+          isTrue,
+          reason: 'O PATCH deve estar esperando o lock desta conexao.',
+        );
+        await tx.execute(
+          Sql.named('''
+            UPDATE entrada_estoque
+            SET xml_nota_fiscal=@xml, empresa_nfe_id=1, chave_nfe=@chave
+            WHERE id=@id
+          '''),
+          parameters: {
+            'id': id,
+            'xml': xmlConfirmado,
+            'chave': chaveConfirmada,
+          },
+        );
+      });
+      expect((await patch!).status, 409);
+    } finally {
+      await bloqueador.close();
+      final pendente = patch;
+      if (pendente != null) await pendente;
+    }
+    expect(
+      (await sql(
+        'SELECT xml_nota_fiscal,empresa_nfe_id,chave_nfe '
+        'FROM entrada_estoque WHERE id=@id',
+        {'id': id},
+      )).single.toList(),
+      [xmlConfirmado, 1, chaveConfirmada],
+    );
+    expect(await estado(), antes);
     final depois = await estado();
     expect(
       (await enviar(
         entrada: '$id',
-        xml: xmlNfe(chave: '2' * 44),
+        xml: xmlConcorrente,
       )).status,
       409,
     );
     expect(await estado(), depois);
-    expect(depois.single, [1, 1, 1, '5.00']);
+    expect(depois.single, [1, 1, 0, '5.00']);
   });
 
   test('anexo restringe perfil, empresa e ids sem alterar entrada', () async {
