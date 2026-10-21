@@ -11,8 +11,9 @@ void main() {
     Platform.resolvedExecutable,
     ['run', 'bin/migrate.dart'],
     environment: {
-      'DATABASE_URL': url,
-      'DATABASE_ENV_FILE': '.env-teste-inexistente',
+      'MIGRATION_DATABASE_URL': url,
+      'MIGRATION_ENV_FILE': '.env.migrations-teste-inexistente',
+      'DATABASE_URL': '',
     },
   );
 
