@@ -103,16 +103,22 @@ void main() {
     expect(find.text('Engenheiro'), findsOneWidget);
     expect(find.text('Pedreiro'), findsOneWidget);
     expect(find.text('Master'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'engenheiro');
+    await tester.enterText(
+      find.descendant(
+        of: find.bySemanticsIdentifier('equipe-busca'),
+        matching: find.byType(TextField),
+      ),
+      'engenheiro',
+    );
     await tester.pump();
     expect(find.text('Bruno'), findsNothing);
-    await tester.tap(find.text('Ana'));
+    await tester.tap(find.bySemanticsIdentifier('equipe-pessoa'));
     await tester.pumpAndSettle();
     expect(find.text('pessoa@example.test'), findsOneWidget);
     expect(find.textContaining('Desde'), findsOneWidget);
     await tester.tap(find.text('Fechar'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(DropdownButton<int>));
+    await tester.tap(find.bySemanticsIdentifier('equipe-obra'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Obra Beta').last);
     await tester.pumpAndSettle();
@@ -130,6 +136,8 @@ void main() {
       find.text('Esta obra ainda não tem equipe vinculada.'),
       findsOneWidget,
     );
+    expect(find.bySemanticsIdentifier('equipe-vazio'), findsOneWidget);
+    expect(find.bySemanticsIdentifier('equipe-pessoa'), findsNothing);
   });
   testWidgets('sem obras nao consulta uma equipe arbitraria', (tester) async {
     final chamadas = <String>[];
@@ -238,7 +246,11 @@ void main() {
       findsOneWidget,
     );
   });
-  for (final tamanho in [const Size(320, 640), const Size(844, 390)]) {
+  for (final tamanho in [
+    const Size(320, 640),
+    const Size(844, 390),
+    const Size(1280, 800),
+  ]) {
     testWidgets('layout e perfil sem overflow em $tamanho', (tester) async {
       tester.view.physicalSize = tamanho;
       tester.view.devicePixelRatio = 1;
@@ -258,7 +270,9 @@ void main() {
         ),
         escala: 1.4,
       );
-      await tester.ensureVisible(find.text('Ana Maria com nome completo longo'));
+      await tester.ensureVisible(
+        find.text('Ana Maria com nome completo longo'),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Ana Maria com nome completo longo'));
       await tester.pumpAndSettle();

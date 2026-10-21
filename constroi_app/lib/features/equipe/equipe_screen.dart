@@ -124,55 +124,63 @@ class _EquipeScreenState extends State<EquipeScreen> {
                   ),
                   const SizedBox(height: 12),
                   if (_obras.isNotEmpty)
-                    DropdownButton<int>(
-                      value: _obra,
-                      isExpanded: true,
-                      dropdownColor: Colors.white,
-                      style: const TextStyle(color: _tinta, fontSize: 14),
-                      iconEnabledColor: _tinta,
-                      items: [
-                        for (final obra in _obras)
-                          DropdownMenuItem(
-                            value: obra.id,
-                            child: Text(
-                              obra.nome,
-                              overflow: TextOverflow.ellipsis,
+                    Semantics(
+                      identifier: 'equipe-obra',
+                      container: true,
+                      child: DropdownButton<int>(
+                        value: _obra,
+                        isExpanded: true,
+                        dropdownColor: Colors.white,
+                        style: const TextStyle(color: _tinta, fontSize: 14),
+                        iconEnabledColor: _tinta,
+                        items: [
+                          for (final obra in _obras)
+                            DropdownMenuItem(
+                              value: obra.id,
+                              child: Text(
+                                obra.nome,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                      ],
-                      onChanged: (obra) {
-                        if (obra == null) return;
-                        setState(() {
-                          _obra = obra;
-                          _busca.clear();
-                        });
-                        _carregar();
-                      },
+                        ],
+                        onChanged: (obra) {
+                          if (obra == null) return;
+                          setState(() {
+                            _obra = obra;
+                            _busca.clear();
+                          });
+                          _carregar();
+                        },
+                      ),
                     ),
                   const Divider(color: _tinta, thickness: 2, height: 28),
-                  TextField(
-                    controller: _busca,
-                    onChanged: (_) => setState(() {}),
-                    style: const TextStyle(color: _tinta),
-                    cursorColor: _tinta,
-                    decoration: InputDecoration(
-                      labelText: 'Buscar pessoa ou perfil',
-                      labelStyle: const TextStyle(color: _apoio),
-                      prefixIcon: const Icon(Icons.search, color: _tinta),
-                      fillColor: Colors.white,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: _tinta),
+                  Semantics(
+                    identifier: 'equipe-busca',
+                    container: true,
+                    child: TextField(
+                      controller: _busca,
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(color: _tinta),
+                      cursorColor: _tinta,
+                      decoration: InputDecoration(
+                        labelText: 'Buscar pessoa ou perfil',
+                        labelStyle: const TextStyle(color: _apoio),
+                        prefixIcon: const Icon(Icons.search, color: _tinta),
+                        fillColor: Colors.white,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: _tinta),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: _tinta, width: 2),
+                        ),
+                        suffixIcon: _busca.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Limpar busca',
+                                icon: const Icon(Icons.close, color: _tinta),
+                                onPressed: () => setState(_busca.clear),
+                              ),
                       ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: _tinta, width: 2),
-                      ),
-                      suffixIcon: _busca.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Limpar busca',
-                              icon: const Icon(Icons.close, color: _tinta),
-                              onPressed: () => setState(_busca.clear),
-                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -259,34 +267,39 @@ class _EquipeScreenState extends State<EquipeScreen> {
     ),
   );
 
-  Widget _pessoa(PessoaEquipe pessoa, int indice) => Material(
-    color: indice.isEven ? Colors.white : const Color(0xFFEAEAEA),
-    child: InkWell(
-      onTap: () => _mostrarPerfil(pessoa),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Text(
-                pessoa.nome,
-                style: const TextStyle(
-                  color: _tinta,
-                  fontWeight: FontWeight.w600,
+  Widget _pessoa(PessoaEquipe pessoa, int indice) => Semantics(
+    identifier: 'equipe-pessoa',
+    container: true,
+    button: true,
+    child: Material(
+      color: indice.isEven ? Colors.white : const Color(0xFFEAEAEA),
+      child: InkWell(
+        onTap: () => _mostrarPerfil(pessoa),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(
+                  pessoa.nome,
+                  style: const TextStyle(
+                    color: _tinta,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: Text(
-                pessoa.papel,
-                style: const TextStyle(color: _tinta, fontSize: 13),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  pessoa.papel,
+                  style: const TextStyle(color: _tinta, fontSize: 13),
+                ),
               ),
-            ),
-            const Icon(Icons.chevron_right, color: _tinta, size: 24),
-          ],
+              const Icon(Icons.chevron_right, color: _tinta, size: 24),
+            ],
+          ),
         ),
       ),
     ),
@@ -341,24 +354,29 @@ class _EquipeScreenState extends State<EquipeScreen> {
     ),
   );
 
-  Widget _aviso(String texto, {bool tentar = false}) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-    child: Column(
-      children: [
-        Text(
-          texto,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: _apoio, height: 1.4),
-        ),
-        if (tentar)
-          TextButton(
-            onPressed: () => _carregar(recarregarObras: true),
-            child: const Text(
-              'Tentar novamente',
-              style: TextStyle(color: _tinta),
-            ),
+  Widget _aviso(String texto, {bool tentar = false}) => Semantics(
+    identifier: tentar ? 'equipe-erro' : 'equipe-vazio',
+    container: true,
+    liveRegion: true,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      child: Column(
+        children: [
+          Text(
+            texto,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _apoio, height: 1.4),
           ),
-      ],
+          if (tentar)
+            TextButton(
+              onPressed: () => _carregar(recarregarObras: true),
+              child: const Text(
+                'Tentar novamente',
+                style: TextStyle(color: _tinta),
+              ),
+            ),
+        ],
+      ),
     ),
   );
 }

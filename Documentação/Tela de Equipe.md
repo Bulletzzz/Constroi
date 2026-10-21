@@ -27,4 +27,7 @@ Não há alteração de API, schema ou migration.
 
 Na pasta `constroi_app`, execute `flutter test test/equipe_test.dart`. Os testes
 cobrem consulta por obra, perfis, busca, detalhes, navegação do pedreiro, estados
-vazios e de erro, resposta atrasada e layout com fonte ampliada.
+vazios e de erro, resposta atrasada e seletores semânticos. O layout e o diálogo
+de perfil são verificados com fonte ampliada em 320×640, 844×390 e 1280×800.
+Os identificadores usados pelo Cypress estão em
+[`docs/casos-de-teste.md`](../docs/casos-de-teste.md).
