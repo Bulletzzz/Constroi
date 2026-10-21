@@ -17,22 +17,22 @@ Conferir ($entradaId -match '^\d+$') "entrada sem XML criada para o anexo (veio 
 
 $nota = MontarNfe -Chave ('4' * 44) -Nome $c.produto.nome -Quantidade '7.0000'
 $rota = "/entradas/$entradaId/xml"
-$registros = "SELECT COUNT(*)::text FROM log_sistema WHERE acao LIKE 'ANEXO_NFE entrada=$entradaId %'"
+$registros = "SELECT COUNT(*)::text FROM log_sistema WHERE usuario_id = $engenheiroId AND acao LIKE 'ANEXO_NFE %'"
 
 $anexo = EnviarArquivo PATCH $rota $c.engenheiro $nota $null 200 'anexa o XML na entrada'
 Conferir ($anexo.xml_anexado -eq $true) 'resposta confirma o anexo'
 VerificarBanco $saldo '10.00' 'anexar XML nao soma quantidade nenhuma'
 VerificarBanco $registros '1' 'anexo deixa exatamente um registro no log'
 
-EnviarArquivo PATCH $rota $c.engenheiro $nota $null 409 'anexar a mesma entrada de novo recusa' | Out-Null
-VerificarBanco $saldo '10.00' 'segunda tentativa nao soma duas vezes'
-
 $outraNota = MontarNfe -Chave ('5' * 44) -Nome $c.produto.nome
-EnviarArquivo PATCH $rota $c.engenheiro $outraNota $null 409 'entrada que ja tem XML nao aceita outro' | Out-Null
+$ocupada = EnviarArquivo PATCH $rota $c.engenheiro $outraNota $null 409 'entrada que ja tem XML nao aceita outro'
+Conferir ($ocupada.erro -match 'ja possui XML') "a recusa diz que a entrada ja tem XML (veio '$($ocupada.erro)')"
+VerificarBanco $saldo '10.00' 'segunda tentativa nao soma duas vezes'
 
 $segunda = (ExecutarBanco -Argumentos @('consultar',
     "INSERT INTO entrada_estoque (usuario_id, obra_id, justificativa) VALUES ($engenheiroId, $obraId, 'manual') RETURNING id")).resultado
-EnviarArquivo PATCH "/entradas/$segunda/xml" $c.engenheiro $nota $null 409 'mesma chave em outra entrada da mesma empresa recusa' | Out-Null
+$repetida = EnviarArquivo PATCH "/entradas/$segunda/xml" $c.engenheiro $nota $null 409 'mesma chave em outra entrada da mesma empresa recusa'
+Conferir ($repetida.erro -match 'ja foi registrada') "a recusa diz que a chave ja foi usada (veio '$($repetida.erro)')"
 
 EnviarArquivo PATCH "/entradas/$segunda/xml" $c.pedreiro $outraNota $null 403 'pedreiro nao anexa' | Out-Null
 EnviarArquivo PATCH '/entradas/999999/xml' $c.engenheiro $outraNota $null 404 'entrada inexistente' | Out-Null
