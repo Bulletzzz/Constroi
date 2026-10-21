@@ -211,6 +211,29 @@ administrativos e transações sem limite efetivo.
 Para validar uma conexão candidata sem substituir o `.env` ativo, use
 `API_ENV_FILE` com `dart run bin/verificar_auditoria.dart`.
 
+## Testes
+
+```bash
+cd constroi_api
+dart test
+```
+
+```bash
+cd constroi_app
+flutter test
+```
+
+Com a API de pé, a suíte de integração fala com ela e com o banco de verdade e
+confere o que foi gravado. Um comando roda todos os casos:
+
+```powershell
+.\testes\executar.ps1
+```
+
+Como escolher um caso, ler o detalhe e escrever um novo está em
+[testes/README.md](testes/README.md). O Cypress, que abre o aplicativo num
+navegador, está em [e2e/README.md](e2e/README.md).
+
 ## Equipe
 
 | Integrante | Papel |
