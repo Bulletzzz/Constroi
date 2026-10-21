@@ -116,30 +116,34 @@ class _CustosScreenState extends State<CustosScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButton<int?>(
-                      value: _obra,
-                      isExpanded: true,
-                      dropdownColor: Colors.white,
-                      style: const TextStyle(color: _tinta, fontSize: 14),
-                      iconEnabledColor: _tinta,
-                      items: [
-                        const DropdownMenuItem<int?>(
-                          value: null,
-                          child: Text('Todas as obras'),
-                        ),
-                        for (final obra in _obras)
-                          DropdownMenuItem(
-                            value: obra.id,
-                            child: Text(
-                              obra.nome,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                    Semantics(
+                      identifier: 'custos-obra',
+                      container: true,
+                      child: DropdownButton<int?>(
+                        value: _obra,
+                        isExpanded: true,
+                        dropdownColor: Colors.white,
+                        style: const TextStyle(color: _tinta, fontSize: 14),
+                        iconEnabledColor: _tinta,
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('Todas as obras'),
                           ),
-                      ],
-                      onChanged: (obra) {
-                        setState(() => _obra = obra);
-                        _carregar();
-                      },
+                          for (final obra in _obras)
+                            DropdownMenuItem(
+                              value: obra.id,
+                              child: Text(
+                                obra.nome,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: (obra) {
+                          setState(() => _obra = obra);
+                          _carregar();
+                        },
+                      ),
                     ),
                     const Divider(color: _tinta, thickness: 2, height: 24),
                     Row(
@@ -154,25 +158,30 @@ class _CustosScreenState extends State<CustosScreen> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 3,
                               ),
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: _periodo == periodo.key
-                                      ? _tinta
-                                      : Colors.white,
-                                  foregroundColor: _periodo == periodo.key
-                                      ? _amarelo
-                                      : _tinta,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
+                              child: Semantics(
+                                identifier: 'custos-periodo-${periodo.key}',
+                                container: true,
+                                selected: _periodo == periodo.key,
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: _periodo == periodo.key
+                                        ? _tinta
+                                        : Colors.white,
+                                    foregroundColor: _periodo == periodo.key
+                                        ? _amarelo
+                                        : _tinta,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    side: const BorderSide(color: _tinta),
+                                    shape: const RoundedRectangleBorder(),
                                   ),
-                                  side: const BorderSide(color: _tinta),
-                                  shape: const RoundedRectangleBorder(),
+                                  onPressed: () {
+                                    setState(() => _periodo = periodo.key);
+                                    _carregar();
+                                  },
+                                  child: Text(periodo.value),
                                 ),
-                                onPressed: () {
-                                  setState(() => _periodo = periodo.key);
-                                  _carregar();
-                                },
-                                child: Text(periodo.value),
                               ),
                             ),
                           ),
@@ -204,36 +213,45 @@ class _CustosScreenState extends State<CustosScreen> {
     if (dados.obras.isEmpty)
       _aviso('Nenhuma obra disponível para consultar custos.')
     else ...[
-      Container(
-        color: _tinta,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _periodo == 'total' ? 'CUSTO ACUMULADO' : 'CUSTO NO PERÍODO',
-              style: const TextStyle(color: _amarelo, fontSize: 12),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              dinheiro(dados.resumo.periodo),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
+      Semantics(
+        identifier: 'custos-resumo',
+        container: true,
+        child: Container(
+          color: _tinta,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _periodo == 'total' ? 'CUSTO ACUMULADO' : 'CUSTO NO PERÍODO',
+                style: const TextStyle(color: _amarelo, fontSize: 12),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(switch (_periodo) {
-              'semana' => 'Semana atual, a partir de segunda-feira',
-              'mes' => 'Mês atual',
-              _ => 'Materiais comprados e outras despesas',
-            }, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                dinheiro(dados.resumo.periodo),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(switch (_periodo) {
+                'semana' => 'Semana atual, a partir de segunda-feira',
+                'mes' => 'Mês atual',
+                _ => 'Materiais comprados e outras despesas',
+              }, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
         ),
       ),
       const SizedBox(height: 12),
-      _orcamento(dados.resumo),
+      Semantics(
+        identifier: 'custos-orcamento',
+        container: true,
+        explicitChildNodes: true,
+        child: _orcamento(dados.resumo),
+      ),
       if (dados.semPreco > 0)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -278,13 +296,28 @@ class _CustosScreenState extends State<CustosScreen> {
               ],
             ),
           ),
-      _titulo('LANÇAMENTOS DO PERÍODO'),
-      for (final item in _lancamentos)
-        _linha(
-          item.descricao,
-          dinheiro(item.valor),
-          detalhe: '${item.dataFormatada} · ${item.obra}\n${item.categoria}',
+      Semantics(
+        identifier: 'custos-lancamentos',
+        container: true,
+        explicitChildNodes: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _titulo('LANÇAMENTOS DO PERÍODO'),
+            for (final item in _lancamentos)
+              Semantics(
+                identifier: 'custos-lancamento',
+                container: true,
+                child: _linha(
+                  item.descricao,
+                  dinheiro(item.valor),
+                  detalhe:
+                      '${item.dataFormatada} · ${item.obra}\n${item.categoria}',
+                ),
+              ),
+          ],
         ),
+      ),
       if (_erroPagina != null)
         _aviso(_erroPagina!, tentar: () => _carregar(mais: true))
       else if (_temMais)

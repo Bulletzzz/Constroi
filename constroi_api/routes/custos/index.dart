@@ -62,10 +62,14 @@ Future<Response> onRequest(RequestContext context) async {
     };
     dados['lancamentos'] = lancamentos.take(limite).toList();
     return Response.json(body: dados);
-  } catch (erro) {
-    // Nao registra a mensagem de conexao, que pode conter credenciais.
+  } catch (erro, pilha) {
+    // Preserva a causa e a pilha, removendo URLs que podem conter credenciais.
+    final diagnostico = '$erro\n$pilha'.replaceAll(
+      RegExp(r'postgres(?:ql)?://[^\r\n]*', caseSensitive: false),
+      '[conexao PostgreSQL omitida]',
+    );
     // ignore: avoid_print
-    print('Falha na consulta de custos (${erro.runtimeType}).');
+    print('Falha na consulta de custos (${erro.runtimeType}): $diagnostico');
     return Response.json(
       statusCode: HttpStatus.serviceUnavailable,
       body: {

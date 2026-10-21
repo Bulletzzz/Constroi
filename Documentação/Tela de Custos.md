@@ -26,6 +26,9 @@ Valores monetários são decimais em texto. Os totais são calculados antes da
 paginação, no mesmo snapshot dos lançamentos. A tela formata os valores em reais
 sem converter dinheiro para ponto flutuante.
 
+Falhas de consulta retornam 503 com mensagem genérica. O log do servidor preserva
+a causa e a pilha do erro, removendo URLs de conexão PostgreSQL.
+
 O cálculo usa `vw_lancamento_custo` e `vw_resumo_custo_obra`: compras com preço
 histórico mais despesas, sem duplicar saídas de estoque. Entradas sem preço não
 entram no custo; a quantidade dessas pendências aparece na tela. Se alguma obra
@@ -47,5 +50,8 @@ do período em ordem de data, com paginação, em vez de rotulá-los como “mai
 
 Na pasta `constroi_api`: `dart test test/routes/custos_test.dart`.
 Na pasta `constroi_app`: `flutter test test/custos_test.dart test/navigation_test.dart`.
-Os testes cobrem acesso, filtros, paginação, erro, navegação, troca de obra/período,
-respostas atrasadas e layout com fonte ampliada em telas de 320 e 844 pixels.
+Os testes cobrem acesso, filtros, paginação, diagnóstico de falhas sem expor URLs
+de conexão, navegação, troca de obra/período, respostas atrasadas e seletores
+semânticos. O layout é verificado com fonte ampliada em 320×640, 844×390 e
+1280×800. Os identificadores usados pelo Cypress estão em
+[`docs/casos-de-teste.md`](../docs/casos-de-teste.md).

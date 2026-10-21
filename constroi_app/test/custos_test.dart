@@ -120,15 +120,36 @@ void main() {
     expect(find.text('CUSTOS DA OBRA'), findsOneWidget);
     expect(find.text('R\$ 150,25'), findsWidgets);
     expect(find.textContaining('sem preço'), findsOneWidget);
-    await tester.tap(find.byType(DropdownButton<int?>));
+    await tester.tap(find.bySemanticsIdentifier('custos-obra'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Obra Beta').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('MÊS'));
+    await tester.tap(find.bySemanticsIdentifier('custos-periodo-mes'));
     await tester.pumpAndSettle();
     expect(chamadas.last.queryParameters['obra_id'], '2');
     expect(chamadas.last.queryParameters['periodo'], 'mes');
     expect(find.text('TOTAIS POR OBRA'), findsNothing);
+  });
+  testWidgets('seletores semanticos expõem resumo, orcamento e lancamentos', (
+    tester,
+  ) async {
+    await abrir(tester, service((_) async => resposta(dados())));
+    expect(
+      tester.getSemantics(find.bySemanticsIdentifier('custos-resumo')).label,
+      contains('R\$ 150,25'),
+    );
+    expect(find.bySemanticsIdentifier('custos-orcamento'), findsOneWidget);
+    expect(find.bySemanticsIdentifier('custos-periodo-semana'), findsOneWidget);
+    expect(find.bySemanticsIdentifier('custos-periodo-total'), findsOneWidget);
+    await tester.ensureVisible(find.text('LANÇAMENTOS DO PERÍODO'));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsIdentifier('custos-lancamentos'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(find.bySemanticsIdentifier('custos-lancamento'))
+          .label,
+      contains('Cimento CP-II'),
+    );
   });
   testWidgets('sem lancamentos tem estado vazio', (tester) async {
     await abrir(tester, service((_) async => resposta(dados(vazio: true))));
@@ -205,7 +226,11 @@ void main() {
     expect(chamadas.last.queryParameters['offset'], '1');
     expect(find.text('Cimento CP-II'), findsNWidgets(2));
   });
-  for (final tamanho in [const Size(320, 640), const Size(844, 390)]) {
+  for (final tamanho in [
+    const Size(320, 640),
+    const Size(844, 390),
+    const Size(1280, 800),
+  ]) {
     testWidgets('sem overflow em $tamanho com fonte ampliada', (tester) async {
       tester.view.physicalSize = tamanho;
       tester.view.devicePixelRatio = 1;
