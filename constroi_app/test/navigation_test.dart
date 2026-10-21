@@ -7,7 +7,7 @@ import 'package:constroi_app/navigation/app_bottom_navigation.dart';
 import 'package:constroi_app/navigation/app_route.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/navigation/route_guard.dart';
-import 'package:constroi_app/screens/module_screen.dart';
+import 'package:constroi_app/features/custos/custos_screen.dart';
 import 'package:constroi_app/widgets/app_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -192,7 +192,7 @@ void main() {
     );
   }
 
-  testWidgets('rota nomeada permitida abre o modulo', (tester) async {
+  testWidgets('rota nomeada permitida abre custos', (tester) async {
     await tester.pumpWidget(
       ConstroiApp(
         config: ApiConfig('https://api.constroi.test'),
@@ -205,8 +205,8 @@ void main() {
     await tester.tap(find.text('Custos'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ModuleScreen), findsOneWidget);
-    expect(find.textContaining('Módulo Custos'), findsOneWidget);
+    expect(find.byType(CustosScreen), findsOneWidget);
+    expect(find.text('CUSTOS DA OBRA'), findsOneWidget);
   });
 
   testWidgets('rota direta proibida volta ao painel', (tester) async {

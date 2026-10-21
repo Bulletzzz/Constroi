@@ -46,9 +46,21 @@ acessibilidade que antes não existia, passando a ser legível por leitor de tel
 | `painel-estoque-baixo` | indicador de saldos no mínimo ou abaixo |
 | `painel-requisicoes-pendentes` | indicador de pedidos aguardando |
 | `painel-valor-estimado` | indicador financeiro, só engenheiro e master |
+| `custos-obra` | seletor de obra da tela de custos |
+| `custos-periodo-semana`, `custos-periodo-mes`, `custos-periodo-total` | botões de período; o ativo tem estado semântico selecionado |
+| `custos-resumo` | cartão com o custo do período selecionado |
+| `custos-orcamento` | cartão com orçamento, saldo e percentual consumido |
+| `custos-lancamentos` | seção de lançamentos do período, inclusive quando vazia |
+| `custos-lancamento` | cada lançamento; o identificador se repete nas linhas |
 | `estoque-busca` | campo de busca por SKU ou nome |
 | `estoque-linha` | linha de saldo na tabela |
 | `estoque-vazio` | aviso de resultado sem itens |
+| `equipe-obra` | seletor de obra da tela de equipe |
+| `equipe-busca` | campo de busca por pessoa, e-mail ou perfil |
+| `equipe-busca-campo` | input editável da busca, gerado pelo espelhamento no DOM |
+| `equipe-pessoa` | linha clicável que abre o perfil; o identificador se repete nas pessoas |
+| `equipe-vazio` | aviso de obra sem equipe, busca sem resultados ou ausência de obras |
+| `equipe-erro` | falha ao consultar obras ou equipe, com nova tentativa |
 | `nav-painel`, `nav-estoque`, `nav-custos`, `nav-equipe`, `nav-requisicoes` | navegação inferior |
 
 ## Massa de dados

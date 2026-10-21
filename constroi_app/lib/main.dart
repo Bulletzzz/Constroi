@@ -7,12 +7,16 @@ import 'core/api/api_config.dart';
 import 'core/auth/auth_service.dart';
 import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
+import 'features/custos/custos_screen.dart';
+import 'features/custos/custos_service.dart';
 import 'features/estoque/estoque_screen.dart';
 import 'features/estoque/estoque_service.dart';
 import 'features/pedidos/aprovacoes_screen.dart';
 import 'features/pedidos/pedidos_service.dart';
 import 'features/pedidos/requisicao_screen.dart';
 import 'features/painel/painel_service.dart';
+import 'features/equipe/equipe_screen.dart';
+import 'features/equipe/equipe_service.dart';
 import 'navigation/app_route.dart';
 import 'navigation/perfil_usuario.dart';
 import 'navigation/route_guard.dart';
@@ -134,6 +138,9 @@ class _ConstroiAppState extends State<ConstroiApp> {
   }
 
   Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil) {
+    if (rota == AppRoute.custos) {
+      return CustosScreen(service: CustosService(api: _api!), perfil: perfil);
+    }
     if (rota == AppRoute.painel) {
       return AppHome(
         service: PainelService(_api!),
@@ -147,6 +154,9 @@ class _ConstroiAppState extends State<ConstroiApp> {
         painel: PainelService(_api!),
         perfil: perfil,
       );
+    }
+    if (rota == AppRoute.equipe) {
+      return EquipeScreen(service: EquipeService(api: _api!), perfil: perfil);
     }
     if (rota == AppRoute.requisicoes) {
       final service = PedidosService(api: _api!);
