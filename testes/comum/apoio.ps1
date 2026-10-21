@@ -220,7 +220,7 @@ function LimparMarca {
         "d2 AS (DELETE FROM pedido WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "e0 AS (SELECT id FROM entrada_estoque WHERE obra_id IN (SELECT id FROM o) OR usuario_id IN (SELECT id FROM u))",
         "e1 AS (DELETE FROM item_entrada WHERE entrada_id IN (SELECT id FROM e0) RETURNING 1)",
-        "e2 AS (DELETE FROM entrada_estoque WHERE obra_id IN (SELECT id FROM o) OR usuario_id IN (SELECT id FROM u) RETURNING 1)",
+        "e2 AS (DELETE FROM entrada_estoque WHERE id IN (SELECT id FROM e0) RETURNING 1)",
         "d3 AS (DELETE FROM estoque WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "d4 AS (DELETE FROM usuario_obra WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "d5 AS (DELETE FROM log_sistema WHERE usuario_id IN (SELECT id FROM u) RETURNING 1)",

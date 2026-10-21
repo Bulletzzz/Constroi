@@ -17,10 +17,12 @@ Conferir ($entradaId -match '^\d+$') "entrada sem XML criada para o anexo (veio 
 
 $nota = MontarNfe -Chave ('4' * 44) -Nome $c.produto.nome -Quantidade '7.0000'
 $rota = "/entradas/$entradaId/xml"
+$registros = "SELECT COUNT(*)::text FROM log_sistema WHERE acao LIKE 'ANEXO_NFE entrada=$entradaId %'"
 
 $anexo = EnviarArquivo PATCH $rota $c.engenheiro $nota $null 200 'anexa o XML na entrada'
 Conferir ($anexo.xml_anexado -eq $true) 'resposta confirma o anexo'
 VerificarBanco $saldo '10.00' 'anexar XML nao soma quantidade nenhuma'
+VerificarBanco $registros '1' 'anexo deixa exatamente um registro no log'
 
 EnviarArquivo PATCH $rota $c.engenheiro $nota $null 409 'anexar a mesma entrada de novo recusa' | Out-Null
 VerificarBanco $saldo '10.00' 'segunda tentativa nao soma duas vezes'
@@ -36,5 +38,6 @@ EnviarArquivo PATCH "/entradas/$segunda/xml" $c.pedreiro $outraNota $null 403 'p
 EnviarArquivo PATCH '/entradas/999999/xml' $c.engenheiro $outraNota $null 404 'entrada inexistente' | Out-Null
 EnviarArquivo PATCH '/entradas/abc/xml' $c.engenheiro $outraNota $null 400 'id invalido' | Out-Null
 VerificarBanco $saldo '10.00' 'nenhuma recusa mexeu no saldo'
+VerificarBanco $registros '1' 'recusas nao deixaram registro no log'
 
 FinalizarCaso

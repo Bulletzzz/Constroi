@@ -9,6 +9,7 @@ $nomeProduto = $c.produto.nome
 $campos = @{ obra_id = "$obraId" }
 $contagem = "SELECT COUNT(*)::text FROM entrada_estoque WHERE obra_id = $obraId"
 $saldo = "SELECT COALESCE(MAX(quantidade), 0)::text FROM estoque WHERE obra_id = $obraId AND produto_id = $produtoId"
+$registros = "SELECT COUNT(*)::text FROM log_sistema WHERE acao LIKE 'ENTRADA_NFE %obra=$obraId %'"
 
 VerificarBanco $contagem '0' 'cenario comeca sem entradas'
 
@@ -16,6 +17,7 @@ $nota = MontarNfe -Chave ('1' * 44) -Nome $nomeProduto -Quantidade '1.2500'
 EnviarArquivo POST '/entradas/xml' $c.engenheiro $nota $campos 201 'importa NF-e com material do catalogo' | Out-Null
 VerificarBanco $saldo '1.25' 'entrada soma exatamente a quantidade da nota'
 VerificarBanco $contagem '1' 'uma entrada gravada'
+VerificarBanco $registros '1' 'importacao deixa exatamente um registro no log'
 
 EnviarArquivo POST '/entradas/xml' $c.engenheiro $nota $campos 409 'mesma chave nao importa duas vezes' | Out-Null
 VerificarBanco $saldo '1.25' 'reenvio da mesma nota nao soma de novo'
@@ -39,5 +41,6 @@ EnviarArquivo POST '/entradas/xml' $c.engenheiro $nota @{ obra_id = 'abc' } 400 
 EnviarArquivo POST '/entradas/xml' $c.pedreiro $nota $campos 403 'pedreiro nao importa nota' | Out-Null
 EnviarArquivo POST '/entradas/xml' $null $nota $campos 401 'sem token nao importa nota' | Out-Null
 VerificarBanco $contagem '1' 'nenhuma recusa deixou entrada no banco'
+VerificarBanco $registros '1' 'nenhuma recusa deixou registro no log'
 
 FinalizarCaso
