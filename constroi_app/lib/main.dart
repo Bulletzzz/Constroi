@@ -15,6 +15,8 @@ import 'features/pedidos/aprovacoes_screen.dart';
 import 'features/pedidos/pedidos_service.dart';
 import 'features/pedidos/requisicao_screen.dart';
 import 'features/painel/painel_service.dart';
+import 'features/equipe/equipe_screen.dart';
+import 'features/equipe/equipe_service.dart';
 import 'navigation/app_route.dart';
 import 'navigation/perfil_usuario.dart';
 import 'navigation/route_guard.dart';
@@ -152,6 +154,9 @@ class _ConstroiAppState extends State<ConstroiApp> {
         painel: PainelService(_api!),
         perfil: perfil,
       );
+    }
+    if (rota == AppRoute.equipe) {
+      return EquipeScreen(service: EquipeService(api: _api!), perfil: perfil);
     }
     if (rota == AppRoute.requisicoes) {
       final service = PedidosService(api: _api!);
