@@ -7,6 +7,8 @@ import 'core/api/api_config.dart';
 import 'core/auth/auth_service.dart';
 import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
+import 'features/custos/custos_screen.dart';
+import 'features/custos/custos_service.dart';
 import 'features/estoque/estoque_screen.dart';
 import 'features/estoque/estoque_service.dart';
 import 'features/pedidos/aprovacoes_screen.dart';
@@ -134,6 +136,9 @@ class _ConstroiAppState extends State<ConstroiApp> {
   }
 
   Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil) {
+    if (rota == AppRoute.custos) {
+      return CustosScreen(service: CustosService(api: _api!), perfil: perfil);
+    }
     if (rota == AppRoute.painel) {
       return AppHome(
         service: PainelService(_api!),

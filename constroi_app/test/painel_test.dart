@@ -11,7 +11,7 @@ import 'package:constroi_app/main.dart';
 import 'package:constroi_app/navigation/app_bottom_navigation.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/screens/login_screen.dart';
-import 'package:constroi_app/screens/module_screen.dart';
+import 'package:constroi_app/features/custos/custos_screen.dart';
 import 'package:constroi_app/theme/app_theme.dart';
 import 'package:constroi_app/widgets/app_home.dart';
 import 'package:flutter/material.dart';
@@ -394,7 +394,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.byType(ModuleScreen),
+        find.byType(CustosScreen),
         tipoAtual == 'pedreiro' ? findsNothing : findsOneWidget,
       );
       expect(
