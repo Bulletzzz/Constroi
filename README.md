@@ -223,7 +223,7 @@ flutter test
 ```
 
 Com a API de pé, a suíte de integração fala com ela e com o banco de verdade e
-confere o que foi gravado. São 20 casos, um comando:
+confere o que foi gravado. Um comando roda todos os casos:
 
 ```powershell
 .\testes\executar.ps1
