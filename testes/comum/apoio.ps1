@@ -218,6 +218,9 @@ function LimparMarca {
         "o AS (SELECT id FROM obra WHERE empresa_id IN (SELECT id FROM alvo))",
         "d1 AS (DELETE FROM item_pedido WHERE pedido_id IN (SELECT id FROM pedido WHERE obra_id IN (SELECT id FROM o)) RETURNING 1)",
         "d2 AS (DELETE FROM pedido WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
+        "e0 AS (SELECT id FROM entrada_estoque WHERE obra_id IN (SELECT id FROM o) OR usuario_id IN (SELECT id FROM u))",
+        "e1 AS (DELETE FROM item_entrada WHERE entrada_id IN (SELECT id FROM e0) RETURNING 1)",
+        "e2 AS (DELETE FROM entrada_estoque WHERE obra_id IN (SELECT id FROM o) OR usuario_id IN (SELECT id FROM u) RETURNING 1)",
         "d3 AS (DELETE FROM estoque WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "d4 AS (DELETE FROM usuario_obra WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "d5 AS (DELETE FROM log_sistema WHERE usuario_id IN (SELECT id FROM u) RETURNING 1)",
@@ -229,6 +232,93 @@ function LimparMarca {
     )
     $sql = ($partes -join ', ') + ' SELECT COUNT(*)::text FROM d10'
     ExecutarBanco -Argumentos @('consultar', $sql) | Out-Null
+}
+
+function MontarNfe {
+    param(
+        [string]$Chave,
+        [string]$Codigo = 'CIM-01',
+        [string]$Nome = 'Cimento',
+        [string]$Quantidade = '1.2500',
+        [string]$Unidade = 'saco'
+    )
+
+    $item = "<det nItem=`"1`"><prod><cProd>$Codigo</cProd><xProd>$Nome</xProd>" +
+            "<uCom>$Unidade</uCom><qCom>$Quantidade</qCom></prod></det>"
+    return @(
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe"><NFe>'
+        "<infNFe Id=`"NFe$Chave`" versao=`"4.00`">"
+        $item
+        '</infNFe></NFe></nfeProc>'
+    ) -join "`n"
+}
+
+function EnviarArquivo {
+    param(
+        [string]$Metodo,
+        [string]$Rota,
+        [string]$Token,
+        [string]$Xml,
+        [hashtable]$Campos,
+        [int]$Esperado,
+        [string]$Rotulo
+    )
+
+    $global:Total++
+    $limite = [guid]::NewGuid().ToString()
+    $fim = "`r`n"
+    $texto = New-Object System.Text.StringBuilder
+
+    if ($Campos) {
+        foreach ($campo in $Campos.Keys) {
+            [void]$texto.Append("--$limite$fim")
+            [void]$texto.Append("Content-Disposition: form-data; name=`"$campo`"$fim$fim")
+            [void]$texto.Append("$($Campos[$campo])$fim")
+        }
+    }
+    [void]$texto.Append("--$limite$fim")
+    [void]$texto.Append("Content-Disposition: form-data; name=`"xml`"; filename=`"nota.xml`"$fim")
+    [void]$texto.Append("Content-Type: application/xml$fim$fim")
+    [void]$texto.Append("$Xml$fim")
+    [void]$texto.Append("--$limite--$fim")
+
+    $parametros = @{
+        Uri             = "$global:BaseUrl$Rota"
+        Method          = $Metodo
+        UseBasicParsing = $true
+        Body            = [Text.Encoding]::UTF8.GetBytes($texto.ToString())
+        ContentType     = "multipart/form-data; boundary=$limite"
+    }
+    if ($Token) { $parametros.Headers = @{ Authorization = "Bearer $Token" } }
+
+    $codigo = 0
+    $conteudo = ''
+    try {
+        $resposta = Invoke-WebRequest @parametros -ErrorAction Stop
+        $codigo = $resposta.StatusCode
+        $conteudo = $resposta.Content
+    }
+    catch {
+        $codigo = $_.Exception.Response.StatusCode.value__
+        $conteudo = $_.ErrorDetails.Message
+    }
+
+    if ($codigo -eq $Esperado) {
+        Write-Host ("    ok    {0,-50} {1}" -f $Rotulo, $codigo) -ForegroundColor DarkGray
+    }
+    else {
+        $global:Falhas += "$Rotulo (esperado $Esperado, veio $codigo)"
+        Write-Host ("    FALHA {0,-50} esperado {1}, veio {2}" -f $Rotulo, $Esperado, $codigo) -ForegroundColor Red
+    }
+    if ($global:Detalhado -and $conteudo) {
+        Write-Host ("          {0}" -f ($conteudo -replace '\s+', ' ')) -ForegroundColor DarkGray
+    }
+
+    if ($conteudo) {
+        try { return $conteudo | ConvertFrom-Json } catch { return $null }
+    }
+    return $null
 }
 
 function FinalizarCaso {
