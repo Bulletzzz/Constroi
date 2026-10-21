@@ -552,7 +552,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
               width: 35,
               child: Semantics(
                 label: item.baixo
-                    ? 'Abaixo do mínimo de ${item.estoqueMinimo}'
+                    ? 'No mínimo ou abaixo (${item.estoqueMinimo})'
                     : 'Saldo normal',
                 child: Icon(
                   item.baixo ? Icons.warning_rounded : Icons.square_rounded,

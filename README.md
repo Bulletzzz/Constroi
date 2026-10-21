@@ -173,16 +173,23 @@ Cada pessoa precisa do próprio `constroi_api/.env`, que não vai para o reposit
 o modelo e preencha:
 
 ```
-DATABASE_URL=postgresql://usuario:senha@host.neon.tech/constroi?sslmode=require
+DATABASE_URL=postgresql://USUARIO_ATUAL:SENHA@host.neon.tech/constroi?sslmode=require
+AUDITORIA_CONEXAO_ESTRITA=false
+DATABASE_TRANSACTION_TIMEOUT_MS=30000
 JWT_SECRET=uma-chave-longa-e-aleatoria
 ```
 
-A URL tem que ser a conexão **direct** do Neon, sem `channel_binding`.
+A URL exige TLS; `channel_binding` é removido pelo normalizador. A flag de
+auditoria vem desligada para preservar a conexão atual. Após provisionar e
+validar o papel restrito com a equipe, troque a URL por sua conexão **direct**
+e ative `AUDITORIA_CONEXAO_ESTRITA=true`. A credencial de migrations fica
+exclusivamente em `constroi_api/.env.migrations`, na variável
+`MIGRATION_DATABASE_URL`. Veja o [roteiro de implantação coordenada](docs/infra-auditoria.md).
 
 Com Docker, sobe app e API juntos:
 
 ```bash
-docker compose up --build
+docker compose --env-file constroi_api/.env up --build
 ```
 
 - Aplicativo: http://localhost:8090
@@ -196,6 +203,12 @@ dart pub get
 dart run bin/migrate.dart
 dart_frog dev
 ```
+
+O runner de migrations lê `.env.migrations`, nunca usa `DATABASE_URL` como
+fallback. Com `AUDITORIA_CONEXAO_ESTRITA=true`, a API recusa papéis
+administrativos e transações sem limite efetivo.
+Para validar uma conexão candidata sem substituir o `.env` ativo, use
+`API_ENV_FILE` com `dart run bin/verificar_auditoria.dart`.
 
 ## Equipe
 

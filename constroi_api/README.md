@@ -197,12 +197,25 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `012_pedido_local_urgencia.sql`: local da obra e nível de urgência no pedido, com urgência restrita a `padrao` ou `urgente`
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
+`AUDITORIA_CONEXAO_ESTRITA` vem desligada por padrão, preservando a conexão
+atual. Ative com `true` somente depois de provisionar e validar o papel restrito,
+permissões e limites com a equipe, conforme
+[infra-auditoria.md](../docs/infra-auditoria.md).
+Aceita `true`/`false` sem diferenciar maiúsculas e com espaços nas bordas;
+outros valores, inclusive vazio, geram erro de configuração.
 
 O pool abre até 10 conexões. Para mudar, acrescente `max_connection_count` na própria `DATABASE_URL`.
+Com a flag ligada, o máximo aceito é 50 e o servidor exige PostgreSQL 17+,
+endpoint direto e papel restrito com timeout provisionado. Nesse modo, as
+transações têm limite máximo de 30 segundos e margem publicada de 31 segundos
+para o futuro fechamento dos relatórios. A configuração é validada em cada
+conexão física. Com a flag desligada, essas garantias ainda não estão ativas.
 
 ```powershell
 cd constroi_api
 dart pub get
+# Crie .env.migrations a partir de .env.migrations.example e configure
+# MIGRATION_DATABASE_URL com o papel privilegiado, separado da API.
 dart run bin/migrate.dart
 ```
 
@@ -212,7 +225,11 @@ Para criar uma alteração futura, adicione uma nova migration numerada. Não ed
 
 A única exceção é a migration que falha ao rodar em banco vazio mas já está registrada em todos os ambientes: nesse caso a correção não muda o estado final do schema nem afeta banco existente, porque o arquivo não volta a rodar onde já foi aplicado. Explique o motivo no PR e comprove com uma execução a partir de banco vazio. Qualquer alteração que mude o schema resultante exige migration nova, sem exceção.
 
-Para conferir o caminho de banco novo, suba um PostgreSQL vazio com TLS, aponte a `DATABASE_URL` para ele e rode `dart run bin/migrate.dart` duas vezes: a primeira deve aplicar todas, a segunda não deve aplicar nenhuma.
+Para conferir o caminho de banco novo, use um PostgreSQL local descartável com
+TLS, aponte `MIGRATION_DATABASE_URL` para ele e rode `dart run bin/migrate.dart`
+duas vezes: a primeira aplica todas, a segunda não aplica nenhuma. O arquivo
+padrão é `.env.migrations`, alterável por `MIGRATION_ENV_FILE`. Não há fallback
+para `.env`, `DATABASE_ENV_FILE` ou `DATABASE_URL`.
 
 ## Consulta de estoque (RF05)
 

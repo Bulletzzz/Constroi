@@ -41,6 +41,7 @@ Map<String, dynamic> respostaPainel({
   'indicadores': {
     'total_itens': total,
     'rupturas_criticas': 2,
+    'estoque_baixo': 5,
     'requisicoes_pendentes': 3,
     'obras_ativas': 1,
     'valor_estimado': valor,
