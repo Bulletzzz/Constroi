@@ -188,6 +188,50 @@ aplicada na montagem da interface, e não apenas no servidor.
 
 ---
 
+## CT-E2E-06 — Painel mostra o que a API responde
+
+**Categoria:** contrato
+**Técnica:** resposta controlada por stub
+**Nível:** sistema
+
+**Pré-condição:** cenário semeado e `GET /painel` interceptado com `painel.json`.
+
+**Passos**
+1. Interceptar a consulta do painel e devolver a fixture.
+2. Autenticar como engenheiro e esperar a resposta interceptada.
+
+**Resultado esperado**
+- `painel-total-itens`, `painel-rupturas-criticas` e `painel-requisicoes-pendentes`
+  exibem exatamente os números da fixture.
+
+Os valores da fixture são distantes de qualquer saldo real (137, 9 e 41) para que
+um número vindo de outra origem não passe por coincidência. O caso prova que a
+tela mostra o que a API respondeu, sem depender do estado do banco.
+
+---
+
+## CT-E2E-07 — Login quando a API falha
+
+**Categoria:** validação
+**Técnica:** injeção de falha por stub
+**Nível:** sistema
+
+**Pré-condição:** cenário semeado e `POST /login` interceptado com 503.
+
+**Passos**
+1. Interceptar o login e devolver erro de serviço indisponível.
+2. Preencher credenciais válidas e enviar.
+
+**Resultado esperado**
+- `login-erro` aparece.
+- A tela de acesso continua visível e `nav-painel` não existe.
+
+As credenciais são válidas: quem recusa é o servidor. Esse caminho não tinha como
+ser exercitado antes do stub, porque exigiria derrubar a API de verdade no meio
+da execução.
+
+---
+
 ## Resumo da execução
 
 | Caso | Testes | Resultado |
@@ -197,7 +241,9 @@ aplicada na montagem da interface, e não apenas no servidor.
 | CT-E2E-03 | 1 | passou |
 | CT-E2E-04 | 2 | passou |
 | CT-E2E-05 | 2 | passou |
-| **Total** | **7** | **7 passaram** |
+| CT-E2E-06 | 1 | passou |
+| CT-E2E-07 | 1 | passou |
+| **Total** | **9** | **9 passaram** |
 
 Evidências em `e2e/evidencias/`: um vídeo por caso e a saída completa da execução
 em `execucao-completa.txt`.

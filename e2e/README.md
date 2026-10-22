@@ -79,20 +79,26 @@ e2e/
 ├── cypress.config.js          baseUrl, pastas e variáveis
 ├── cypress/
 │   ├── e2e/                   um arquivo por caso de teste
-│   └── support/e2e.js         comandos de apoio e massa de dados
+│   ├── fixtures/              credenciais, modelo de empresa, resposta do painel
+│   ├── pages/                 um objeto por tela; os seletores ficam só aqui
+│   └── support/               e2e.js registra, comandos.js e cenario.js implementam
 └── evidencias/                vídeos e saída da execução
 ```
+
+Nenhum spec escreve `[data-cy=...]`. Quem precisa de um seletor pede à tela.
+O porquê de cada decisão está em [REFATORACAO.md](REFATORACAO.md).
 
 ## Comandos de apoio
 
 | Comando | O que faz |
 |---|---|
-| `cy.semearEmpresa()` | cria empresa, master, engenheiro, pedreiro, obra, produto e vínculo |
+| `cy.semearCenario()` | cria empresa, master, engenheiro, pedreiro, obra, produto e vínculo |
+| `cy.entrarComo(email)` | preenche o acesso, envia e espera o menu aparecer |
+| `cy.irPara(secao)` | abre a seção pelo menu e espera a tela daquela seção carregar |
 | `cy.criarPedido(cenario, qtd)` | registra um pedido em nome do pedreiro |
 | `cy.abrirApp(caminho)` | abre a aplicação e espera o Flutter terminar de carregar |
-| `cy.preencher(id, texto)` | foca o campo e digita, tratando o input que o Flutter cria |
-| `cy.entrarNaTela(email)` | preenche e envia o formulário de acesso |
 | `cy.chamarApi(metodo, rota, corpo, token)` | chamada direta à API, usada no preparo |
+| `cy.porIdentificador(id)`, `cy.naoExiste(id)`, `cy.digitar(id, texto)` | apoio dos page objects |
 
 Cada execução cria dados com um sufixo aleatório, então os casos não disputam
 registros entre si e podem rodar em qualquer ordem.
@@ -127,7 +133,7 @@ Campos de texto do Flutter publicam dois `input` dentro do nó semântico: um
 desabilitado, que é a representação estática, e outro habilitado, criado quando o
 campo recebe foco. O espelho marca os dois, para que nenhum teste precise recorrer
 a seletor de elemento: o habilitado vira `nome-campo` e o desabilitado,
-`nome-inativo`. Por isso `cy.preencher` clica no nó e depois digita em
+`nome-inativo`. Por isso `cy.digitar` clica no nó e depois digita em
 `[data-cy=nome-campo]`.
 
 A sessão do Constrói vive apenas em memória. Recarregar a página desconecta o
@@ -141,4 +147,4 @@ caso que não use esse comando, lembre de dar o mesmo tempo.
 ## Evidências
 
 `evidencias/` guarda um vídeo por caso e `execucao-completa.txt`, com a saída da
-execução dos cinco casos em sequência.
+execução dos sete casos em sequência.
