@@ -1,24 +1,30 @@
+import { loginPage } from '../pages/login.page';
+import { navegacao } from '../pages/navegacao.page';
+import { TEMPO_CARGA_APP } from '../support/comandos';
+
 describe('CT-E2E-02 Login com senha incorreta', () => {
   let cenario;
+  let credenciais;
 
   before(() => {
-    cy.semearEmpresa().then((c) => {
+    cy.fixture('credenciais').then((c) => {
+      credenciais = c;
+    });
+    cy.semearCenario().then((c) => {
       cenario = c;
     });
   });
 
   it('recusa a entrada, informa o motivo e mantem a tela de login', () => {
     cy.abrirApp();
-    cy.preencher('login-email', cenario.emailEngenheiro);
-    cy.preencher('login-senha', 'SenhaErrada#9');
-    cy.get('[data-cy=login-entrar]').click();
+    loginPage
+      .preencher(cenario.emailEngenheiro, credenciais.senhaErrada)
+      .enviar();
 
-    cy.get('[data-cy=login-erro]', { timeout: 30000 })
-      .should('exist')
-      .invoke('text')
-      .should('match', /inv[aá]lid/i);
+    loginPage.erro(TEMPO_CARGA_APP).should('exist');
+    loginPage.deveMostrarErro(/inv[aá]lid/i);
 
-    cy.get('[data-cy=login-email]').should('exist');
-    cy.get('[data-cy=nav-painel]').should('not.exist');
+    loginPage.esperarTela();
+    navegacao.naoDeveOferecer('painel');
   });
 });

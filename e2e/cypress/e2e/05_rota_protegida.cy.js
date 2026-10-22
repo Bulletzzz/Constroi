@@ -1,8 +1,12 @@
+import { loginPage } from '../pages/login.page';
+import { navegacao } from '../pages/navegacao.page';
+import { estoquePage } from '../pages/estoque.page';
+
 describe('CT-E2E-05 Rota protegida exige sessao', () => {
   let cenario;
 
   before(() => {
-    cy.semearEmpresa().then((c) => {
+    cy.semearCenario().then((c) => {
       cenario = c;
     });
   });
@@ -10,17 +14,16 @@ describe('CT-E2E-05 Rota protegida exige sessao', () => {
   it('devolve ao login quando o estoque e aberto sem sessao', () => {
     cy.abrirApp('/estoque');
 
-    cy.get('[data-cy=login-email]').should('exist');
-    cy.get('[data-cy=nav-estoque]').should('not.exist');
-    cy.get('[data-cy=estoque-busca]').should('not.exist');
+    loginPage.esperarTela();
+    navegacao.naoDeveOferecer('estoque');
+    estoquePage.naoDeveEstarVisivel();
   });
 
   it('libera o estoque pela navegacao depois da autenticacao', () => {
     cy.abrirApp();
-    cy.entrarNaTela(cenario.emailEngenheiro);
+    cy.entrarComo(cenario.emailEngenheiro);
 
-    cy.get('[data-cy=nav-estoque]', { timeout: 30000 }).click();
-    cy.get('[data-cy=estoque-busca]', { timeout: 30000 }).should('exist');
-    cy.get('[data-cy=login-email]').should('not.exist');
+    cy.irPara('estoque');
+    loginPage.naoDeveEstarVisivel();
   });
 });
