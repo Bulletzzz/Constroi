@@ -90,6 +90,12 @@ está escondendo instabilidade, e o objetivo aqui era justamente não ter nenhum
 no banco, para sempre. Hoje há cerca de 60 empresas órfãs acumuladas de execuções
 antigas. Resolver isso é um cartão próprio, não cabia aqui sem mudar a API.
 
+**O `Cypress.env()` está a caminho de sair.** A execução avisa que
+`allowCypressEnv` é inseguro e será removido numa versão maior; a suíte ainda usa
+`Cypress.env('apiUrl')` na semeadura. A migração para `cy.env()` não entrou aqui
+para não mexer numa suíte que acabou de ficar verde às vésperas da entrega, mas
+está mapeada.
+
 **A tela de erro do painel não tem identificador.** O primeiro desenho do caso 07
 era interceptar o painel com 503 e afirmar a mensagem de erro. Não dá: o widget de
 erro do painel não é exposto na árvore de acessibilidade, e em canvas o que não
