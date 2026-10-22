@@ -1,0 +1,13 @@
+{
+  "nomeEmpresa": "Construtora E2E",
+  "prefixoCnpj": "44.444.444",
+  "obra": {
+    "nome": "Obra E2E",
+    "endereco": "Rua de teste, 100",
+    "status": "ativa"
+  },
+  "produto": {
+    "nome": "Cimento",
+    "unidade": "saco"
+  }
+}

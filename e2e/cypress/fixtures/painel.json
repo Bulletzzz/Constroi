@@ -1,0 +1,16 @@
+{
+  "obras": [{ "id": 777, "nome": "Obra do stub" }],
+  "obra_id": null,
+  "atualizado_em": "2026-10-21T12:00:00.000Z",
+  "indicadores": {
+    "total_itens": 137,
+    "rupturas_criticas": 9,
+    "estoque_baixo": 23,
+    "requisicoes_pendentes": 41,
+    "obras_ativas": 1,
+    "valor_estimado": "8450.75",
+    "itens_sem_preco": 4
+  },
+  "movimentacoes": [],
+  "paginacao": { "limite": 5, "offset": 0, "tem_mais": false }
+}
