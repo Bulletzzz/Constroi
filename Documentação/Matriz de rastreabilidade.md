@@ -38,7 +38,8 @@ dentro do aplicativo Flutter.
 | RF11 | Manutenção de equipamentos | ✅ `/equipamentos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 07 |
 | RF12 | Controle de empréstimos | ❌ | ✅ 07_Cadastro | ❌ | ❌ |
 
-A coluna **App** de RF10 e RF11 depende da branch `feat/tela-cadastro`, em revisão.
+A coluna **App** de RF10 e RF11 depende da branch `feat/tela-cadastro`, em revisão (PR #38).
+Enquanto ela não entrar, os dois seguem sem tela no aplicativo.
 
 ### Telas sem RF numerado
 
@@ -123,12 +124,15 @@ do Pedro.
 
 ## Sobre os testes
 
-| Camada | Números |
-|---|---|
-| Unidade na API (`dart test`) | 219 |
-| Widget no app (`flutter test`) | 132 |
-| Integração (`.\testes\executar.ps1`) | 20 casos, 472 verificações |
-| Ponta a ponta (Cypress) | 7 casos, 9 testes |
+| Camada | `main` hoje | com a PR #38 |
+|---|---|---|
+| Unidade na API (`dart test`) | 217 | 219 |
+| Widget no app (`flutter test`) | 119 | 132 |
+| Integração (`.\testes\executar.ps1`) | 20 casos, 460 verificações | 20 casos, 472 |
+| Ponta a ponta (Cypress) | 7 casos, 9 testes | igual |
+
+Os dois números foram medidos, não deduzidos: a coluna da esquerda rodando contra
+`origin/main`, a da direita contra a branch `feat/tela-cadastro`.
 
 A suíte de integração fala com a API e o banco reais e confere o resultado no banco, não só a
 resposta. Como rodar está em `testes/README.md`.
