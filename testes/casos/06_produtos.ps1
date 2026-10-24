@@ -43,4 +43,32 @@ Chamar POST '/produtos' $c.pedreiro @{ produto = @{ nome = "Furtivo $marca"; uni
 VerificarBanco "SELECT estoque_minimo::text FROM produto WHERE id = $($produto.id)" '7.50' `
     'minimo com virgula virou decimal no banco'
 
+$lista = Chamar GET '/categorias' $c.pedreiro $null 200 'pedreiro lista as categorias de custo'
+Conferir (@($lista.categorias).Count -ge 1) "a lista traz categorias (veio $(@($lista.categorias).Count))"
+$categoriaId = @($lista.categorias)[0].id
+Chamar GET '/categorias' $null $null 401 'categorias exigem token' | Out-Null
+
+$comCategoria = Chamar POST '/produtos' $c.engenheiro @{
+    produto = @{ nome = "Vergalhao $marca"; unidade = 'barra'; categoria_custo_id = $categoriaId }
+} 201 'cria produto ja com categoria'
+Conferir ($comCategoria.categoria_custo_id -eq $categoriaId) "o POST devolve a categoria (veio $($comCategoria.categoria_custo_id))"
+VerificarBanco "SELECT categoria_custo_id::text FROM produto WHERE id = $($comCategoria.id)" "$categoriaId" `
+    'categoria gravada no banco'
+
+Chamar POST '/produtos' $c.engenheiro @{
+    produto = @{ nome = "Invalido $marca"; unidade = 'un'; categoria_custo_id = 0 }
+} 400 'categoria zero recusa' | Out-Null
+Chamar POST '/produtos' $c.engenheiro @{
+    produto = @{ nome = "Inexistente $marca"; unidade = 'un'; categoria_custo_id = 2147483647 }
+} 400 'categoria que nao existe recusa' | Out-Null
+
+$trocada = Chamar PATCH "/produtos/$($produto.id)" $c.engenheiro @{
+    produto = @{ categoria_custo_id = $categoriaId }
+} 200 'PATCH define a categoria'
+Conferir ($trocada.categoria_custo_id -eq $categoriaId) 'PATCH devolve a categoria nova'
+$semCategoria = Chamar PATCH "/produtos/$($produto.id)" $c.engenheiro @{
+    produto = @{ categoria_custo_id = $null }
+} 200 'PATCH limpa a categoria'
+Conferir ($null -eq $semCategoria.categoria_custo_id) 'categoria ficou nula'
+
 FinalizarCaso
