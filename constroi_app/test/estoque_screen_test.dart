@@ -100,6 +100,7 @@ Future<void> abrir(
   WidgetTester tester,
   EstoqueService service, {
   PerfilUsuario perfil = PerfilUsuario.engenheiro,
+  Future<void> Function(BuildContext)? aoCadastrar,
 }) async {
   tester.view.physicalSize = const Size(900, 2200);
   tester.view.devicePixelRatio = 1;
@@ -107,13 +108,63 @@ Future<void> abrir(
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.dark,
-      home: EstoqueScreen(service: service, perfil: perfil),
+      home: EstoqueScreen(
+        service: service,
+        perfil: perfil,
+        aoCadastrar: aoCadastrar,
+      ),
     ),
   );
   await tester.pumpAndSettle();
 }
 
 void main() {
+  testWidgets('engenheiro ve o botao de novo item e o pedreiro nao', (
+    tester,
+  ) async {
+    final tudo = montar((_) => [item(1)]);
+    await abrir(
+      tester,
+      tudo.service,
+      aoCadastrar: (_) async {},
+    );
+    expect(find.bySemanticsIdentifier('estoque-novo-item'), findsOneWidget);
+
+    await abrir(
+      tester,
+      montar((_) => [item(1)]).service,
+      perfil: PerfilUsuario.pedreiro,
+      aoCadastrar: (_) async {},
+    );
+    expect(find.bySemanticsIdentifier('estoque-novo-item'), findsNothing);
+  });
+
+  testWidgets('sem o callback o botao nao aparece nem para o master', (
+    tester,
+  ) async {
+    await abrir(tester, montar((_) => [item(1)]).service, perfil: PerfilUsuario.master);
+    expect(find.bySemanticsIdentifier('estoque-novo-item'), findsNothing);
+  });
+
+  testWidgets('cadastrar recarrega a lista ao voltar', (tester) async {
+    final tudo = montar((_) => [item(1)]);
+    var abriu = false;
+    await abrir(
+      tester,
+      tudo.service,
+      aoCadastrar: (_) async {
+        abriu = true;
+      },
+    );
+    final antes = tudo.chamadas.length;
+
+    await tester.tap(find.bySemanticsIdentifier('estoque-novo-item'));
+    await tester.pumpAndSettle();
+
+    expect(abriu, isTrue);
+    expect(tudo.chamadas.length, greaterThan(antes));
+  });
+
   testWidgets('desenha os elementos do Figma 03', (tester) async {
     final tudo = montar((_) => [item(1)]);
     await abrir(tester, tudo.service);
