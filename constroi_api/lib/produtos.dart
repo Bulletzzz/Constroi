@@ -48,6 +48,13 @@ String? validarUnidadeProduto(Object? valor) {
   return (valido: true, valor: sku.isEmpty ? null : sku);
 }
 
+int? validarCategoriaCusto(Object? valor) {
+  if (valor == null) return null;
+  final numero = valor is int ? valor : int.tryParse('$valor');
+  if (numero == null || numero < 1 || numero > 2147483647) return null;
+  return numero;
+}
+
 String? validarEstoqueMinimo(Object? valor) {
   if (valor is! num && valor is! String) return null;
   final texto = '$valor'.trim().replaceAll(',', '.');

@@ -13,6 +13,9 @@ Future<Response> onRequest(RequestContext context) async {
         erro.constraintName == 'ux_produto_sku_empresa') {
       return _erro(HttpStatus.conflict, 'SKU ja cadastrado para esta empresa.');
     }
+    if (erro.code == '23503') {
+      return _erro(HttpStatus.badRequest, 'Categoria de custo nao existe.');
+    }
     rethrow;
   }
 }
@@ -34,7 +37,7 @@ Future<Response> _listar(RequestContext context) async {
 
   final linhas = await banco.execute(
     Sql.named('''
-      SELECT id, nome, unidade, sku, estoque_minimo,
+      SELECT id, nome, unidade, sku, estoque_minimo, categoria_custo_id,
              empresa_id, criado_em, atualizado_em
       FROM produto
       WHERE empresa_id = @empresa
@@ -74,6 +77,11 @@ Future<Response> _criar(RequestContext context) async {
   final minimo = validarEstoqueMinimo(
     dados.containsKey('estoque_minimo') ? dados['estoque_minimo'] : 0,
   );
+  final categoria = validarCategoriaCusto(dados['categoria_custo_id']);
+
+  if (dados['categoria_custo_id'] != null && categoria == null) {
+    return _erro(HttpStatus.badRequest, 'Categoria de custo invalida.');
+  }
 
   if (!sku.valido || minimo == null) {
     return _erro(HttpStatus.badRequest, 'SKU ou estoque minimo invalido.');
@@ -106,9 +114,11 @@ Future<Response> _criar(RequestContext context) async {
 
   final resultado = await banco.execute(
     Sql.named('''
-      INSERT INTO produto (empresa_id, nome, unidade, sku, estoque_minimo)
-      VALUES (@empresa, @nome, @unidade, @sku, @minimo)
-      RETURNING id, nome, unidade, sku, estoque_minimo, empresa_id
+      INSERT INTO produto
+        (empresa_id, nome, unidade, sku, estoque_minimo, categoria_custo_id)
+      VALUES (@empresa, @nome, @unidade, @sku, @minimo, @categoria)
+      RETURNING id, nome, unidade, sku, estoque_minimo, categoria_custo_id,
+                empresa_id
     '''),
     parameters: {
       'empresa': empresaId,
@@ -116,6 +126,7 @@ Future<Response> _criar(RequestContext context) async {
       'unidade': unidade,
       'sku': sku.valor,
       'minimo': minimo,
+      'categoria': categoria,
     },
   );
 

@@ -87,6 +87,7 @@ void main() {
       'unidade': 'saco',
       'sku': null,
       'minimo': '0',
+      'categoria': null,
     });
   });
   test('criacao persiste SKU aparado e minimo decimal', () async {

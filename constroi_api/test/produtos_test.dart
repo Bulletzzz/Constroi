@@ -2,6 +2,20 @@ import 'package:constroi_api/produtos.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('categoria de custo', () {
+    test('aceita inteiro positivo em numero ou texto', () {
+      expect(validarCategoriaCusto(3), 3);
+      expect(validarCategoriaCusto('3'), 3);
+      expect(validarCategoriaCusto(null), isNull);
+    });
+
+    test('recusa zero, negativo, texto e estouro de INTEGER', () {
+      for (final valor in [0, -1, 'dois', '', 2147483648]) {
+        expect(validarCategoriaCusto(valor), isNull, reason: '$valor');
+      }
+    });
+  });
+
   group('produtos', () {
     test(
       'SKU opcional e aparado; tipos e tamanhos invalidos sao recusados',
