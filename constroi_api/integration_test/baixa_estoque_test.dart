@@ -86,6 +86,8 @@ void main() {
           'status': status,
           'justificativa': justificativa,
           'usuario_id': 999,
+          'empresa_id': 999,
+          'registrado_por_usuario_id': 999,
         },
       }),
     );
@@ -117,10 +119,18 @@ void main() {
     final logs = await sql(
       'SELECT usuario_id, acao FROM log_sistema ORDER BY id',
     );
+    final movimentos = await sql('''
+      SELECT empresa_id, obra_id, produto_id, pedido_id,
+             registrado_por_usuario_id, tipo, quantidade::text,
+             saldo_anterior::text, saldo_posterior::text,
+             protocolo_pedido, produto_nome, unidade, ocorrido_em
+      FROM movimentacao_estoque ORDER BY id
+    ''');
     return {
       ...pedido,
       'saldos': saldos.map((r) => r.toList()).toList(),
       'logs': logs.map((r) => r.toList()).toList(),
+      'movimentos': movimentos.map((r) => r.toColumnMap()).toList(),
     };
   }
 
@@ -169,7 +179,7 @@ void main() {
               justificativa: 'Material desnecessario',
             ),
         ]);
-        // Prova que duas conexoes reais estao simultaneamente esperando o lock.
+        // Todas as requisicoes devem esperar um lock PostgreSQL real.
         await aguardarBloqueios(
           mesmoPedido ? 'FROM pedido p' : 'FROM estoque e',
           pedidos.length,
@@ -226,6 +236,7 @@ void main() {
     await banco.execute('''
       DROP TRIGGER IF EXISTS falha_log_teste ON log_sistema;
       DROP TRIGGER IF EXISTS falha_aprovacao_teste ON pedido;
+      DROP TRIGGER IF EXISTS falha_movimento_teste ON movimentacao_estoque;
       DROP FUNCTION IF EXISTS falha_teste();
       TRUNCATE empresa RESTART IDENTITY CASCADE;
       INSERT INTO empresa (id,nome,cnpj) VALUES (1,'A','A'),(2,'B','B');
@@ -264,6 +275,27 @@ void main() {
         logs.first[1],
         contains('pedido=$id obra=1 produto=1 quantidade=2.50 saldo=2.50'),
       );
+      final movimentos = (dados['movimentos'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(movimentos, hasLength(2));
+      expect(movimentos.first, {
+        'empresa_id': 1,
+        'obra_id': 1,
+        'produto_id': 1,
+        'pedido_id': id,
+        'registrado_por_usuario_id': 3,
+        'tipo': 'saida_pedido',
+        'quantidade': '2.50',
+        'saldo_anterior': '5.00',
+        'saldo_posterior': '2.50',
+        'protocolo_pedido': startsWith('PED-TEST-'),
+        'produto_nome': 'Cimento',
+        'unidade': 'saco',
+        'ocorrido_em': isA<DateTime>(),
+      });
+      expect(movimentos.last['quantidade'], '1.25');
+      expect(movimentos.last['saldo_anterior'], '5.00');
+      expect(movimentos.last['saldo_posterior'], '3.75');
     },
   );
 
@@ -354,6 +386,9 @@ void main() {
       {'produto_id': 1, 'quantidade': '1.25', 'saldo': '3.75'},
     ]);
     expect((await estado(id))['logs'], hasLength(1));
+    final movimentos = (await estado(id))['movimentos'] as List;
+    expect(movimentos, hasLength(1));
+    expect((movimentos.single as Map)['quantidade'], '1.25');
   });
 
   test(
@@ -378,6 +413,13 @@ void main() {
       final baixa =
           (resposta.dados['baixas'] as List).single as Map<String, dynamic>;
       expect(baixa['saldo'], '0.02');
+      final dados = await estado(resposta.dados['id'] as int);
+      final movimentos = (dados['movimentos'] as List)
+          .cast<Map<String, dynamic>>();
+      final movimento = movimentos.single;
+      expect(movimento['quantidade'], '0.01');
+      expect(movimento['saldo_anterior'], '0.03');
+      expect(movimento['saldo_posterior'], '0.02');
     },
   );
 
@@ -408,6 +450,7 @@ void main() {
       expect(resposta.dados['justificativa_recusa'], 'Material desnecessario');
       final depois = await estado(id);
       expect(depois['saldos'], antes['saldos']);
+      expect(depois['movimentos'], isEmpty);
       expect(depois['justificativa'], 'Material para concretagem');
       expect(depois['justificativa_recusa'], 'Material desnecessario');
       expect(depois['logs'], [
@@ -593,6 +636,53 @@ void main() {
   });
 
   test(
+    'oito aprovacoes disputam saldo 1: um 200, sete 409 e um movimento',
+    () async {
+      await sql(
+        'UPDATE estoque SET quantidade=1 WHERE obra_id=1 AND produto_id=1',
+      );
+      final ids = <int>[];
+      for (var i = 0; i < 8; i++) {
+        ids.add(await pedido([(1, '1.00')]));
+      }
+      final respostas = await disputar(ids);
+      expect(respostas.where((r) => r.status == 200), hasLength(1));
+      expect(respostas.where((r) => r.status == 409), hasLength(7));
+      final dados = await estado(ids.first);
+      expect(dados['saldos'], [
+        [1, '0.00'],
+        [2, '5.00'],
+      ]);
+      expect(dados['logs'], hasLength(1));
+      final movimentos = (dados['movimentos'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(movimentos, hasLength(1));
+      final vencedor = respostas.singleWhere((r) => r.status == 200);
+      expect(movimentos.single['pedido_id'], vencedor.dados['id']);
+      expect(movimentos.single['saldo_anterior'], '1.00');
+      expect(movimentos.single['saldo_posterior'], '0.00');
+      expect(
+        (await sql(
+          "SELECT count(*) FROM pedido WHERE status='pendente'",
+        )).single[0],
+        7,
+      );
+    },
+  );
+
+  test(
+    'alterar cadastro e protocolo nao reescreve as copias historicas',
+    () async {
+      final id = await pedido([(1, '1.00')]);
+      expect((await aprovar(id)).status, 200);
+      final antes = (await estado(id))['movimentos'];
+      await sql("UPDATE produto SET nome='Novo', unidade='un' WHERE id=1");
+      await sql("UPDATE pedido SET protocolo='NOVO' WHERE id=@id", {'id': id});
+      expect((await estado(id))['movimentos'], antes);
+    },
+  );
+
+  test(
     'dois pedidos simultaneos disputam o ultimo saco: um 200 e um 409',
     () async {
       await sql(
@@ -639,7 +729,7 @@ void main() {
     expect((await estado(primeiro))['logs'], hasLength(4));
   });
 
-  for (final tabela in ['log_sistema', 'pedido']) {
+  for (final tabela in ['log_sistema', 'pedido', 'movimentacao_estoque']) {
     test('falha ao gravar $tabela reverte saldos, logs e aprovacao', () async {
       final id = await pedido([(1, '1.00'), (2, '1.00')]);
       final antes = await estado(id);
@@ -647,9 +737,17 @@ void main() {
         CREATE FUNCTION falha_teste() RETURNS trigger AS \$\$
         BEGIN RAISE EXCEPTION 'falha injetada para testar rollback'; END;
         \$\$ LANGUAGE plpgsql;
-        CREATE TRIGGER ${tabela == 'pedido' ? 'falha_aprovacao_teste' : 'falha_log_teste'}
+        CREATE TRIGGER ${tabela == 'pedido'
+          ? 'falha_aprovacao_teste'
+          : tabela == 'log_sistema'
+          ? 'falha_log_teste'
+          : 'falha_movimento_teste'}
         BEFORE ${tabela == 'pedido' ? 'UPDATE' : 'INSERT'} ON $tabela
-        FOR EACH ROW ${tabela == 'log_sistema' ? "WHEN (NEW.acao LIKE '%produto=2 %')" : ''}
+        FOR EACH ROW ${tabela == 'log_sistema'
+          ? "WHEN (NEW.acao LIKE '%produto=2 %')"
+          : tabela == 'movimentacao_estoque'
+          ? 'WHEN (NEW.produto_id=2)'
+          : ''}
         EXECUTE FUNCTION falha_teste();
       ''', queryMode: QueryMode.simple);
       await expectLater(

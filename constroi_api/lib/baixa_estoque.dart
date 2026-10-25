@@ -119,7 +119,8 @@ Future<Map<String, dynamic>> aprovarPedidoComBaixa(
           UPDATE estoque SET quantidade = quantidade - @quantidade::numeric
           WHERE id = @estoque AND quantidade >= @quantidade::numeric
             AND quantidade <= 9999999999.99
-          RETURNING quantidade::text AS saldo
+          RETURNING quantidade::text AS saldo,
+                    (quantidade + @quantidade::numeric)::text AS saldo_anterior
         '''),
           parameters: {
             'estoque': saldo['id'],
@@ -147,6 +148,40 @@ Future<Map<String, dynamic>> aprovarPedidoComBaixa(
                 'saldo=$restante protocolo=${pedido['protocolo']}',
           },
         );
+        // Copias historicas e saldos decimais no mesmo commit da baixa.
+        // Uma falha aqui tambem reverte os logs e produtos ja debitados.
+        final movimentos = await transacao.execute(
+          Sql.named('''
+          INSERT INTO movimentacao_estoque (
+            empresa_id, obra_id, produto_id, pedido_id,
+            registrado_por_usuario_id, tipo, quantidade,
+            saldo_anterior, saldo_posterior,
+            protocolo_pedido, produto_nome, unidade
+          )
+          SELECT @empresa, @obra, p.id, @pedido, @usuario, 'saida_pedido',
+                 @quantidade::numeric, @anterior::numeric, @posterior::numeric,
+                 @protocolo, p.nome, p.unidade
+          FROM produto p WHERE p.id = @produto AND p.empresa_id = @empresa
+          RETURNING id
+        '''),
+          parameters: {
+            'empresa': usuario.empresaId,
+            'obra': pedido['obra_id'],
+            'produto': saldo['produto_id'],
+            'pedido': pedidoId,
+            'usuario': usuario.id,
+            'quantidade': saldo['solicitada'],
+            'anterior': atualizado.single.toColumnMap()['saldo_anterior'],
+            'posterior': restante,
+            'protocolo': pedido['protocolo'],
+          },
+        );
+        if (movimentos.length != 1) {
+          throw const FalhaBaixaEstoque(
+            MotivoFalhaBaixa.itensInvalidos,
+            'O material da baixa nao pertence a sua empresa.',
+          );
+        }
         baixas.add({
           'produto_id': saldo['produto_id'],
           'quantidade': saldo['solicitada'],

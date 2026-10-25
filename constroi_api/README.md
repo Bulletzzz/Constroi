@@ -34,6 +34,57 @@ aprovação reverte tudo; falta de saldo mantém
 o pedido pendente. Aprovações concorrentes do mesmo pedido não duplicam a
 baixa. A proteção `ck_estoque_quantidade` já existe.
 
+## Auditoria estruturada das baixas (card 83)
+
+A migration `013_movimentacao_estoque.sql` cria um movimento `saida_pedido`
+por produto/pedido aprovado. A gravação ocorre no mesmo `runTx` da baixa,
+depois do UPDATE condicionado ao saldo, mantendo locks ordenados e agregação
+de itens repetidos. Falha no movimento reverte saldos, logs e aprovação.
+Reaprovação continua retornando 409, sem duplicar registros.
+
+O movimento guarda empresa/obra/pedido, aprovador autenticado, quantidade,
+saldos anterior/posterior e cópias de nome, unidade e protocolo. Os decimais
+são calculados no PostgreSQL; a data vem de `clock_timestamp()` do banco.
+FKs compostas impedem vínculos entre empresas ou com outra obra do pedido;
+ON DELETE RESTRICT preserva o histórico. Checks rejeitam quantidades inválidas,
+NaN, saldos negativos/inconsistentes e tipos fora deste escopo.
+
+Os logs `BAIXA_ESTOQUE` continuam intactos, inclusive os anteriores à mudança.
+Não há backfill: os logs antigos não permitem reconstruir os saldos históricos.
+Esta entrega não inclui entradas, ajustes, estornos, telas ou endpoint de relatório.
+Os índices preparam consultas por empresa, obra, produto e aprovador no período.
+Não some quantidades de unidades diferentes nem movimentos e logs legados juntos.
+
+Antes de ativar o escritor em cada ambiente autorizado, aplique a migration
+com o dono das migrations e valide a conexão restrita conforme
+[infra-auditoria.md](../docs/infra-auditoria.md). Os privilégios padrão desse
+mesmo dono concedem INSERT/SELECT à tabela nova; reexecute o roteiro e o
+diagnóstico para conferir ausência de UPDATE/DELETE/TRUNCATE no runtime.
+Não altere a flag/credencial ativa sem o rollout combinado com a equipe.
+
+Na implantação, retire os escritores antigos e registre a versão e o horário
+do banco a partir do qual todos os aprovadores usam o novo código. Essa é a
+cobertura inicial da auditoria, não a data da criação da tabela nem uma
+reconstrução dos logs antigos. Ausência de movimentos antes desse marco não
+significa ausência de saídas. Um relatório fechado futuro ainda depende da
+validação efetiva do limite total de transação e da margem da infraestrutura.
+
+Validação local, com a mesma URL descartável descrita abaixo:
+
+```powershell
+dart test integration_test/auditoria_estoque_test.dart --reporter expanded
+dart test integration_test/baixa_estoque_test.dart --reporter expanded
+dart test integration_test/infra_auditoria_test.dart --reporter expanded
+```
+
+Rode essas suítes em sequência, pois recriam o schema compartilhado. Elas
+comparam migration/schema consolidado, migram banco com histórico sem backfill,
+verificam constraints e permissões reais, oito aprovações disputando saldo 1
+(um 200/sete 409/um log/um movimento), reaprovação, decimais e rollback após
+falha no segundo movimento. A suíte de infraestrutura define sua senha
+descartável apenas no teste, permitindo autenticação SCRAM sem senha no SQL
+de provisionamento.
+
 ## Aprovar e recusar pedido (RF07, card 65)
 
 O mesmo `PATCH /pedidos/{id}` aceita
@@ -195,6 +246,7 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `010_justificativa_recusa.sql`: motivo da recusa separado da justificativa original do pedido
 - `011_entrada_nfe.sql`: chave da NF-e única por empresa e vínculo com a obra da empresa; entradas antigas permanecem intactas
 - `012_pedido_local_urgencia.sql`: local da obra e nível de urgência no pedido, com urgência restrita a `padrao` ou `urgente`
+- `013_movimentacao_estoque.sql`: auditoria das saídas por aprovação, FKs compostas, unicidade por pedido/produto/tipo e índices de período
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
 `AUDITORIA_CONEXAO_ESTRITA` vem desligada por padrão, preservando a conexão

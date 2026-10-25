@@ -3,7 +3,8 @@
 Esta entrega prepara o provisionamento e a validação. A troca das conexões no
 Neon/Docker deve ser combinada com a equipe e validada em branch de homologação
 antes de alterar o ambiente compartilhado. Não modifica a conexão ativa ao rodar
-tests/build; não cria a tabela da auditoria do card 83 nem habilita relatórios.
+tests/build nem habilita relatórios. A tabela da auditoria é criada pela
+migration 013 do card 83, aplicada pelo dono das migrations.
 
 ## Ativação gradual
 
@@ -133,8 +134,11 @@ dart test integration_test/infra_auditoria_test.dart --reporter expanded
 ```
 
 A suíte aplica migrations com o papel próprio, executa novamente como no-op,
-provisiona o papel restrito com o SQL real e cria uma **fixture** de auditoria
-para verificar permissões, inclusive os privilégios padrão de tabelas futuras.
+provisiona o papel restrito com o SQL real e usa a tabela de auditoria da
+migration 013 para verificar permissões. Uma fixture separada confere os
+privilégios padrão de objetos futuros. A senha descartável do papel é criada
+somente dentro do teste, sem alterar o SQL de provisionamento, permitindo
+rodar também no PostgreSQL com autenticação SCRAM do README.
 Cobre compatibilidade com a credencial privilegiada e timeout zero quando a
 flag está desligada, e diagnóstico estrito independentemente da flag. Com a
 flag ligada, cobre INSERT/SELECT permitidos; UPDATE/DELETE/TRUNCATE/DDL recusados; rejeição de
@@ -142,4 +146,6 @@ credencial privilegiada, UPDATE de coluna e timeout desligado; diagnóstico sem
 URL; encerramento/rollback em várias queries curtas, inatividade e lock real.
 Os testes usam limites menores para evidenciar o comportamento do mesmo guard
 sem esperar 30 segundos. A regressão também aprova um pedido e confere baixa/log
-com a conexão restrita real. Não substituem a validação do rollout no Neon.
+com a conexão restrita real, incluindo o movimento estruturado. A suíte do
+card 83 também provisiona a infraestrutura antes da 013 para verificar os
+privilégios padrão na tabela nova. Não substituem a validação do rollout no Neon.
