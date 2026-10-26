@@ -46,11 +46,14 @@ Não há alteração nas rotas, regras ou migrations da API.
 
 ## Verificação
 
-Executado com Flutter 3.44.8 / Dart 3.12.2:
+Validação repetida após rebase sobre `53adba3` (`origin/main`, incluindo o
+cadastro da PR #38), com Flutter 3.44.8 / Dart 3.12.2:
 
-- 173 testes do aplicativo passaram (54 adicionados nesta entrega).
+- 186 testes do aplicativo passaram (132 da base e 54 adicionados nesta entrega).
 - Análise estática sem ocorrências.
-- Compilação Web concluída.
+
+A compilação Web foi concluída na revisão anterior (`0a1157d`), antes do rebase.
+Nesta rodada foram repetidos `flutter test --no-pub` e `flutter analyze --no-pub`.
 
 ```powershell
 Set-Location constroi_app
