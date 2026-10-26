@@ -70,9 +70,10 @@ void main() {
       32,
       (_) => aleatorio.nextInt(16).toRadixString(16),
     ).join();
-    await administrador.execute(
-      "ALTER ROLE constroi_api_execucao PASSWORD '$senha'",
-    );
+    await administrador.runTx((tx) async {
+      await tx.execute("SET LOCAL password_encryption = 'scram-sha-256'");
+      await tx.execute("ALTER ROLE constroi_api_execucao PASSWORD '$senha'");
+    });
     urlApi = uri.replace(userInfo: 'constroi_api_execucao:$senha').toString();
     // Objeto futuro separado: auditoria agora usa a migration real do card 83.
     await administrador.execute('''
@@ -119,6 +120,23 @@ void main() {
       0,
     );
   }
+
+  test(
+    'papel de teste usa senha SCRAM descartavel e conecta com TLS',
+    () async {
+      final credencial = await administrador.execute(r'''
+      SELECT rolpassword LIKE 'SCRAM-SHA-256$%' FROM pg_authid
+      WHERE rolname='constroi_api_execucao'
+    ''');
+      expect(credencial.single[0], isTrue);
+      final app = poolEstrito(urlApi);
+      addTearDown(app.close);
+      final identidade = await app.execute('''
+      SELECT current_user, ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()
+    ''');
+      expect(identidade.single.toList(), ['constroi_api_execucao', true]);
+    },
+  );
 
   test(
     'modo padrao aceita o dono atual sem exigir timeout provisionado',

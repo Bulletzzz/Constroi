@@ -139,6 +139,9 @@ migration 013 para verificar permissões. Uma fixture separada confere os
 privilégios padrão de objetos futuros. A senha descartável do papel é criada
 somente dentro do teste, sem alterar o SQL de provisionamento, permitindo
 rodar também no PostgreSQL com autenticação SCRAM do README.
+O setup força `password_encryption=scram-sha-256` somente na transação que
+define a senha de teste; uma regressão consulta o tipo do verificador e confirma
+a identidade do papel e TLS na conexão real, sem imprimir senha ou hash.
 Cobre compatibilidade com a credencial privilegiada e timeout zero quando a
 flag está desligada, e diagnóstico estrito independentemente da flag. Com a
 flag ligada, cobre INSERT/SELECT permitidos; UPDATE/DELETE/TRUNCATE/DDL recusados; rejeição de

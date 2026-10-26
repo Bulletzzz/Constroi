@@ -190,9 +190,33 @@ $env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres:senha-local-descartavel
 # Todas as suítes, uma por vez: elas compartilham e recriam o mesmo schema.
 dart test integration_test/ --concurrency=1 --reporter expanded
 
+# Somente infraestrutura, incluindo a regressão de senha SCRAM/TLS.
+dart test integration_test/infra_auditoria_test.dart --reporter expanded
+
 # Somente a regressão da migration 011 (3 cenários).
 dart test integration_test/migrations_nfe_test.dart --reporter expanded
 ```
+
+Nesta revisão, a execução completa reúne **90 cenários** de integração:
+
+| Suíte | Cenários |
+|---|---:|
+| `auditoria_estoque_test.dart` | 30 |
+| `baixa_estoque_test.dart` | 26 |
+| `infra_auditoria_test.dart` | 15 |
+| `migrations_nfe_test.dart` | 3 |
+| `nfe_test.dart` | 16 |
+
+O total de 56 da PR #30 corresponde à revisão anterior à auditoria estruturada
+e às novas regressões. Confira o total do checkout em teste, incluindo os 15
+cenários da infraestrutura: falha no `setUpAll` não conta como suíte executada.
+
+`infra_auditoria_test.dart` aplica `auditoria_papeis.sql` e, no `setUpAll`, gera
+uma senha aleatória para o papel de teste. `ALTER ROLE ... PASSWORD` é executado
+com `password_encryption=scram-sha-256` apenas nessa transação; a URL restrita
+inclui essa senha. A regressão confere o verificador SCRAM e a conexão TLS do
+papel real. A senha não é impressa nem adicionada ao SQL de provisionamento.
+O mesmo preparo atende PostgreSQL com SCRAM (como o container acima) e trust.
 
 Mantenha `max_connection_count=10`: os cenários de concorrência precisam de mais
 de uma conexão. O teste de migrations remove essa opção somente da conexão
