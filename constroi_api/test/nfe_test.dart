@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:constroi_api/nfe.dart';
 import 'package:test/test.dart';
@@ -6,6 +7,27 @@ import 'package:test/test.dart';
 import 'fixtures/nfe.dart';
 
 void main() {
+  test('parser respeita o mesmo contrato XML e resultado da prévia', () {
+    final bytes = File('../testes/fixtures/nfe/contrato.xml').readAsBytesSync();
+    final esperado = jsonDecode(
+      File('../testes/fixtures/nfe/contrato.json').readAsStringSync(),
+    );
+    final nota = lerNfe(bytes);
+    expect({
+      'chave': nota.chave,
+      'itens': [
+        for (final item in nota.itens)
+          {
+            'codigo': item.codigo,
+            'nome': item.nome,
+            'unidade': item.unidade,
+            'quantidade': item.quantidade,
+          },
+      ],
+    }, esperado);
+    expect(nota.xml, utf8.decode(bytes));
+  });
+
   test('le NF-e, mantem original e converte quantidade sem double', () {
     final xml = xmlNfe();
     final nota = lerNfe(utf8.encode(xml));

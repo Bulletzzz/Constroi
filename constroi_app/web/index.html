@@ -44,6 +44,7 @@
   <script>
     (function () {
       var atributo = 'flt-semantics-identifier';
+      var arquivoNfe = null;
       function marcarCampos(no, nome) {
         no.querySelectorAll('input, textarea').forEach(function (campo) {
           campo.setAttribute('data-cy', nome + (campo.disabled ? '-inativo' : '-campo'));
@@ -53,9 +54,21 @@
         var nome = no.getAttribute(atributo);
         no.setAttribute('data-cy', nome);
         marcarCampos(no, nome);
+        if (nome === 'nfe-arquivo') {
+          arquivoNfe = no;
+          // O plugin cria o input fora da árvore de Semantics.
+          document.querySelectorAll('file-selector').forEach(function (seletor) {
+            marcarCampos(seletor, nome);
+          });
+        }
       }
       function espelhar(raiz) {
         if (!raiz || raiz.nodeType !== 1) return;
+        // O input só é criado ao abrir o seletor, depois da marcação inicial.
+        if (arquivoNfe && arquivoNfe.isConnected &&
+            raiz.matches('file-selector input[type="file"]')) {
+          marcar(arquivoNfe);
+        }
         if (raiz.hasAttribute(atributo)) marcar(raiz);
         raiz.querySelectorAll('[' + atributo + ']').forEach(marcar);
         var dono = raiz.closest ? raiz.closest('[' + atributo + ']') : null;

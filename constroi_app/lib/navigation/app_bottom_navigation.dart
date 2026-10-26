@@ -22,7 +22,7 @@ class AppBottomNavigation extends StatelessWidget {
       child: Row(
         children: [
           for (final rota in AppRoute.values.where(
-            (r) => r.podeSerAcessadaPor(perfil),
+            (r) => r.noMenu && r.podeSerAcessadaPor(perfil),
           ))
             Expanded(
               child: Semantics(

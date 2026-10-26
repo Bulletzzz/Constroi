@@ -37,6 +37,8 @@ dependencies:
   flutter_svg: ^2.3.0
   http: ^1.6.0
   flutter_secure_storage: ^11.2.0
+  file_selector: ^1.1.0
+  xml: ^7.0.1
 
 # Evita os hooks nativos das versões FFI/JNI que falham quando o SDK Flutter
 # está instalado em "C:\Program Files" no ambiente Windows deste projeto.

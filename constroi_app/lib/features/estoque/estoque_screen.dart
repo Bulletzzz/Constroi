@@ -246,6 +246,22 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           _seletorDeObra(),
           const SizedBox(height: 18),
           _acoes(),
+          if (widget.perfil.possuiNivel(PerfilUsuario.engenheiro)) ...[
+            const SizedBox(height: 12),
+            Semantics(
+              identifier: 'estoque-importar-nfe',
+              child: _botao(
+                rotulo: 'IMPORTAR NF-e / ANEXAR XML',
+                icone: Icons.upload_file,
+                aoTocar: () async {
+                  await Navigator.of(
+                    context,
+                  ).pushNamed(AppRoute.importacaoNfe.caminho);
+                  if (mounted) await _atualizarTudo();
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Container(height: 2, color: _tinta),
           const SizedBox(height: 16),

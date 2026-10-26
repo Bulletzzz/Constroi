@@ -6,10 +6,11 @@ import '../auth/session_manager.dart';
 import 'api_config.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.statusCode, this.message);
+  const ApiException(this.statusCode, this.message, {this.details = const {}});
 
   final int statusCode;
   final String message;
+  final Map<String, dynamic> details;
 
   @override
   String toString() => 'ApiException($statusCode): $message';
@@ -36,23 +37,43 @@ class ApiClient {
     Map<String, String>? query,
     Object? body,
   }) async {
+    final uri = _uri(path, query: query);
+    final request = http.Request(method.toUpperCase(), uri);
+    if (body != null) {
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode(body);
+    }
+    return _send(request);
+  }
+
+  Future<dynamic> multipart(
+    String method,
+    String path, {
+    Map<String, String> fields = const {},
+    required List<http.MultipartFile> files,
+  }) => _send(
+    http.MultipartRequest(method.toUpperCase(), _uri(path))
+      ..fields.addAll(fields)
+      ..files.addAll(files),
+  );
+
+  Uri _uri(String path, {Map<String, String>? query}) {
     if (path.startsWith('/') ||
         Uri.parse(path).hasScheme ||
         Uri.parse(path).hasAuthority ||
         path.split('/').contains('..')) {
       throw ArgumentError.value(path, 'path', 'Use um caminho relativo à API');
     }
-    final uri = _baseUri.resolve(path).replace(queryParameters: query);
+    return _baseUri.resolve(path).replace(queryParameters: query);
+  }
+
+  Future<dynamic> _send(http.BaseRequest request) async {
     final token = _sessions.accessToken;
     final headers = <String, String>{'Accept': 'application/json'};
-    if (body != null) headers['Content-Type'] = 'application/json';
     if (token != null) headers['Authorization'] = 'Bearer $token';
 
-    final response = await _http.send(
-      http.Request(method.toUpperCase(), uri)
-        ..headers.addAll(headers)
-        ..body = body == null ? '' : jsonEncode(body),
-    );
+    request.headers.addAll(headers);
+    final response = await _http.send(request);
     final text = await response.stream.bytesToString();
     final mensagem = _mensagemDaApi(text);
 
@@ -67,6 +88,7 @@ class ApiClient {
       throw ApiException(
         response.statusCode,
         mensagem ?? 'Falha na requisição à API',
+        details: _detalhesDaApi(text),
       );
     }
     return text.isEmpty ? null : jsonDecode(text);
@@ -97,5 +119,14 @@ class ApiClient {
       return null;
     }
     return null;
+  }
+
+  static Map<String, dynamic> _detalhesDaApi(String corpo) {
+    try {
+      final dados = jsonDecode(corpo);
+      return dados is Map<String, dynamic> ? dados : const {};
+    } on FormatException {
+      return const {};
+    }
   }
 }

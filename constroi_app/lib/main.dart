@@ -13,6 +13,8 @@ import 'features/cadastro/cadastro_screen.dart';
 import 'features/cadastro/cadastro_service.dart';
 import 'features/estoque/estoque_screen.dart';
 import 'features/estoque/estoque_service.dart';
+import 'features/nfe/nfe_screen.dart';
+import 'features/nfe/nfe_service.dart';
 import 'features/pedidos/aprovacoes_screen.dart';
 import 'features/pedidos/pedidos_service.dart';
 import 'features/pedidos/requisicao_screen.dart';
@@ -140,6 +142,12 @@ class _ConstroiAppState extends State<ConstroiApp> {
   }
 
   Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil) {
+    if (rota == AppRoute.importacaoNfe) {
+      return NfeScreen(
+        service: NfeService(api: _api!),
+        perfil: perfil,
+      );
+    }
     if (rota == AppRoute.custos) {
       return CustosScreen(service: CustosService(api: _api!), perfil: perfil);
     }
