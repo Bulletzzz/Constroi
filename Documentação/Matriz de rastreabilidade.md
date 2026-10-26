@@ -1,7 +1,7 @@
 # Matriz de rastreabilidade
 
-Responsável: Eduardo Sochodolak (QA) · Última verificação: 24/10/2026 · Base: `origin/main` em
-`0a7789d`, mais a branch `feat/tela-cadastro` onde indicado
+Responsável: Eduardo Sochodolak (QA) · Última verificação: 26/10/2026 · Base: `origin/main` em
+`53adba3`, mais o caso 21 desta branch onde indicado
 
 OBS: Infelizmente tem q usar emoji q fica mais visual
 
@@ -38,8 +38,8 @@ dentro do aplicativo Flutter.
 | RF11 | Manutenção de equipamentos | ✅ `/equipamentos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 07 |
 | RF12 | Controle de empréstimos | ❌ | ✅ 07_Cadastro | ❌ | ❌ |
 
-A coluna **App** de RF10 e RF11 depende da branch `feat/tela-cadastro`, em revisão (PR #38).
-Enquanto ela não entrar, os dois seguem sem tela no aplicativo.
+A tela de cadastro entrou na main pela PR #38. RF10 e RF11 criam pelo aplicativo; editar e
+inativar continuam só pela API.
 
 ### Telas sem RF numerado
 
@@ -48,7 +48,7 @@ Existem, funcionam e são testadas, mas nenhuma corresponde a requisito do docum
 | Tela | Rota | Teste |
 |---|---|---|
 | Painel | ✅ `GET /painel` | ✅ caso 18 + E2E 03, 06 |
-| Custos | ✅ `GET /custos` | 🟡 só unitário com mock — **a consulta não roda contra banco em teste nenhum** |
+| Custos | ✅ `GET /custos` | ✅ caso 21 (nesta branch) + unitário com mock |
 | Equipe | ✅ `/obras/{id}/equipe` | ✅ caso 05 |
 
 ---
@@ -71,51 +71,68 @@ está inteiro, com rota, tela e teste de concorrência.
 
 ## Buracos, em ordem de urgência
 
-### 1. RF07 não existe, e a ordem ficou estranha
+### 1. ~~O banco compartilhado estava sem a migration 011~~ — corrigido em 26/10
+
+`schema_migrations` no Neon tinha 001 a 010 e a 012; a `011_entrada_nfe.sql` havia sumido,
+junto com a coluna `empresa_nfe_id` de `entrada_estoque`. `POST /entradas/xml` e
+`PATCH /entradas/{id}/xml` respondiam 500 com `42703`, e os casos 19 e 20 ficavam vermelhos
+— 53 verificações. Não era regressão de código.
+
+Ninguém tinha percebido porque nenhuma tela usa essas rotas ainda, e o Andrew estava
+construindo a tela da PR #42 justamente em cima delas. O runner reaplicou só a 011 e os dois
+casos voltaram ao verde.
+
+Fica a pergunta em aberto de como a migration saiu de um banco compartilhado: ninguém
+assumiu, e não há registro. Enquanto não houver resposta, vale rodar a suíte inteira antes
+de confiar no ambiente.
+
+### 2. RF07 não existe, e a ordem ficou estranha
 
 Entrada de estoque **manual** não tem rota. A entrada **por XML** tem rota, teste e 32
 verificações. Ou seja: dá para dar entrada lendo uma nota fiscal, e não dá para dar entrada
 digitando — que é o caminho mais simples e o que o RF08 do documento prevê explicitamente
 ("entrada pode ser sem nota fiscal").
 
-Cartão existe no backlog, com o Pedro. Até ele andar, quem recebe material sem nota não
-registra nada.
+O Pedro abriu a PR #41 com `POST /entradas`, em revisão. Até ela entrar, quem recebe material
+sem nota não registra nada.
 
-### 2. A importação de NF-e não tem tela
+### 3. A importação de NF-e não tem tela
 
 RF08 e RF09 têm rota, caso de integração e 53 verificações somadas — e **nenhuma tela**. Só
 funciona por chamada direta à API.
 
 É a funcionalidade mais vistosa da apresentação e hoje não dá para demonstrar pelo aplicativo.
-Não existe cartão para essa tela em nenhuma semana do plano.
+O cartão foi aberto depois da regressão de outubro e o Andrew abriu a PR #42, em revisão.
 
-### 3. A tela de Custos não é testada contra banco
+### 4. ~~A tela de Custos não é testada contra banco~~ — fechado nesta branch
 
-`constroi_api/lib/custos.dart` tem 86 linhas de SQL com CTEs, filtro de período com fuso e
-agregação por obra. O teste da rota é mock, não existe caso de integração, e o Cypress só
-confere que o item do menu aparece.
+O caso 21 cobre as 86 linhas de SQL de `constroi_api/lib/custos.dart` contra o banco:
+total, mês e semana com valores calculados na mão, orçamento parcial e isolamento entre
+empresas. Quatro mutações na consulta foram injetadas e todas quebraram o caso — trocar
+`'week'` por `'month'` no filtro de período, somar orçamento mesmo com obra sem orçamento,
+arredondar o percentual em duas casas e tirar o filtro de empresa de `obras_visiveis`.
 
-Conferi na mão durante a revisão da PR #33 e os números batem. Mas trocar um operador naquela
-consulta hoje passa verde em tudo.
+O que continua fora: não há rota para criar despesa nem para gravar preço na entrada, então
+o caso semeia `despesa_obra` e `item_entrada.valor_unitario` direto no banco.
 
-### 4. RF01 e RF03 continuam sem tela
+### 5. RF01 e RF03 continuam sem tela
 
 Cadastro de empresa e manutenção de usuários têm rota e teste, e não têm tela nem no Figma.
 Ninguém cria conta pelo aplicativo. Há cartão na semana 6 (Tela de Administração) para o RF03;
 para o RF01 não há.
 
-### 5. Três telas sem requisito
+### 6. Três telas sem requisito
 
 Painel, Custos e Equipe estão prontas, em uso e testadas, e não correspondem a RF nenhum. O
 mesmo apontamento de 22/09 continua: ou viram requisito, ou ficam como funcionalidade que
 ninguém pode cobrar.
 
-### 6. Consultar Logs segue sem RF e sem rota
+### 7. Consultar Logs segue sem RF e sem rota
 
 A tabela `log_sistema` recebe escrita de várias rotas hoje, mas não existe `GET /logs`. O caso
 de uso está no diagrama como exclusivo do Master. Cartão no backlog.
 
-### 7. A tabela de RF do PDF continua quebrada
+### 8. A tabela de RF do PDF continua quebrada
 
 A numeração desta matriz é a minha leitura da ordem dos nomes. Segue pendente de confirmação
 do Pedro.
@@ -124,15 +141,19 @@ do Pedro.
 
 ## Sobre os testes
 
-| Camada | `main` hoje | com a PR #38 |
-|---|---|---|
-| Unidade na API (`dart test`) | 217 | 219 |
-| Widget no app (`flutter test`) | 119 | 132 |
-| Integração (`.\testes\executar.ps1`) | 20 casos, 460 verificações | 20 casos, 472 |
-| Ponta a ponta (Cypress) | 7 casos, 9 testes | igual |
+| Camada | Quantidade |
+|---|---|
+| Unidade na API (`dart test test/`) | 222 |
+| Widget no app (`flutter test`) | 132 |
+| Integração (`.\testes\executar.ps1`) | 21 casos, 523 verificações |
+| Ponta a ponta (Cypress) | 7 casos, 9 testes |
 
-Os dois números foram medidos, não deduzidos: a coluna da esquerda rodando contra
-`origin/main`, a da direita contra a branch `feat/tela-cadastro`.
+Números medidos em 26/10/2026, não deduzidos. A integração inclui o caso 21 desta branch;
+na main são 20 casos e 472 verificações.
+
+Na primeira execução de 26/10 os casos 19 e 20 vieram vermelhos — 53 verificações — porque
+faltava a migration 011 no banco compartilhado. Depois de reaplicada, os 21 casos passam.
+Está registrado no buraco 1.
 
 A suíte de integração fala com a API e o banco reais e confere o resultado no banco, não só a
 resposta. Como rodar está em `testes/README.md`.
@@ -153,7 +174,8 @@ A triagem completa dos 20 RNFs continua sendo outro cartão.
 
 ## O que fazer com este documento
 
-1. Confirmar a numeração dos RF com o Pedro.
-2. Levar os buracos 1 a 4 para o Johann priorizar — os dois primeiros são funcionalidade
-   faltando, os dois seguintes são risco de regressão silenciosa.
-3. Reconferir ao fim de cada semana. A coluna **Teste** é a que mais envelhece.
+1. Descobrir como a migration 011 saiu do Neon e combinar quem mexe no banco compartilhado.
+2. Confirmar a numeração dos RF com o Pedro.
+3. Levar os buracos 2 e 3 para o Johann priorizar — é funcionalidade faltando, com PR aberta
+   nos dois casos.
+4. Reconferir ao fim de cada semana. A coluna **Teste** é a que mais envelhece.

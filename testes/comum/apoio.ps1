@@ -224,6 +224,7 @@ function LimparMarca {
         "d3 AS (DELETE FROM estoque WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "d4 AS (DELETE FROM usuario_obra WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "d5 AS (DELETE FROM log_sistema WHERE usuario_id IN (SELECT id FROM u) RETURNING 1)",
+        "c1 AS (DELETE FROM despesa_obra WHERE empresa_id IN (SELECT id FROM alvo) RETURNING 1)",
         "d6 AS (DELETE FROM equipamento WHERE empresa_id IN (SELECT id FROM alvo) RETURNING 1)",
         "d7 AS (DELETE FROM produto WHERE empresa_id IN (SELECT id FROM alvo) RETURNING 1)",
         "d8 AS (DELETE FROM obra WHERE id IN (SELECT id FROM o) RETURNING 1)",

@@ -69,6 +69,7 @@ imprime a linha pronta para repetir só aquele.
 | `18_painel_estoque_baixo` | rupturas e estoque baixo contados contra o banco |
 | `19_entrada_por_xml` | importação soma a quantidade certa; material fora do catálogo e XML inválido não gravam nada |
 | `20_anexo_de_xml` | anexar documento não mexe no estoque e não aceita duas vezes |
+| `21_custos_da_obra` | total, mês e semana contra valores calculados na mão; uma obra sem orçamento zera o total global |
 
 ## Escrever um caso novo
 
