@@ -80,7 +80,7 @@ class NfePreview {
         }
         final codigo = _texto(produto, 'cProd');
         final nome = _texto(produto, 'xProd');
-        final unidade = _texto(produto, 'uCom');
+        final unidade = _texto(produto, 'uCom').toLowerCase();
         final quantidade = _decimal(_texto(produto, 'qCom'));
         if (codigo.isEmpty ||
             codigo.length > 60 ||

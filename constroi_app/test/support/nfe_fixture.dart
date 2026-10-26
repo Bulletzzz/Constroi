@@ -37,7 +37,7 @@ const pendenciasNfe = {
     {
       'codigo': 'CIM-01',
       'nome': 'Cimento',
-      'unidade': 'SC',
+      'unidade': 'sc',
       'motivo': 'unidade_diferente',
     },
   ],

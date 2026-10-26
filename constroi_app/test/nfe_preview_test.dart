@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:constroi_app/features/nfe/nfe_preview.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +7,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/nfe_fixture.dart';
 
 void main() {
+  test('prévia respeita o mesmo contrato XML e resultado da API', () {
+    final bytes = File('../testes/fixtures/nfe/contrato.xml').readAsBytesSync();
+    final esperado = jsonDecode(
+      File('../testes/fixtures/nfe/contrato.json').readAsStringSync(),
+    );
+    final nota = NfePreview.ler('contrato.xml', bytes);
+    expect({
+      'chave': nota.chave,
+      'itens': [
+        for (final item in nota.materiais)
+          {
+            'codigo': item.codigo,
+            'nome': item.nome,
+            'unidade': item.unidade,
+            'quantidade': item.quantidade,
+          },
+      ],
+    }, esperado);
+    expect(nota.bytes, bytes);
+  });
+
   test('lê NF-e e preserva bytes originais e quantidades sem arredondar', () {
     final bytes = utf8.encode(xmlNfe(nome: 'Cimento &amp; argamassa'));
     final nota = NfePreview.ler('NOTA.XML', bytes);
@@ -13,7 +35,7 @@ void main() {
     expect(nota.bytes, bytes);
     expect(nota.materiais.single.nome, 'Cimento & argamassa');
     expect(nota.materiais.single.codigo, 'CIM-01');
-    expect(nota.materiais.single.unidade, 'SC');
+    expect(nota.materiais.single.unidade, 'sc');
     expect(nota.materiais.single.quantidade, '1.25');
     bytes[0] = 0;
     expect(nota.bytes.first, 60);

@@ -149,10 +149,7 @@ class _ConstroiAppState extends State<ConstroiApp> {
       );
     }
     if (rota == AppRoute.custos) {
-      return CustosScreen(
-        service: CustosService(api: _api!),
-        perfil: perfil,
-      );
+      return CustosScreen(service: CustosService(api: _api!), perfil: perfil);
     }
     if (rota == AppRoute.painel) {
       return AppHome(
@@ -177,10 +174,7 @@ class _ConstroiAppState extends State<ConstroiApp> {
       );
     }
     if (rota == AppRoute.equipe) {
-      return EquipeScreen(
-        service: EquipeService(api: _api!),
-        perfil: perfil,
-      );
+      return EquipeScreen(service: EquipeService(api: _api!), perfil: perfil);
     }
     if (rota == AppRoute.requisicoes) {
       final service = PedidosService(api: _api!);

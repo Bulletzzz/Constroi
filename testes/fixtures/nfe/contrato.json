@@ -1,0 +1,23 @@
+{
+  "chave": "11111111111111111111111111111111111111111111",
+  "itens": [
+    {
+      "codigo": "CIM-01",
+      "nome": "Cimento & argamassa",
+      "unidade": "sc",
+      "quantidade": "1.25"
+    },
+    {
+      "codigo": "ARE-02",
+      "nome": "Areia fina",
+      "unidade": "m3",
+      "quantidade": "0.01"
+    },
+    {
+      "codigo": "TIJ-03",
+      "nome": "Tijolo cerâmico",
+      "unidade": "un",
+      "quantidade": "100.00"
+    }
+  ]
+}

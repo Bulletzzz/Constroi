@@ -117,7 +117,7 @@ void main() {
     await revisar(tester);
     expect(find.text('Cimento CP-II'), findsOneWidget);
     expect(find.text('Código: CIM-01'), findsOneWidget);
-    expect(find.text('Quantidade: 1,25 SC'), findsOneWidget);
+    expect(find.text('Quantidade: 1,25 sc'), findsOneWidget);
     expect(find.text('Destino: Obra Norte'), findsOneWidget);
     expect(chamadas.where((r) => r.method != 'GET'), isEmpty);
     await tocar(tester, 'nfe-confirmar');
@@ -155,6 +155,11 @@ void main() {
       await revisar(tester);
       await tocar(tester, 'nfe-confirmar');
       expect(id('nfe-material-pendente'), findsNWidgets(3));
+      expect(find.text('Quantidade: 1,25 sc'), findsOneWidget);
+      expect(
+        find.textContaining('Código: CIM-01 · Unidade: sc'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Material não encontrado.'), findsOneWidget);
       expect(find.textContaining('Mais de um material'), findsOneWidget);
       expect(find.textContaining('unidade cadastrada.'), findsOneWidget);

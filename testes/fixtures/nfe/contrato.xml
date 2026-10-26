@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe>
+    <infNFe Id="NFe11111111111111111111111111111111111111111111" versao="4.00">
+      <det nItem="1">
+        <prod>
+          <cProd>CIM-01</cProd>
+          <xProd>Cimento &amp; argamassa</xProd>
+          <uCom> SC </uCom>
+          <qCom>1.2500</qCom>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>ARE-02</cProd>
+          <xProd> Areia fina </xProd>
+          <uCom>M3</uCom>
+          <qCom>0.0100</qCom>
+        </prod>
+      </det>
+      <det nItem="3">
+        <prod>
+          <cProd>TIJ-03</cProd>
+          <xProd>Tijolo cerâmico</xProd>
+          <uCom>Un</uCom>
+          <qCom>100</qCom>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>

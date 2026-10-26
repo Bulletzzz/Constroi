@@ -30,6 +30,7 @@ permissões, catálogo e unicidade da chave.
   chave de 44 dígitos, 1 a 200 materiais e quantidades positivas compatíveis com
   duas casas decimais. Não arredonda quantidades e rejeita DTD/entidades.
 - Os bytes originais são enviados sem reescrever o XML.
+- As unidades da prévia são normalizadas em minúsculas, como no parser da API.
 - Nenhuma chamada de gravação acontece antes da confirmação.
 - O envio desabilita a confirmação e a edição; a saída fica bloqueada até a resposta.
 - **422:** lista código, nome, unidade e motivo de cada material pendente:
@@ -47,7 +48,7 @@ Não há alteração nas rotas, regras ou migrations da API.
 
 Executado com Flutter 3.44.8 / Dart 3.12.2:
 
-- 172 testes do aplicativo passaram (53 adicionados nesta entrega).
+- 173 testes do aplicativo passaram (54 adicionados nesta entrega).
 - Análise estática sem ocorrências.
 - Compilação Web concluída.
 
@@ -64,11 +65,23 @@ arquivo original, prévia sem gravação, anexo, erros, duplo clique, sessão
 expirada, ausência de obras, seleção cancelada e recuperação após falha.
 Os testes de navegação cobrem o acesso pelo estoque e a rota direta em cada perfil.
 
+O app e a API leem a mesma fixture
+[`contrato.xml`](../testes/fixtures/nfe/contrato.xml) e comparam chave, códigos,
+nomes, unidades e quantidades com um único
+[`contrato.json`](../testes/fixtures/nfe/contrato.json). O XML inclui unidades
+em maiúsculas e mistas, espaços, entidade XML e quantidades com zeros extras.
+Execute também `dart test test/nfe_test.dart` na pasta `constroi_api` (6 testes).
+
 A varredura de layout percorre formulário, revisão, pendências, anexo e sucesso
 em **320×640, 844×390 e 1280×800**, com texto ampliado em 1,4× e nomes longos.
 Os identificadores estão em [casos-de-teste.md](casos-de-teste.md).
 No Web, o observador também identifica o input temporário do plugin como
 `nfe-arquivo-campo`, permitindo ao QA carregar o arquivo por seletor dedicado.
+A busca do seletor fica em `marcar()`, somente para `nfe-arquivo`, e reutiliza
+`marcarCampos()`. A criação posterior do input remarca o botão ainda conectado;
+mutações dos demais elementos não fazem consultas globais ao documento.
+O comportamento foi conferido em 8 verificações isoladas no navegador,
+incluindo entrada/saída da tela e criação do input depois do botão.
 
 As capturas abaixo foram renderizadas com dados simulados e texto em escala
 normal. A validação HTTP usa cliente simulado; não houve execução do Cypress
