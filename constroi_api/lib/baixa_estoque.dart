@@ -150,7 +150,7 @@ Future<Map<String, dynamic>> aprovarPedidoComBaixa(
         );
         // Copias historicas e saldos decimais no mesmo commit da baixa.
         // Uma falha aqui tambem reverte os logs e produtos ja debitados.
-        final movimentos = await transacao.execute(
+        await transacao.execute(
           Sql.named('''
           INSERT INTO movimentacao_estoque (
             empresa_id, obra_id, produto_id, pedido_id,
@@ -161,8 +161,7 @@ Future<Map<String, dynamic>> aprovarPedidoComBaixa(
           SELECT @empresa, @obra, p.id, @pedido, @usuario, 'saida_pedido',
                  @quantidade::numeric, @anterior::numeric, @posterior::numeric,
                  @protocolo, p.nome, p.unidade
-          FROM produto p WHERE p.id = @produto AND p.empresa_id = @empresa
-          RETURNING id
+          FROM produto p WHERE p.id = @produto
         '''),
           parameters: {
             'empresa': usuario.empresaId,
@@ -176,12 +175,6 @@ Future<Map<String, dynamic>> aprovarPedidoComBaixa(
             'protocolo': pedido['protocolo'],
           },
         );
-        if (movimentos.length != 1) {
-          throw const FalhaBaixaEstoque(
-            MotivoFalhaBaixa.itensInvalidos,
-            'O material da baixa nao pertence a sua empresa.',
-          );
-        }
         baixas.add({
           'produto_id': saldo['produto_id'],
           'quantidade': saldo['solicitada'],

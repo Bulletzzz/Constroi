@@ -198,6 +198,31 @@ void main() {
   );
 
   test(
+    '013 pode ser reaplicada e retoma indices sem perder historico',
+    () async {
+      await inserir();
+      final antes = (await sql(
+        'SELECT * FROM movimentacao_estoque',
+      )).map((r) => r.toList()).toList();
+      final estrutura = await definicaoAuditoria();
+      final migration = await File('migrations/$versao').readAsString();
+      await simples(migration);
+      await simples(
+        'DROP INDEX ix_movimentacao_obra_periodo; '
+        'DROP INDEX ix_movimentacao_aprovador_periodo;',
+      );
+      await simples(migration);
+      expect(await definicaoAuditoria(), estrutura);
+      expect(
+        (await sql(
+          'SELECT * FROM movimentacao_estoque',
+        )).map((r) => r.toList()).toList(),
+        antes,
+      );
+    },
+  );
+
+  test(
     'infra provisionada antes da 013 concede escrita restrita na tabela nova',
     () async {
       await limpar();
