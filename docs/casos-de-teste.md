@@ -52,6 +52,16 @@ acessibilidade que antes não existia, passando a ser legível por leitor de tel
 | `custos-orcamento` | cartão com orçamento, saldo e percentual consumido |
 | `custos-lancamentos` | seção de lançamentos do período, inclusive quando vazia |
 | `custos-lancamento` | cada lançamento; o identificador se repete nas linhas |
+| `estoque-novo-item` | botão que abre o cadastro, só para engenheiro e master |
+| `cadastro-titulo` | cabeçalho da tela de cadastro |
+| `cadastro-tipo-produto`, `cadastro-tipo-equipamento` | escolha do tipo; o ativo tem estado semântico selecionado |
+| `cadastro-nome` | nome do item |
+| `cadastro-codigo` | SKU do produto ou patrimônio do equipamento |
+| `cadastro-gerar-codigo` | botão que sugere um código a partir do nome |
+| `cadastro-categoria`, `cadastro-unidade`, `cadastro-minimo` | campos só do produto |
+| `cadastro-status` | status, campo só do equipamento |
+| `cadastro-erro` | mensagem de erro vinda da API |
+| `cadastro-cancelar`, `cadastro-salvar` | ações do rodapé |
 | `estoque-busca` | campo de busca por SKU ou nome |
 | `estoque-linha` | linha de saldo na tabela |
 | `estoque-vazio` | aviso de resultado sem itens |

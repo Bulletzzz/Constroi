@@ -9,6 +9,8 @@ import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
 import 'features/custos/custos_screen.dart';
 import 'features/custos/custos_service.dart';
+import 'features/cadastro/cadastro_screen.dart';
+import 'features/cadastro/cadastro_service.dart';
 import 'features/estoque/estoque_screen.dart';
 import 'features/estoque/estoque_service.dart';
 import 'features/pedidos/aprovacoes_screen.dart';
@@ -153,6 +155,14 @@ class _ConstroiAppState extends State<ConstroiApp> {
         service: EstoqueService(api: _api!),
         painel: PainelService(_api!),
         perfil: perfil,
+        aoCadastrar: (contexto) => Navigator.of(contexto).push<void>(
+          MaterialPageRoute(
+            builder: (_) => CadastroScreen(
+              service: CadastroService(api: _api!),
+              perfil: perfil,
+            ),
+          ),
+        ),
       );
     }
     if (rota == AppRoute.equipe) {

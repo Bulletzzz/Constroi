@@ -13,6 +13,9 @@ Future<Response> onRequest(RequestContext context, String idDaRota) async {
         erro.constraintName == 'ux_produto_sku_empresa') {
       return _erro(HttpStatus.conflict, 'SKU ja cadastrado para esta empresa.');
     }
+    if (erro.code == '23503') {
+      return _erro(HttpStatus.badRequest, 'Categoria de custo nao existe.');
+    }
     rethrow;
   }
 }
@@ -39,7 +42,7 @@ Future<Response> _buscar(RequestContext context, int id) async {
 
   final encontrados = await banco.execute(
     Sql.named('''
-      SELECT id, nome, unidade, sku, estoque_minimo,
+      SELECT id, nome, unidade, sku, estoque_minimo, categoria_custo_id,
              empresa_id, criado_em, atualizado_em
       FROM produto
       WHERE id = @id AND empresa_id = @empresa
@@ -84,20 +87,24 @@ Future<Response> _editar(RequestContext context, int id) async {
   final unidade = validarUnidadeProduto(dados['unidade']);
   final sku = validarSkuProduto(dados['sku']);
   final minimo = validarEstoqueMinimo(dados['estoque_minimo']);
+  final categoria = validarCategoriaCusto(dados['categoria_custo_id']);
 
   if ((dados.containsKey('nome') && nome == null) ||
       (dados.containsKey('unidade') && unidade == null) ||
       (dados.containsKey('sku') && !sku.valido) ||
-      (dados.containsKey('estoque_minimo') && minimo == null)) {
+      (dados.containsKey('estoque_minimo') && minimo == null) ||
+      (dados['categoria_custo_id'] != null && categoria == null)) {
     return _erro(HttpStatus.badRequest, 'Dados do produto invalidos.');
   }
   if (nome == null &&
       unidade == null &&
       !dados.containsKey('sku') &&
-      !dados.containsKey('estoque_minimo')) {
+      !dados.containsKey('estoque_minimo') &&
+      !dados.containsKey('categoria_custo_id')) {
     return _erro(
       HttpStatus.badRequest,
-      'Informe nome, unidade, sku ou estoque_minimo para atualizar.',
+      'Informe nome, unidade, sku, estoque_minimo ou categoria_custo_id '
+      'para atualizar.',
     );
   }
 
@@ -141,6 +148,10 @@ Future<Response> _editar(RequestContext context, int id) async {
     campos['minimo'] = minimo;
     partes.add('estoque_minimo = @minimo');
   }
+  if (dados.containsKey('categoria_custo_id')) {
+    campos['categoria'] = categoria;
+    partes.add('categoria_custo_id = @categoria');
+  }
 
   partes.add('atualizado_em = CURRENT_TIMESTAMP');
   campos['id'] = id;
@@ -151,7 +162,7 @@ Future<Response> _editar(RequestContext context, int id) async {
       UPDATE produto
       SET ${partes.join(', ')}
       WHERE id = @id AND empresa_id = @empresa
-      RETURNING id, nome, unidade, sku, estoque_minimo,
+      RETURNING id, nome, unidade, sku, estoque_minimo, categoria_custo_id,
                 empresa_id, criado_em, atualizado_em
     '''),
     parameters: campos,

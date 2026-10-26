@@ -37,12 +37,14 @@ class EstoqueScreen extends StatefulWidget {
     required this.perfil,
     this.painel,
     this.obraId,
+    this.aoCadastrar,
   });
 
   final EstoqueService service;
   final PainelService? painel;
   final PerfilUsuario perfil;
   final int? obraId;
+  final Future<void> Function(BuildContext)? aoCadastrar;
 
   @override
   State<EstoqueScreen> createState() => _EstoqueScreenState();
@@ -247,6 +249,11 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           const SizedBox(height: 16),
           Container(height: 2, color: _tinta),
           const SizedBox(height: 16),
+          if (widget.aoCadastrar != null &&
+              widget.perfil.possuiNivel(PerfilUsuario.engenheiro)) ...[
+            _botaoDeCadastro(),
+            const SizedBox(height: 16),
+          ],
           _campoDeBusca(),
           const SizedBox(height: 16),
           _filtroDeCategoria(),
@@ -382,6 +389,29 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
             ],
           ),
         ),
+      ),
+    ),
+  );
+
+  Widget _botaoDeCadastro() => Semantics(
+    identifier: 'estoque-novo-item',
+    button: true,
+    child: OutlinedButton.icon(
+      onPressed: () async {
+        await widget.aoCadastrar!(context);
+        if (mounted) await _buscar();
+      },
+      icon: const Icon(Icons.add, size: 20),
+      label: const Text(
+        'NOVO ITEM',
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _tinta,
+        side: const BorderSide(color: _tinta, width: 2),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: const RoundedRectangleBorder(),
       ),
     ),
   );
