@@ -56,6 +56,12 @@
       }
       function espelhar(raiz) {
         if (!raiz || raiz.nodeType !== 1) return;
+        // O seletor nativo web cria seu input fora da árvore de Semantics.
+        if (document.querySelector('[' + atributo + '="nfe-arquivo"]')) {
+          document.querySelectorAll('file-selector input[type="file"]').forEach(function (campo) {
+            campo.setAttribute('data-cy', 'nfe-arquivo-campo');
+          });
+        }
         if (raiz.hasAttribute(atributo)) marcar(raiz);
         raiz.querySelectorAll('[' + atributo + ']').forEach(marcar);
         var dono = raiz.closest ? raiz.closest('[' + atributo + ']') : null;

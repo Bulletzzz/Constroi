@@ -8,6 +8,7 @@ import 'package:constroi_app/navigation/app_route.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/navigation/route_guard.dart';
 import 'package:constroi_app/features/custos/custos_screen.dart';
+import 'package:constroi_app/features/nfe/nfe_screen.dart';
 import 'package:constroi_app/widgets/app_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,6 +109,7 @@ void main() {
       expect(guarda.permite(AppRoute.estoque), isTrue);
       expect(guarda.permite(AppRoute.requisicoes), isTrue);
       expect(guarda.permite(AppRoute.custos), isFalse);
+      expect(guarda.permite(AppRoute.importacaoNfe), isFalse);
       expect(guarda.permite(AppRoute.equipe), isTrue);
       expect(guarda.destinoPermitido(AppRoute.equipe), AppRoute.equipe);
     });
@@ -122,6 +124,7 @@ void main() {
 
       expect(guarda.perfil, PerfilUsuario.engenheiro);
       expect(guarda.permite(AppRoute.custos), isTrue);
+      expect(guarda.permite(AppRoute.importacaoNfe), isTrue);
       expect(guarda.permite(AppRoute.equipe), isTrue);
     });
 
@@ -181,7 +184,7 @@ void main() {
         await tester.pumpAndSettle();
 
         for (final rota in AppRoute.values.where(
-          (rota) => rota.podeSerAcessadaPor(perfil),
+          (rota) => rota.noMenu && rota.podeSerAcessadaPor(perfil),
         )) {
           final rotulo = tester.widget<Text>(find.text(rota.rotulo));
           expect(rotulo.maxLines, 1);
@@ -227,4 +230,40 @@ void main() {
     expect(find.byType(AppHome), findsOneWidget);
     expect(find.text('EQUIPE'), findsNothing);
   });
+
+  for (final perfil in PerfilUsuario.values) {
+    testWidgets('acesso à NF-e pelo estoque e pela rota para ${perfil.name}', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ConstroiApp(
+          config: ApiConfig('https://api.constroi.test'),
+          storage: MemoryTokenStorage()..token = tokenDe(perfil.name),
+          httpClient: semChamadas(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Estoque'));
+      await tester.pumpAndSettle();
+      final permitido = perfil.possuiNivel(PerfilUsuario.engenheiro);
+      final botao = find.bySemanticsIdentifier('estoque-importar-nfe');
+      expect(botao, permitido ? findsOneWidget : findsNothing);
+      if (permitido) {
+        await tester.tap(botao);
+      } else {
+        Navigator.of(
+          tester.element(find.byType(AppBottomNavigation)),
+        ).pushNamed(AppRoute.importacaoNfe.caminho);
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(NfeScreen), permitido ? findsOneWidget : findsNothing);
+      if (permitido) {
+        Navigator.of(tester.element(find.byType(NfeScreen))).pop();
+        await tester.pumpAndSettle();
+        expect(botao, findsOneWidget);
+      } else {
+        expect(find.byType(AppHome), findsOneWidget);
+      }
+    });
+  }
 }

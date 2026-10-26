@@ -65,6 +65,19 @@ acessibilidade que antes não existia, passando a ser legível por leitor de tel
 | `estoque-busca` | campo de busca por SKU ou nome |
 | `estoque-linha` | linha de saldo na tabela |
 | `estoque-vazio` | aviso de resultado sem itens |
+| `estoque-importar-nfe` | acesso à importação/anexo, somente engenheiro e master |
+| `nfe-modo-importar`, `nfe-modo-anexar` | escolha entre nova entrada e anexo |
+| `nfe-obra` | seleção da obra de destino da importação |
+| `nfe-entrada`, `nfe-entrada-campo` | número da entrada existente e input editável |
+| `nfe-arquivo`, `nfe-arquivo-nome` | seletor de XML e nome do arquivo escolhido |
+| `nfe-arquivo-campo` | input de arquivo criado pelo plugin no Web, disponível após abrir o seletor |
+| `nfe-revisar`, `nfe-previa`, `nfe-chave` | revisão local antes de enviar à API |
+| `nfe-material` | material lido do XML; repete por item |
+| `nfe-confirmar`, `nfe-editar` | confirmar envio ou alterar os dados |
+| `nfe-erro`, `nfe-conflito` | falhas gerais/422 e conflitos 409, respectivamente |
+| `nfe-material-pendente` | material e motivo do 422; repete por pendência |
+| `nfe-obras-erro`, `nfe-obras-tentar`, `nfe-obras-vazio` | falha, nova tentativa e ausência de obras |
+| `nfe-sucesso`, `nfe-concluir` | resultado confirmado e retorno ao estoque |
 | `equipe-obra` | seletor de obra da tela de equipe |
 | `equipe-busca` | campo de busca por pessoa, e-mail ou perfil |
 | `equipe-busca-campo` | input editável da busca, gerado pelo espelhamento no DOM |

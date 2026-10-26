@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'perfil_usuario.dart';
 
 enum AppRoute {
+  importacaoNfe(
+    '/entradas/xml',
+    'Importar NF-e',
+    Icons.upload_file,
+    PerfilUsuario.engenheiro,
+    noMenu: false,
+  ),
   painel('/painel', 'Painel', Icons.dashboard_outlined, PerfilUsuario.pedreiro),
   estoque(
     '/estoque',
@@ -24,12 +31,19 @@ enum AppRoute {
     PerfilUsuario.pedreiro,
   );
 
-  const AppRoute(this.caminho, this.rotulo, this.icone, this.perfilMinimo);
+  const AppRoute(
+    this.caminho,
+    this.rotulo,
+    this.icone,
+    this.perfilMinimo, {
+    this.noMenu = true,
+  });
 
   final String caminho;
   final String rotulo;
   final IconData icone;
   final PerfilUsuario perfilMinimo;
+  final bool noMenu;
 
   bool podeSerAcessadaPor(PerfilUsuario perfil) =>
       perfil.possuiNivel(perfilMinimo);
