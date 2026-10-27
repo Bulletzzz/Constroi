@@ -40,6 +40,13 @@ jobs:
           docker compose config --quiet
           docker compose up -d --wait db
 
+      - name: Testar API com as dependências da imagem
+        run: |
+          docker compose --profile tools run --build --rm \
+            --volume "$PWD/constroi_api/test:/app/test:ro" \
+            --volume "$PWD/testes/fixtures/nfe:/testes/fixtures/nfe:ro" \
+            migrate dart test
+
       - name: Aplicar migrations no banco vazio
         run: docker compose --profile tools run --build --rm migrate
 
