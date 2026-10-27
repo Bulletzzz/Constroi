@@ -1,0 +1,72 @@
+name: Docker do conjunto
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ambiente-limpo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: constroi-ci
+      COMPOSE_FILE: docker-compose.yml:.github/docker-compose.test.yml
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar banco descartável com TLS
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/constroi-tls"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=db' \
+            -keyout "$RUNNER_TEMP/constroi-tls/server.key" \
+            -out "$RUNNER_TEMP/constroi-tls/server.crt"
+          postgres_uid=$(docker run --rm --entrypoint id postgres:17-bookworm -u postgres)
+          sudo chown "$postgres_uid" "$RUNNER_TEMP/constroi-tls/server.key"
+          sudo chmod 600 "$RUNNER_TEMP/constroi-tls/server.key"
+          cp .env.example .env
+          cat >> .env <<'ENV'
+          DATABASE_URL=postgresql://constroi_test:constroi_test@db:5432/constroi?sslmode=require
+          JWT_SECRET=chave-exclusiva-do-teste-descartavel-docker-conjunto
+          ENV
+          cat > constroi_api/.env.migrations <<'ENV'
+          MIGRATION_DATABASE_URL=postgresql://constroi_test:constroi_test@db:5432/constroi?sslmode=require
+          ENV
+          docker compose config --quiet
+          docker compose up -d --wait db
+
+      - name: Aplicar migrations no banco vazio
+        run: docker compose --profile tools run --build --rm migrate
+
+      - name: Subir app e API com build dentro das imagens
+        run: docker compose up --build --wait --wait-timeout 180
+
+      - name: Verificar aplicativo, API e proxy
+        shell: bash
+        run: |
+          curl --fail --silent --show-error http://localhost:8090/ -o /tmp/constroi-index.html
+          grep -q flutter_bootstrap.js /tmp/constroi-index.html
+          curl --fail --silent --show-error http://localhost:8090/main.dart.js -o /tmp/constroi-main.js
+          test "$(wc -c < /tmp/constroi-main.js)" -gt 10000
+          curl --fail --silent --show-error http://localhost:8090/canvaskit/canvaskit.wasm -o /tmp/constroi-canvaskit.wasm
+          test "$(wc -c < /tmp/constroi-canvaskit.wasm)" -gt 10000
+          curl --fail --silent --show-error http://localhost:8080/health | jq -e '.status == "ok" and .banco == 1'
+          curl --fail --silent --show-error http://localhost:8090/api/health | jq -e '.status == "ok" and .banco == 1'
+          test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' http://localhost:8090/api/eu)" = 401
+          curl --fail --silent --show-error http://localhost:8090/entradas -o /tmp/constroi-rota.html
+          cmp /tmp/constroi-index.html /tmp/constroi-rota.html
+          test "$(docker compose ps --status running --services | wc -l)" -eq 3
+
+      - name: Diagnóstico em caso de falha
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail 100
+
+      - name: Remover ambiente descartável
+        if: always()
+        run: docker compose down --volumes --remove-orphans

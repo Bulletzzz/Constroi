@@ -1,4 +1,4 @@
-FROM dart:stable AS build
+FROM dart:3.12.2-sdk AS build
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ WORKDIR /app/build
 RUN dart pub get --offline
 RUN dart compile exe bin/server.dart -o /servidor
 
-FROM debian:bookworm-slim AS producao
+FROM debian:trixie-slim AS producao
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl \

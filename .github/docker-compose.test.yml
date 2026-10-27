@@ -1,0 +1,23 @@
+# Banco exclusivo da validação em máquina limpa; não participa da demonstração.
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: constroi
+      POSTGRES_USER: constroi_test
+      POSTGRES_PASSWORD: constroi_test
+    volumes:
+      - ${RUNNER_TEMP}/constroi-tls:/tls:ro
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/tls/server.crt
+      - -c
+      - ssl_key_file=/tls/server.key
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U constroi_test -d constroi"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
