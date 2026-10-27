@@ -170,8 +170,18 @@ inclusive em decisões concorrentes. Aplique a migration 010 antes de usar.
 
 ## Rodando o projeto
 
-Cada pessoa precisa do próprio `constroi_api/.env`, que não vai para o repositório. Copie
-o modelo e preencha:
+### App e API com Docker
+
+Em uma máquina nova, instale o Docker com suporte a containers Linux e
+[Docker Compose 2.24 ou superior](https://docs.docker.com/compose/install/).
+Mantenha o Docker em execução e as portas `8090` e `8080` livres.
+Não é necessário instalar Flutter, Dart ou Nginx: os builds acontecem nas imagens.
+A primeira execução precisa de internet para baixar imagens e dependências.
+
+Na raiz do repositório, copie `.env.example` para `.env` (`cp .env.example .env`
+no Linux/macOS ou `Copy-Item .env.example .env` no PowerShell) e preencha
+`DATABASE_URL` com a conexão de execução autorizada pela equipe e `JWT_SECRET`
+com uma chave longa e aleatória. Esse arquivo não vai para o Git:
 
 ```
 DATABASE_URL=postgresql://USUARIO_ATUAL:SENHA@host.neon.tech/constroi?sslmode=require
@@ -187,16 +197,42 @@ e ative `AUDITORIA_CONEXAO_ESTRITA=true`. A credencial de migrations fica
 exclusivamente em `constroi_api/.env.migrations`, na variável
 `MIGRATION_DATABASE_URL`. Veja o [roteiro de implantação coordenada](docs/infra-auditoria.md).
 
-Com Docker, sobe app e API juntos:
+O banco Neon deve estar acessível e com as migrations aplicadas. Se precisar
+preparar um banco novo, configure `constroi_api/.env.migrations` a partir do
+modelo `constroi_api/.env.migrations.example` e execute uma vez:
 
 ```bash
-docker compose --env-file constroi_api/.env up --build
+docker compose --profile tools run --build --rm migrate
+```
+
+Com o ambiente configurado, um comando constrói as imagens ausentes e sobe
+app e API juntos. O app aguarda a API confirmar a conexão com o banco:
+
+```bash
+docker compose up
 ```
 
 - Aplicativo: http://localhost:8090
 - API: http://localhost:8080
+- Verificação do conjunto pelo proxy do app: http://localhost:8090/api/health
 
-Para mexer só na API, sem container:
+O Nginx serve o Flutter web e encaminha `/api/` para a API. O endereço `/api`
+é definido durante o build web dentro da imagem. Os arquivos do renderizador
+também ficam na imagem, sem depender de CDN na demonstração.
+
+Após atualizar o código, use `docker compose up --build`. Para executar em
+segundo plano, acrescente `-d`; confira os serviços com `docker compose ps` e
+os logs com `docker compose logs -f`. Para encerrar, use `docker compose down`.
+Se a API ficar sem saúde, confira o acesso ao banco e os logs de `api`.
+
+Quem já usa `constroi_api/.env` pode manter o comando anterior:
+`docker compose --env-file constroi_api/.env up --build`.
+
+### API sem Docker
+
+Para mexer só na API, instale o Dart e o Dart Frog CLI, copie
+`constroi_api/.env.example` para `constroi_api/.env` e preencha a conexão de
+execução e a chave JWT. Configure também `.env.migrations` antes de migrar:
 
 ```bash
 cd constroi_api
@@ -212,6 +248,14 @@ Para validar uma conexão candidata sem substituir o `.env` ativo, use
 `API_ENV_FILE` com `dart run bin/verificar_auditoria.dart`.
 
 ## Testes
+
+O workflow [Docker do conjunto](.github/workflows/docker-conjunto.yml) valida
+cada PR em uma máquina Ubuntu nova, sem reaproveitar builds do projeto. Ele
+prepara um PostgreSQL descartável com TLS, aplica as migrations pelo serviço
+existente e executa `docker compose up --build --wait`. A validação confere
+os arquivos web, a API conectada ao banco, o proxy `/api/` e o acesso a uma
+rota do app. O banco de teste existe apenas nesse workflow; a execução normal
+continua usando o Neon configurado no `.env`.
 
 ```bash
 cd constroi_api

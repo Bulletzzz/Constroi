@@ -5,6 +5,8 @@
 *.iml
 build
 coverage
+.env
+.env*
 android
 ios
 windows

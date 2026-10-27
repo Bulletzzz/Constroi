@@ -32,3 +32,4 @@ coverage/
 *.jks
 .env
 .env.*
+!/.env.example
