@@ -32,6 +32,7 @@ jobs:
           cat >> .env <<'ENV'
           DATABASE_URL=postgresql://constroi_test:constroi_test@db:5432/constroi?sslmode=require
           JWT_SECRET=chave-exclusiva-do-teste-descartavel-docker-conjunto
+          AUDITORIA_CONEXAO_ESTRITA=
           ENV
           cat > constroi_api/.env.migrations <<'ENV'
           MIGRATION_DATABASE_URL=postgresql://constroi_test:constroi_test@db:5432/constroi?sslmode=require

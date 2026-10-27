@@ -9,8 +9,6 @@ COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
 COPY . .
-RUN test -n "$API_BASE_URL" \
-    || (echo "Informe --build-arg API_BASE_URL=https://seu-endereco" >&2; exit 1)
 RUN flutter build web --release --no-pub --no-web-resources-cdn --no-wasm-dry-run \
     --dart-define=API_BASE_URL=$API_BASE_URL \
     --dart-define=ALLOW_INSECURE_API=$ALLOW_INSECURE_API
