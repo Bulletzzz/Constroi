@@ -1,6 +1,6 @@
 Project Constroi {
   database_type: 'PostgreSQL'
-  Note: 'Estado consolidado depois das migrations 001 a 005'
+  Note: 'Estado consolidado depois das migrations 001 a 013'
 }
 
 Table empresa {
@@ -23,6 +23,7 @@ Table usuario {
   email_verificado_em timestamptz
   criado_em timestamptz [not null]
   atualizado_em timestamptz [not null]
+  indexes { (id, empresa_id) [unique] }
 }
 
 Table obra {
@@ -32,6 +33,7 @@ Table obra {
   endereco varchar(255) [not null]
   status varchar(30) [not null]
   orcamento_total decimal(14,2)
+  indexes { (id, empresa_id) [unique] }
 }
 
 Table usuario_obra {
@@ -54,8 +56,11 @@ Table produto {
   categoria_custo_id integer [ref: > categoria_custo.id]
   nome varchar(150) [not null]
   unidade varchar(30) [not null]
+  sku varchar(50)
+  estoque_minimo decimal(12,2) [not null, default: 0]
   criado_em timestamptz [not null]
   atualizado_em timestamptz [not null]
+  indexes { (id, empresa_id) [unique] }
 }
 
 Table estoque {
@@ -74,7 +79,35 @@ Table pedido {
   status varchar(30) [not null]
   justificativa varchar(255)
   justificativa_recusa varchar(255)
+  local_obra varchar(120)
+  urgencia varchar(20) [not null, default: 'padrao']
   data timestamptz [not null]
+  indexes { (id, obra_id) [unique] }
+}
+
+Table movimentacao_estoque {
+  id bigint [pk, increment]
+  empresa_id integer [not null]
+  obra_id integer [not null]
+  produto_id integer [not null]
+  pedido_id integer [not null]
+  registrado_por_usuario_id integer [not null]
+  tipo varchar(30) [not null, note: 'Somente saida_pedido']
+  quantidade decimal(12,2) [not null, note: '0 < quantidade <= 9999999999.99']
+  saldo_anterior decimal(12,2) [not null]
+  saldo_posterior decimal(12,2) [not null]
+  ocorrido_em timestamptz [not null, default: `clock_timestamp()`]
+  protocolo_pedido varchar(50) [not null]
+  produto_nome varchar(150) [not null]
+  unidade varchar(30) [not null]
+  Note: 'Saldos entre 0 e 9999999999.99; anterior - quantidade = posterior. Copias historicas. Indices de periodo com ocorrido_em DESC, id DESC no SQL.'
+  indexes {
+    (empresa_id, pedido_id, produto_id, tipo) [unique]
+    (empresa_id, obra_id, ocorrido_em, id)
+    (empresa_id, produto_id, ocorrido_em, id)
+    (empresa_id, ocorrido_em, id)
+    (empresa_id, registrado_por_usuario_id, ocorrido_em, id)
+  }
 }
 
 Table item_pedido {
@@ -88,9 +121,12 @@ Table entrada_estoque {
   id integer [pk, increment]
   usuario_id integer [not null, ref: > usuario.id]
   obra_id integer [not null, ref: > obra.id]
+  empresa_nfe_id integer
+  chave_nfe varchar(44)
   xml_nota_fiscal text
   justificativa varchar(255)
   data timestamptz [not null]
+  indexes { (empresa_nfe_id, chave_nfe) [unique] }
 }
 
 Table item_entrada {
@@ -175,3 +211,8 @@ Ref: usuario_obra.(usuario_id, empresa_id) > usuario.(id, empresa_id)
 Ref: usuario_obra.(obra_id, empresa_id) > obra.(id, empresa_id)
 Ref: despesa_obra.(obra_id, empresa_id) > obra.(id, empresa_id)
 Ref: despesa_obra.(registrado_por_usuario_id, empresa_id) > usuario.(id, empresa_id)
+Ref: movimentacao_estoque.(obra_id, empresa_id) > obra.(id, empresa_id) [delete: restrict]
+Ref: movimentacao_estoque.(produto_id, empresa_id) > produto.(id, empresa_id) [delete: restrict]
+Ref: movimentacao_estoque.(registrado_por_usuario_id, empresa_id) > usuario.(id, empresa_id) [delete: restrict]
+Ref: movimentacao_estoque.(pedido_id, obra_id) > pedido.(id, obra_id) [delete: restrict]
+Ref: entrada_estoque.(obra_id, empresa_nfe_id) > obra.(id, empresa_id)

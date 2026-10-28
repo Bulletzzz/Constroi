@@ -216,6 +216,7 @@ function LimparMarca {
         "WITH alvo AS (SELECT id FROM empresa WHERE nome LIKE '%$Marca')",
         "u AS (SELECT id FROM usuario WHERE empresa_id IN (SELECT id FROM alvo))",
         "o AS (SELECT id FROM obra WHERE empresa_id IN (SELECT id FROM alvo))",
+        "m0 AS (DELETE FROM movimentacao_estoque WHERE empresa_id IN (SELECT id FROM alvo) RETURNING 1)",
         "d1 AS (DELETE FROM item_pedido WHERE pedido_id IN (SELECT id FROM pedido WHERE obra_id IN (SELECT id FROM o)) RETURNING 1)",
         "d2 AS (DELETE FROM pedido WHERE obra_id IN (SELECT id FROM o) RETURNING 1)",
         "e0 AS (SELECT id FROM entrada_estoque WHERE obra_id IN (SELECT id FROM o) OR usuario_id IN (SELECT id FROM u))",

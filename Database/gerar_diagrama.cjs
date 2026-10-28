@@ -2,11 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 const width = 2400;
-const height = 1710;
+const height = 2250;
 const boxWidth = 380;
 const boxHeight = 250;
 const columns = [60, 530, 1000, 1470, 1940];
-const rows = [80, 480, 880, 1280];
+const rows = [80, 480, 880, 1280, 1680];
 
 const tables = [
   ['sessao_usuario', 0, 0, 'auth', ['id PK', 'usuario_id FK', 'refresh_token_hash', 'expira_em', 'revogado_em']],
@@ -29,6 +29,13 @@ const tables = [
   ['entrada_estoque', 2, 3, 'base', ['id PK', 'usuario_id FK', 'obra_id FK', 'xml_nota_fiscal', 'data']],
   ['vw_resumo_custo_obra', 3, 3, 'view', ['VIEW', 'obra_id', 'custo_acumulado', 'saldo_orcamento', 'percentual_consumido']],
   ['vw_lancamento_custo', 4, 3, 'view', ['VIEW', 'origem / origem_id', 'obra_id', 'categoria_custo_id', 'valor']],
+  ['movimentacao_estoque', 3, 4, 'audit', [
+    'id PK / empresa_id', 'obra_id FK composta', 'produto_id FK composta',
+    'pedido_id FK composta', 'registrado_por_usuario_id FK', 'tipo: saida_pedido',
+    'quantidade', 'saldo_anterior / saldo_posterior', 'ocorrido_em: clock_timestamp()',
+    'protocolo_pedido', 'produto_nome / unidade',
+    'UQ empresa/pedido/produto/tipo', 'FKs: ON DELETE RESTRICT',
+  ]],
 ];
 
 const links = [
@@ -40,6 +47,8 @@ const links = [
   ['usuario', 'entrada_estoque'], ['obra', 'entrada_estoque'], ['entrada_estoque', 'item_entrada'], ['produto', 'item_entrada'],
   ['obra', 'despesa_obra'], ['usuario', 'despesa_obra'], ['obra', 'vw_resumo_custo_obra'], ['item_entrada', 'vw_lancamento_custo'],
   ['despesa_obra', 'vw_lancamento_custo'], ['vw_lancamento_custo', 'vw_resumo_custo_obra'],
+  ['obra', 'movimentacao_estoque'], ['produto', 'movimentacao_estoque'],
+  ['pedido', 'movimentacao_estoque'], ['usuario', 'movimentacao_estoque'],
 ];
 
 const palette = {
@@ -48,6 +57,7 @@ const palette = {
   team: ['#1976a3', '#ffffff'],
   cost: ['#d99a00', '#171717'],
   view: ['#247c55', '#ffffff'],
+  audit: ['#bc5b28', '#ffffff'],
 };
 
 const byName = Object.fromEntries(tables.map((table) => [table[0], table]));
@@ -65,11 +75,12 @@ const tableSvg = tables.map(([name, col, row, group, fields]) => {
   const x = columns[col];
   const y = rows[row];
   const [header, headerText] = palette[group];
+  const tableHeight = Math.max(boxHeight, 90 + fields.length * 29);
   const rowsSvg = fields.map((field, index) =>
     `<text x="${x + 20}" y="${y + 92 + index * 29}" class="field">${esc(field)}</text>`,
   ).join('\n');
   return `<g>
-    <rect x="${x}" y="${y}" width="${boxWidth}" height="${boxHeight}" rx="12" class="table" />
+    <rect x="${x}" y="${y}" width="${boxWidth}" height="${tableHeight}" rx="12" class="table" />
     <path d="M ${x + 12} ${y} H ${x + boxWidth - 12} Q ${x + boxWidth} ${y} ${x + boxWidth} ${y + 12} V ${y + 58} H ${x} V ${y + 12} Q ${x} ${y} ${x + 12} ${y}" fill="${header}" />
     <text x="${x + 20}" y="${y + 39}" class="title" fill="${headerText}">${esc(name)}</text>
     ${rowsSvg}
@@ -87,7 +98,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${
     .subtitle { fill: #aeb6bf; font: 19px Arial, sans-serif; }
   </style>
   <text x="60" y="48" class="heading">CONSTRÓI — Modelo de dados</text>
-  <text x="810" y="46" class="subtitle">azul: equipe • amarelo: custos • roxo: autenticação • verde: views</text>
+  <text x="810" y="46" class="subtitle">azul: equipe • amarelo: custos • roxo: autenticação • verde: views • laranja: auditoria</text>
   <g class="links">${linkSvg}</g>
   ${tableSvg}
 </svg>`;

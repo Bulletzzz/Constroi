@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/baixa_estoque.dart';
@@ -19,6 +20,13 @@ void main() {
   }) => criarPoolApi(conexao, conexaoEstrita: true, limiteMs: limiteMs);
   Future<void> configurar() =>
       administrador.execute(papeis, queryMode: QueryMode.simple);
+  String movimento(String nome) =>
+      '''
+    INSERT INTO movimentacao_estoque (
+      empresa_id,obra_id,produto_id,pedido_id,registrado_por_usuario_id,tipo,
+      quantidade,saldo_anterior,saldo_posterior,protocolo_pedido,produto_nome,unidade
+    ) VALUES (1,1,1,1,1,'saida_pedido',1,1,0,'TESTE-INFRA','$nome','saco')
+  ''';
   Future<ProcessResult> migrar({String? conexao}) => Process.run(
     Platform.resolvedExecutable,
     ['run', 'bin/migrate.dart'],
@@ -56,16 +64,27 @@ void main() {
       '../Database/infra/auditoria_papeis.sql',
     ).readAsString();
     await configurar();
-    // Fixtures de permissoes, nao e a migration da auditoria (card 83).
+    // Senha descartavel somente no teste, compativel com SCRAM e trust.
+    final aleatorio = Random.secure();
+    final senha = List.generate(
+      32,
+      (_) => aleatorio.nextInt(16).toRadixString(16),
+    ).join();
+    await administrador.runTx((tx) async {
+      await tx.execute("SET LOCAL password_encryption = 'scram-sha-256'");
+      await tx.execute("ALTER ROLE constroi_api_execucao PASSWORD '$senha'");
+    });
+    urlApi = uri.replace(userInfo: 'constroi_api_execucao:$senha').toString();
+    // Objeto futuro separado: auditoria agora usa a migration real do card 83.
     await administrador.execute('''
-      CREATE TABLE movimentacao_estoque (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,evento text NOT NULL);
+      CREATE TABLE infra_objeto_futuro (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,evento text NOT NULL);
       CREATE TABLE infra_bloqueio (id int PRIMARY KEY,valor int NOT NULL);
       INSERT INTO infra_bloqueio VALUES (1,0);
     ''', queryMode: QueryMode.simple);
     final app = poolEstrito(urlApi);
     try {
       await app.execute(
-        "INSERT INTO movimentacao_estoque(evento) VALUES ('default_acl')",
+        "INSERT INTO infra_objeto_futuro(evento) VALUES ('default_acl')",
       );
     } finally {
       await app.close();
@@ -78,6 +97,19 @@ void main() {
       'TRUNCATE movimentacao_estoque; UPDATE infra_bloqueio SET valor=0;',
       queryMode: QueryMode.simple,
     );
+    await administrador.execute('''
+      INSERT INTO empresa(id,nome,cnpj) VALUES (1,'Teste','1');
+      INSERT INTO usuario(id,empresa_id,nome,email,senha_hash,tipo)
+        VALUES (1,1,'Engenheiro','e@e','hash','engenheiro');
+      INSERT INTO obra(id,empresa_id,nome,endereco,status)
+        VALUES (1,1,'Obra','Rua','ativa');
+      INSERT INTO produto(id,empresa_id,nome,unidade)
+        VALUES (1,1,'Cimento','saco');
+      INSERT INTO estoque(obra_id,produto_id,quantidade) VALUES (1,1,1);
+      INSERT INTO pedido(id,usuario_id,obra_id,protocolo,status)
+        VALUES (1,1,1,'TESTE-INFRA','pendente');
+      INSERT INTO item_pedido(pedido_id,produto_id,quantidade) VALUES (1,1,1);
+    ''', queryMode: QueryMode.simple);
   });
 
   Future<void> semMovimentos() async {
@@ -88,6 +120,23 @@ void main() {
       0,
     );
   }
+
+  test(
+    'papel de teste usa senha SCRAM descartavel e conecta com TLS',
+    () async {
+      final credencial = await administrador.execute(r'''
+      SELECT rolpassword LIKE 'SCRAM-SHA-256$%' FROM pg_authid
+      WHERE rolname='constroi_api_execucao'
+    ''');
+      expect(credencial.single[0], isTrue);
+      final app = poolEstrito(urlApi);
+      addTearDown(app.close);
+      final identidade = await app.execute('''
+      SELECT current_user, ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()
+    ''');
+      expect(identidade.single.toList(), ['constroi_api_execucao', true]);
+    },
+  );
 
   test(
     'modo padrao aceita o dono atual sem exigir timeout provisionado',
@@ -132,16 +181,16 @@ void main() {
       final app = poolEstrito(urlApi);
       addTearDown(app.close);
       await app.execute(
-        "INSERT INTO movimentacao_estoque(evento) VALUES ('ok')",
+        movimento('ok'),
       );
       expect(
         (await app.execute(
-          'SELECT evento FROM movimentacao_estoque',
+          'SELECT produto_nome FROM movimentacao_estoque',
         )).single[0],
         'ok',
       );
       for (final comando in [
-        "UPDATE movimentacao_estoque SET evento='nao'",
+        "UPDATE movimentacao_estoque SET produto_nome='nao'",
         'DELETE FROM movimentacao_estoque',
         'TRUNCATE movimentacao_estoque',
         'CREATE TABLE proibida(id int)',
@@ -177,7 +226,7 @@ void main() {
     await expectLater(
       app.runTx((tx) async {
         await tx.execute(
-          "INSERT INTO movimentacao_estoque(evento) VALUES ('rollback')",
+          movimento('rollback'),
         );
         for (var i = 0; i < 10; i++) {
           await tx.execute('SELECT pg_sleep(0.1)');
@@ -198,7 +247,7 @@ void main() {
       await expectLater(
         app.runTx((tx) async {
           await tx.execute(
-            "INSERT INTO movimentacao_estoque(evento) VALUES ('ocioso')",
+            movimento('ocioso'),
           );
           final pid = (await tx.execute('SELECT pg_backend_pid()')).single[0];
           await Future<void>.delayed(const Duration(milliseconds: 600));
@@ -228,7 +277,7 @@ void main() {
       final erro = expectLater(
         app.runTx((tx) async {
           await tx.execute(
-            "INSERT INTO movimentacao_estoque(evento) VALUES ('lock')",
+            movimento('lock'),
           );
           await tx.execute('UPDATE infra_bloqueio SET valor=1 WHERE id=1');
         }),
@@ -282,11 +331,12 @@ void main() {
   });
   test('guard tambem detecta UPDATE concedido somente numa coluna', () async {
     await administrador.execute(
-      'GRANT UPDATE(evento) ON movimentacao_estoque TO constroi_api_execucao',
+      'GRANT UPDATE(produto_nome) ON movimentacao_estoque '
+      'TO constroi_api_execucao',
     );
     addTearDown(
       () => administrador.execute(
-        'REVOKE UPDATE(evento) ON movimentacao_estoque '
+        'REVOKE UPDATE(produto_nome) ON movimentacao_estoque '
         'FROM constroi_api_execucao',
       ),
     );
@@ -345,19 +395,6 @@ void main() {
   test(
     'aprovacao de estoque existente funciona com a conexao restrita',
     () async {
-      await administrador.execute('''
-      INSERT INTO empresa(id,nome,cnpj) VALUES (1,'Teste','1');
-      INSERT INTO usuario(id,empresa_id,nome,email,senha_hash,tipo)
-        VALUES (1,1,'Engenheiro','e@e','hash','engenheiro');
-      INSERT INTO obra(id,empresa_id,nome,endereco,status)
-        VALUES (1,1,'Obra','Rua','ativa');
-      INSERT INTO produto(id,empresa_id,nome,unidade)
-        VALUES (1,1,'Cimento','saco');
-      INSERT INTO estoque(obra_id,produto_id,quantidade) VALUES (1,1,1);
-      INSERT INTO pedido(id,usuario_id,obra_id,protocolo,status)
-        VALUES (1,1,1,'TESTE-INFRA','pendente');
-      INSERT INTO item_pedido(pedido_id,produto_id,quantidade) VALUES (1,1,1);
-    ''', queryMode: QueryMode.simple);
       final app = poolEstrito(urlApi);
       addTearDown(app.close);
       final resposta = await aprovarPedidoComBaixa(
@@ -377,6 +414,13 @@ void main() {
       expect(
         (await app.execute('SELECT count(*) FROM log_sistema')).single[0],
         1,
+      );
+      expect(
+        (await app.execute(
+          'SELECT quantidade::text,saldo_anterior::text,saldo_posterior::text '
+          'FROM movimentacao_estoque',
+        )).single.toList(),
+        ['1.00', '1.00', '0.00'],
       );
     },
   );
