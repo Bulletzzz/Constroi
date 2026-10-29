@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:constroi_api/usuarios.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -167,7 +168,8 @@ Future<Response> _editar(RequestContext context, int id) async {
   campos['id'] = id;
   campos['empresa'] = empresaId;
 
-  final atualizado = await banco.execute(
+  final atualizado = await executarEscritaComLog(
+    banco,
     Sql.named('''
       UPDATE usuario
       SET ${partes.join(', ')}
@@ -175,6 +177,9 @@ Future<Response> _editar(RequestContext context, int id) async {
       RETURNING id, nome, email, tipo, ativo, empresa_id, criado_em, atualizado_em
     '''),
     parameters: campos,
+    usuarioId: context.usuario.id,
+    evento: 'ALTERACAO_USUARIO',
+    recurso: 'usuario',
   );
 
   if (atualizado.isEmpty) {

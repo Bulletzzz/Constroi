@@ -127,10 +127,13 @@ Painel, Custos e Equipe estão prontas, em uso e testadas, e não correspondem a
 mesmo apontamento de 22/09 continua: ou viram requisito, ou ficam como funcionalidade que
 ninguém pode cobrar.
 
-### 7. Consultar Logs segue sem RF e sem rota
+### 7. Consultar Logs segue sem RF numerado
 
-A tabela `log_sistema` recebe escrita de várias rotas hoje, mas não existe `GET /logs`. O caso
-de uso está no diagrama como exclusivo do Master. Cartão no backlog.
+O card 87 implementa `GET /logs`, exclusivo do Master da própria empresa, com filtros
+por usuário/período e paginação. O helper único grava os eventos das rotas de escrita na
+mesma transação da alteração. O contrato e a cobertura estão em `constroi_api/README.md`
+e `constroi_api/integration_test/logs_test.dart`. O caso de uso continua no diagrama;
+a atribuição de um RF numerado segue pendente de decisão de requisitos.
 
 ### 8. A tabela de RF do PDF continua quebrada
 

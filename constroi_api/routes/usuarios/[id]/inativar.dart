@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -28,7 +29,8 @@ Future<Response> onRequest(RequestContext context, String idDaRota) async {
   final banco = context.read<Pool<void>>();
   final empresaId = usuarioAtual.empresaId;
 
-  final atualizado = await banco.execute(
+  final atualizado = await executarEscritaComLog(
+    banco,
     Sql.named('''
       UPDATE usuario
       SET ativo = FALSE,
@@ -37,6 +39,9 @@ Future<Response> onRequest(RequestContext context, String idDaRota) async {
       RETURNING id, nome, email, tipo, ativo, empresa_id
     '''),
     parameters: {'id': id, 'empresa': empresaId},
+    usuarioId: context.usuario.id,
+    evento: 'INATIVACAO_USUARIO',
+    recurso: 'usuario',
   );
 
   if (atualizado.isEmpty) {

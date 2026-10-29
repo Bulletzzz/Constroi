@@ -129,6 +129,9 @@ void main() {
       if (falharItem && parametros.last['produto'] == 21) {
         throw StateError('Falha ao inserir o segundo item.');
       }
+      if (parametros.last.containsKey('acao')) {
+        return Result(rows: [], affectedRows: 1, schema: ResultSchema([]));
+      }
       return resultados.removeAt(0);
     });
     requisicao(corpo);
@@ -212,7 +215,11 @@ void main() {
       resultados.removeAt(1);
       final resposta = await protecao.middleware(rota.onRequest)(contexto);
       expect(resposta.statusCode, HttpStatus.created);
-      expect(parametros, hasLength(5));
+      expect(parametros, hasLength(6));
+      expect(parametros.last, {
+        'usuario': 7,
+        'acao': 'CRIACAO_PEDIDO pedido=30 obra=10 protocolo=PED-NOVO',
+      });
     });
   }
 

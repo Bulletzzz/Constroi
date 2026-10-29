@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/pedidos.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
@@ -281,6 +282,13 @@ Future<Response> _criar(RequestContext context) async {
         itensCriados.add(dadosDoItemPedido(resultado.first.toColumnMap()));
       }
 
+      await registrarLog(
+        transacao,
+        usuarioId: usuario.id,
+        acao:
+            'CRIACAO_PEDIDO pedido=${pedido['id']} obra=$obraId '
+            'protocolo=${pedido['protocolo']}',
+      );
       return Response.json(
         statusCode: HttpStatus.created,
         body: {
