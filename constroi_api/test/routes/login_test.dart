@@ -256,14 +256,18 @@ void main() {
         expect(autenticado.id, 7);
         expect(autenticado.empresaId, 2);
         expect(autenticado.nivel, Nivel.engenheiro);
-        expect(gravacoesDaSessao, hasLength(2));
+        expect(gravacoesDaSessao, hasLength(3));
         expect(gravacoesDaSessao.first, {'id': 7});
-        expect(gravacoesDaSessao.last['usuario'], 7);
+        expect(gravacoesDaSessao[1]['usuario'], 7);
         expect(
-          gravacoesDaSessao.last['hash'],
+          gravacoesDaSessao[1]['hash'],
           resumir(dados['refresh_token'] as String),
         );
         expect(consultas.last['sucesso'], isTrue);
+        expect(gravacoesDaSessao.last, {
+          'usuario': 7,
+          'acao': 'LOGIN usuario=7',
+        });
         verify(() => banco.runTx<void>(any())).called(1);
       },
     );

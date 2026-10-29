@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -132,7 +133,8 @@ Future<Response> _criar(RequestContext context, int obraId) async {
     return _erro(HttpStatus.notFound, 'Usuario nao encontrado.');
   }
 
-  final criado = await banco.execute(
+  final criado = await executarEscritaComLog(
+    banco,
     Sql.named('''
       INSERT INTO usuario_obra (empresa_id, usuario_id, obra_id)
       VALUES (@empresa, @usuario, @obra)
@@ -144,6 +146,9 @@ Future<Response> _criar(RequestContext context, int obraId) async {
       'usuario': usuarioId,
       'obra': obraId,
     },
+    usuarioId: context.usuario.id,
+    evento: 'VINCULO_EQUIPE',
+    recurso: 'vinculo',
   );
 
   if (criado.isEmpty) {

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/ambiente.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:constroi_api/token.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -136,6 +137,11 @@ Future<Response> onRequest(RequestContext context) async {
         'ip': ip,
         'agente': context.request.headers['user-agent'],
       },
+    );
+    await registrarLog(
+      transacao,
+      usuarioId: usuarioId,
+      acao: 'LOGIN usuario=$usuarioId',
     );
   });
 

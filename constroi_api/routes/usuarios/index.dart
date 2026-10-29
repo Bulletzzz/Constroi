@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:constroi_api/usuarios.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -122,7 +123,8 @@ Future<Response> _criar(RequestContext context) async {
   }
 
   final empresaId = context.usuario.empresaId;
-  final resultado = await banco.execute(
+  final resultado = await executarEscritaComLog(
+    banco,
     Sql.named('''
       INSERT INTO usuario (empresa_id, nome, email, senha_hash, tipo)
       VALUES (@empresa, @nome, @email, @senhaHash, @tipo)
@@ -135,6 +137,9 @@ Future<Response> _criar(RequestContext context) async {
       'senhaHash': gerarHash(senha),
       'tipo': tipo,
     },
+    usuarioId: context.usuario.id,
+    evento: 'CRIACAO_USUARIO',
+    recurso: 'usuario',
   );
 
   final linha = resultado.first.toColumnMap();

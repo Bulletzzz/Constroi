@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -22,7 +23,8 @@ Future<Response> onRequest(
     return _erro(HttpStatus.badRequest, 'Id do usuario invalido.');
   }
 
-  final encerrado = await context.read<Pool<void>>().execute(
+  final encerrado = await executarEscritaComLog(
+    context.read<Pool<void>>(),
     Sql.named('''
       UPDATE usuario_obra
       SET data_fim = CURRENT_TIMESTAMP
@@ -37,6 +39,9 @@ Future<Response> onRequest(
       'usuario': usuarioId,
       'empresa': context.usuario.empresaId,
     },
+    usuarioId: context.usuario.id,
+    evento: 'ENCERRAMENTO_EQUIPE',
+    recurso: 'vinculo',
   );
 
   if (encerrado.isEmpty) {

@@ -1,6 +1,6 @@
 Project Constroi {
   database_type: 'PostgreSQL'
-  Note: 'Estado consolidado depois das migrations 001 a 013'
+  Note: 'Estado consolidado depois das migrations 001 a 014'
 }
 
 Table empresa {
@@ -172,9 +172,14 @@ Table emprestimo {
 
 Table log_sistema {
   id bigint [pk, increment]
+  empresa_id integer [not null]
   usuario_id integer [not null, ref: > usuario.id]
   acao varchar(255) [not null]
   data timestamptz [not null]
+  indexes {
+    (empresa_id, data, id) [name: 'ix_log_empresa_periodo']
+    (empresa_id, usuario_id, data, id) [name: 'ix_log_empresa_usuario_periodo']
+  }
 }
 
 Table sessao_usuario {
@@ -216,3 +221,5 @@ Ref: movimentacao_estoque.(produto_id, empresa_id) > produto.(id, empresa_id) [d
 Ref: movimentacao_estoque.(registrado_por_usuario_id, empresa_id) > usuario.(id, empresa_id) [delete: restrict]
 Ref: movimentacao_estoque.(pedido_id, obra_id) > pedido.(id, obra_id) [delete: restrict]
 Ref: entrada_estoque.(obra_id, empresa_nfe_id) > obra.(id, empresa_id)
+
+Ref fk_log_usuario_empresa: log_sistema.(usuario_id, empresa_id) > usuario.(id, empresa_id) [delete: restrict]

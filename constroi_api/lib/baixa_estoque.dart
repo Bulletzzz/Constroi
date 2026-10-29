@@ -1,4 +1,5 @@
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/pedidos.dart';
 import 'package:postgres/postgres.dart';
 
@@ -134,19 +135,14 @@ Future<Map<String, dynamic>> aprovarPedidoComBaixa(
           );
         }
         final restante = atualizado.single.toColumnMap()['saldo'];
-        await transacao.execute(
-          Sql.named('''
-          INSERT INTO log_sistema (usuario_id, acao)
-          VALUES (@usuario, @acao)
-        '''),
-          parameters: {
-            'usuario': usuario.id,
-            'acao':
-                'BAIXA_ESTOQUE pedido=$pedidoId obra=${pedido['obra_id']} '
-                'produto=${saldo['produto_id']} '
-                'quantidade=${saldo['solicitada']} '
-                'saldo=$restante protocolo=${pedido['protocolo']}',
-          },
+        await registrarLog(
+          transacao,
+          usuarioId: usuario.id,
+          acao:
+              'BAIXA_ESTOQUE pedido=$pedidoId obra=${pedido['obra_id']} '
+              'produto=${saldo['produto_id']} '
+              'quantidade=${saldo['solicitada']} '
+              'saldo=$restante protocolo=${pedido['protocolo']}',
         );
         // Copias historicas e saldos decimais no mesmo commit da baixa.
         // Uma falha aqui tambem reverte os logs e produtos ja debitados.

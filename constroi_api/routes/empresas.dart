@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
@@ -151,6 +152,11 @@ Future<Response> onRequest(RequestContext context) async {
     );
 
     final usuarioId = usuarioRes.first[0]! as int;
+    await registrarLog(
+      transacao,
+      usuarioId: usuarioId,
+      acao: 'CRIACAO_EMPRESA empresa=$empresaId usuario=$usuarioId',
+    );
 
     return {
       'empresa': {

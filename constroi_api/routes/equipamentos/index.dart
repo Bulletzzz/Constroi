@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/equipamentos.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -103,7 +104,8 @@ Future<Response> _criar(RequestContext context) async {
     );
   }
 
-  final resultado = await banco.execute(
+  final resultado = await executarEscritaComLog(
+    banco,
     Sql.named('''
       INSERT INTO equipamento (empresa_id, nome, patrimonio, status)
       VALUES (@empresa, @nome, @patrimonio, @status)
@@ -115,6 +117,9 @@ Future<Response> _criar(RequestContext context) async {
       'patrimonio': patrimonio,
       'status': status,
     },
+    usuarioId: context.usuario.id,
+    evento: 'CRIACAO_EQUIPAMENTO',
+    recurso: 'equipamento',
   );
 
   final linha = resultado.first.toColumnMap();
