@@ -440,6 +440,8 @@ geram eventos de sucesso. A migration **014_log_empresa.sql** preenche
 `empresa_id` nos logs existentes a partir do autor, preservando ID, texto e
 instante; torna a empresa obrigatória e vincula `(usuario_id, empresa_id)` ao
 usuário por FK composta. O helper obtém a empresa no banco, a partir do autor.
+A 014 também pode ser reaplicada: preserva empresas já preenchidas, restaura
+a FK e recria os índices ausentes sem alterar o histórico existente.
 Os índices `(empresa_id, data DESC, id DESC)` e
 `(empresa_id, usuario_id, data DESC, id DESC)` atendem a consulta padrão e a
 consulta por usuário, respectivamente. A listagem não faz JOIN nem retorna
@@ -476,7 +478,8 @@ perfis, empresas, filtros, paginação, rotas de escrita, ausência de segredos 
 rollback forçando falha na inserção do log. Inclui os limites do dia em São
 Paulo, a preservação de instantes com fuso explícito e o verão histórico.
 `integration_test/migrations_logs_test.dart` confere upgrade com histórico,
-instalação vazia, equivalência do schema consolidado, FK entre empresas e
+instalação vazia, equivalência do schema consolidado, reaplicação da 014 com
+restauração de índices/FK e preservação integral dos logs, FK entre empresas e
 EXPLAIN ANALYZE das consultas reais com 50 mil registros, sem forçar o planner.
 As evidências de plano ficam em `.dart_tool/logs-review46-explain.json`.
 Usa o banco **local descartável**

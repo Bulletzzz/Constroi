@@ -53,7 +53,7 @@ void main() {
     }
   }
 
-  Future<void> semear({bool comEmpresaNoLog = true}) => simples('''
+  Future<void> semear({required bool comEmpresaNoLog}) => simples('''
     INSERT INTO empresa(id,nome,cnpj) VALUES (1,'A','A'),(2,'B','B');
     INSERT INTO usuario(id,empresa_id,nome,email,senha_hash,tipo) VALUES
       (1,1,'Eng A','a@a','hash','engenheiro'),
@@ -140,7 +140,7 @@ void main() {
   setUp(() async {
     await limpar();
     await simples(await File('../Database/schema.sql').readAsString());
-    await semear();
+    await semear(comEmpresaNoLog: true);
   });
 
   test(
@@ -234,7 +234,7 @@ void main() {
     () async {
       await limpar();
       await migrarAntesDaAuditoria();
-      await semear();
+      await semear(comEmpresaNoLog: false);
       await simples(
         await File('../Database/infra/auditoria_papeis.sql').readAsString(),
       );

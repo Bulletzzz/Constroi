@@ -196,6 +196,50 @@ void main() {
   );
 
   test(
+    '014 pode ser reaplicada e restaura indices sem perder historico',
+    () async {
+      await migrarTudo();
+      await semear();
+      await banco.runTx((tx) async {
+        await registrarLog(tx, usuarioId: 1, acao: 'LEGADO A');
+        await registrarLog(tx, usuarioId: 3, acao: 'LEGADO B');
+      });
+      const consulta = 'SELECT * FROM log_sistema ORDER BY id';
+      final antes = (await banco.execute(
+        consulta,
+      )).map((r) => r.toList()).toList();
+      final estrutura = await definicao();
+      final migration = await File('migrations/$versao').readAsString();
+      await sql(migration);
+      await sql(migration);
+      await sql('''
+        DROP INDEX ix_log_empresa_periodo;
+        DROP INDEX ix_log_empresa_usuario_periodo;
+        ALTER TABLE log_sistema DROP CONSTRAINT fk_log_usuario_empresa;
+      ''');
+      await sql(migration);
+      expect(await definicao(), estrutura);
+      expect((await banco.execute(consulta)).map((r) => r.toList()), antes);
+      expect(
+        (await banco.execute(
+          Sql.named(
+            'SELECT count(*) FROM schema_migrations WHERE versao=@versao',
+          ),
+          parameters: {'versao': versao},
+        )).single[0],
+        1,
+      );
+      await expectLater(
+        banco.execute(
+          'INSERT INTO log_sistema(empresa_id,usuario_id,acao) '
+          "VALUES (2,1,'cruzado')",
+        ),
+        throwsA(codigo('23503')),
+      );
+    },
+  );
+
+  test(
     'consultas reais usam indices por empresa e usuario sem seq scan ou sort',
     () async {
       await migrarTudo();
