@@ -105,7 +105,14 @@ Pool<void> criarPoolApi(
       applicationName: 'constroi-api',
       connectTimeout: const Duration(seconds: 10),
       queryTimeout: const Duration(seconds: 35),
-      onOpen: (conexao) => validarSessaoApi(conexao, limiteMs: limiteMs),
+      onOpen: (conexao) async {
+        try {
+          await validarSessaoApi(conexao, limiteMs: limiteMs);
+        } on Object {
+          await conexao.close(force: true);
+          rethrow;
+        }
+      },
     ),
   );
 }

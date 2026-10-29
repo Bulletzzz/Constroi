@@ -96,6 +96,7 @@ Future<Response> onRequest(RequestContext context) async {
       final entrada = entradas.first.toColumnMap();
       final itensCriados = <Map<String, dynamic>>[];
 
+      itens.sort((a, b) => a.produtoId.compareTo(b.produtoId));
       for (final item in itens) {
         final resultado = await transacao.execute(
           Sql.named('''
@@ -115,12 +116,13 @@ Future<Response> onRequest(RequestContext context) async {
           'quantidade': '${linha['quantidade']}',
         });
 
-        await transacao.execute(
+        final saldos = await transacao.execute(
           Sql.named('''
             INSERT INTO estoque (obra_id, produto_id, quantidade)
             VALUES (@obra, @produto, @quantidade)
             ON CONFLICT (obra_id, produto_id)
             DO UPDATE SET quantidade = estoque.quantidade + EXCLUDED.quantidade
+            RETURNING quantidade::text AS saldo
           '''),
           parameters: {
             'obra': obraId,
@@ -128,18 +130,21 @@ Future<Response> onRequest(RequestContext context) async {
             'quantidade': item.quantidade.toStringAsFixed(2),
           },
         );
+        final saldo = saldos.single.toColumnMap()['saldo'];
+        await transacao.execute(
+          Sql.named('''
+            INSERT INTO log_sistema (usuario_id, acao)
+            VALUES (@usuario, @acao)
+          '''),
+          parameters: {
+            'usuario': usuario.id,
+            'acao':
+                'ENTRADA_MANUAL entrada=${entrada['id']} obra=$obraId '
+                'produto=${item.produtoId} '
+                'quantidade=${item.quantidade.toStringAsFixed(2)} saldo=$saldo',
+          },
+        );
       }
-
-      await transacao.execute(
-        Sql.named('''
-          INSERT INTO log_sistema (usuario_id, acao)
-          VALUES (@usuario, @acao)
-        '''),
-        parameters: {
-          'usuario': usuario.id,
-          'acao': 'Entrada manual de estoque ${entrada['id']} na obra $obraId.',
-        },
-      );
 
       return Response.json(
         statusCode: HttpStatus.created,

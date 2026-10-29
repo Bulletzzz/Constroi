@@ -355,7 +355,11 @@ void main() {
       );
       await expectLater(
         sql('DELETE FROM $tabela WHERE id=1'),
-        throwsA(codigo('23503')),
+        throwsA(anyOf(codigo('23503'), codigo('23001'))),
+      );
+      expect(
+        (await sql('SELECT count(*) FROM $tabela WHERE id=1')).single[0],
+        1,
       );
       expect(
         (await sql('SELECT count(*) FROM movimentacao_estoque')).single[0],

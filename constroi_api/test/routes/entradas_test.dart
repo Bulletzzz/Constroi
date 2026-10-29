@@ -97,11 +97,16 @@ void main() {
       _resultado([
         {'id': 40, 'produto_id': 20, 'quantidade': '2.50'},
       ]),
+      _resultado([
+        {'saldo': '7.50'},
+      ]),
       _resultado([]),
       _resultado([
         {'id': 41, 'produto_id': 21, 'quantidade': '1.00'},
       ]),
-      _resultado([]),
+      _resultado([
+        {'saldo': '1.00'},
+      ]),
       _resultado([]),
     ];
     autenticar(Nivel.engenheiro);
@@ -159,19 +164,45 @@ void main() {
       });
       expect(parametros[4], {'obra': 10, 'produto': 20, 'quantidade': '2.50'});
       expect(parametros[5], {
+        'usuario': 7,
+        'acao':
+            'ENTRADA_MANUAL entrada=30 obra=10 produto=20 '
+            'quantidade=2.50 saldo=7.50',
+      });
+      expect(parametros[6], {
         'entrada': 30,
         'produto': 21,
         'quantidade': '1.00',
       });
-      expect(parametros[6], {'obra': 10, 'produto': 21, 'quantidade': '1.00'});
-      expect(parametros[7], {
+      expect(parametros[7], {'obra': 10, 'produto': 21, 'quantidade': '1.00'});
+      expect(parametros[8], {
         'usuario': 7,
-        'acao': 'Entrada manual de estoque 30 na obra 10.',
+        'acao':
+            'ENTRADA_MANUAL entrada=30 obra=10 produto=21 '
+            'quantidade=1.00 saldo=1.00',
       });
       expect(resultados, isEmpty);
       verify(() => banco.runTx<Response>(any())).called(1);
     });
   }
+
+  test(
+    'ordena produtos antes das gravacoes mesmo com itens invertidos',
+    () async {
+      requisicao({
+        'entrada': {
+          ...entrada,
+          'itens': (entrada['itens']! as List).reversed.toList(),
+        },
+      });
+      final resposta = await rota.onRequest(contexto);
+      expect(resposta.statusCode, HttpStatus.created);
+      expect(parametros[3]['produto'], 20);
+      expect(parametros[4]['produto'], 20);
+      expect(parametros[6]['produto'], 21);
+      expect(parametros[7]['produto'], 21);
+    },
+  );
 
   test('sem token retorna 401 sem acessar o banco', () async {
     when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(null);
@@ -266,7 +297,7 @@ void main() {
     verifyNever(() => banco.runTx<Response>(any()));
   });
 
-  for (final consulta in [6, 7, 8]) {
+  for (final consulta in [6, 7, 8, 9]) {
     test(
       'falha na consulta $consulta propaga para reverter a transacao',
       () async {
@@ -281,17 +312,17 @@ void main() {
   test('estouro de saldo retorna 409 apos falhar a transacao', () async {
     final excecao = _ErroBanco();
     when(() => excecao.code).thenReturn('22003');
-    falhaNaConsulta = 7;
+    falhaNaConsulta = 8;
     erro = excecao;
     final resposta = await rota.onRequest(contexto);
     expect(resposta.statusCode, HttpStatus.conflict);
-    expect(parametros, hasLength(7));
+    expect(parametros, hasLength(8));
   });
 
   test('outros erros de banco propagam para reverter a transacao', () async {
     final excecao = _ErroBanco();
     when(() => excecao.code).thenReturn('23503');
-    falhaNaConsulta = 8;
+    falhaNaConsulta = 9;
     erro = excecao;
     await expectLater(rota.onRequest(contexto), throwsA(same(excecao)));
   });
