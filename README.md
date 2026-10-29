@@ -195,6 +195,12 @@ estoque da obra e o log do usuário são gravados na mesma transação. Se o pro
 ainda não tiver estoque nessa obra, o saldo é criado. Se qualquer gravação falhar,
 toda a operação é revertida. Saldo acima do limite do banco retorna `409`.
 
+Os produtos são processados em ordem de ID para evitar deadlock entre entradas
+simultâneas. Cada item gera um log no formato
+`ENTRADA_MANUAL entrada=.. obra=.. produto=.. quantidade=.. saldo=..`, com o saldo
+retornado pelo banco. O caso de integração pode ser executado com
+`.\testes\executar.ps1 -Caso 21_entrada_manual` usando a API e seu banco de teste.
+
 ## Rodando o projeto
 
 ### App e API com Docker
