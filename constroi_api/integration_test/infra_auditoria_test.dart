@@ -217,6 +217,13 @@ void main() {
       final app = poolEstrito(urlApi);
       addTearDown(app.close);
       await expectLater(app.execute('SELECT 1'), throwsA(isA<StateError>()));
+      expect(
+        (await administrador.execute('''
+          SELECT count(*) FROM pg_stat_activity
+          WHERE datname=current_database() AND application_name='constroi-api'
+        ''')).single[0],
+        0,
+      );
     },
   );
   test('varias queries curtas nao reiniciam o limite da transacao', () async {

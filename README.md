@@ -105,6 +105,7 @@ acesso daquele trecho.
 | `GET` `POST` | `/pedidos` | pedreiro |
 | `GET` | `/pedidos/{id}` | pedreiro |
 | `PATCH` | `/pedidos/{id}` | engenheiro |
+| `POST` | `/entradas` | engenheiro |
 
 Nas rotas de escrita, o objeto vai dentro de uma chave com o nome do recurso:
 
@@ -167,6 +168,38 @@ para recusar. Exige engenheiro/master. A recusa exige justificativa aparada de
 `justificativa_recusa`, preservando a justificativa original. A decisão fica
 registrada em `log_sistema` na mesma transação. Pedido já decidido retorna `409`,
 inclusive em decisões concorrentes. Aplique a migration 010 antes de usar.
+
+Para dar entrada manual de estoque, envie `POST /entradas` com o token de um
+engenheiro ou master:
+
+```json
+{
+  "entrada": {
+    "obra_id": 1,
+    "justificativa": "Material recebido sem nota fiscal",
+    "itens": [
+      { "produto_id": 1, "quantidade": 10 },
+      { "produto_id": 2, "quantidade": 2.5 }
+    ]
+  }
+}
+```
+
+A justificativa é obrigatória, com até 255 caracteres. Não é necessário enviar
+nota fiscal. A obra e os produtos devem pertencer à empresa do token, os produtos
+não podem se repetir e as quantidades devem ser positivas, com até duas casas
+decimais e valor máximo de `9999999999.99`.
+
+A API retorna `201` com a entrada e seus itens. A entrada, os itens, a soma no
+estoque da obra e o log do usuário são gravados na mesma transação. Se o produto
+ainda não tiver estoque nessa obra, o saldo é criado. Se qualquer gravação falhar,
+toda a operação é revertida. Saldo acima do limite do banco retorna `409`.
+
+Os produtos são processados em ordem de ID para evitar deadlock entre entradas
+simultâneas. Cada item gera um log no formato
+`ENTRADA_MANUAL entrada=.. obra=.. produto=.. quantidade=.. saldo=..`, com o saldo
+retornado pelo banco. O caso de integração pode ser executado com
+`.\testes\executar.ps1 -Caso 21_entrada_manual` usando a API e seu banco de teste.
 
 ## Rodando o projeto
 
