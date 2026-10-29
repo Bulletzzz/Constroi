@@ -201,8 +201,8 @@ void main() {
     'master consulta apenas a propria empresa; demais perfis nao consultam',
     () async {
       await sql(
-        'INSERT INTO log_sistema(usuario_id,acao) '
-        "VALUES (1,'A'),(2,'A2'),(3,'B')",
+        'INSERT INTO log_sistema(empresa_id,usuario_id,acao) '
+        "VALUES (1,1,'A'),(1,2,'A2'),(2,3,'B')",
       );
       expect((await chamar('/logs', nivel: null)).status, 401);
       for (final nivel in [Nivel.pedreiro, Nivel.engenheiro]) {
@@ -232,10 +232,10 @@ void main() {
 
   test('filtros combinados usam UTC, inicio incluso e fim exclusivo', () async {
     await sql("""
-      INSERT INTO log_sistema(usuario_id,acao,data) VALUES
-        (2,'antes','2026-10-29T02:59:59Z'),(2,'inicio','2026-10-29T03:00:00Z'),
-        (1,'outro usuario','2026-10-29T03:30:00Z'),
-        (2,'dentro','2026-10-29T03:59:59Z'),(2,'fim','2026-10-29T04:00:00Z');
+      INSERT INTO log_sistema(empresa_id,usuario_id,acao,data) VALUES
+        (1,2,'antes','2026-10-29T02:59:59Z'),(1,2,'inicio','2026-10-29T03:00:00Z'),
+        (1,1,'outro usuario','2026-10-29T03:30:00Z'),
+        (1,2,'dentro','2026-10-29T03:59:59Z'),(1,2,'fim','2026-10-29T04:00:00Z');
     """);
     final resposta = await chamar(
       '/logs?usuario_id=2&data_inicio=2026-10-29T00:00:00-03:00'
@@ -254,10 +254,84 @@ void main() {
       (await chamar('/logs?data_inicio=2026-10-30')).dados['logs'],
       isEmpty,
     );
-    expect((await chamar('/logs?data_fim=2026-10-29')).dados['logs'], isEmpty);
+    expect(
+      (await chamar('/logs?data_fim=2026-10-29')).dados['logs'],
+      hasLength(1),
+    );
     expect(
       (await chamar('/logs?data_inicio=2026-10-29')).dados['logs'],
-      hasLength(5),
+      hasLength(4),
+    );
+  });
+
+  test(
+    'data civil inclui o dia inteiro de Sao Paulo e exclui o seguinte',
+    () async {
+      await sql("""
+      INSERT INTO log_sistema(empresa_id,usuario_id,acao,data) VALUES
+        (1,1,'antes','2026-10-29T02:59:59Z'),
+        (1,1,'inicio','2026-10-29T03:00:00Z'),
+        (1,1,'ultimas tres horas','2026-10-30T01:00:00Z'),
+        (1,1,'ultimo segundo','2026-10-30T02:59:59Z'),
+        (1,1,'dia seguinte','2026-10-30T03:00:00Z'),
+        (2,3,'outra empresa','2026-10-30T01:00:00Z');
+    """);
+      final res = await chamar(
+        '/logs?data_inicio=2026-10-29&data_fim=2026-10-30',
+      );
+      expect(res.status, 200);
+      final lista = (res.dados['logs'] as List).cast<Map<String, dynamic>>();
+      expect(lista.map((r) => r['acao']), [
+        'ultimo segundo',
+        'ultimas tres horas',
+        'inicio',
+      ]);
+      expect(lista.first['data'], '2026-10-30T02:59:59.000Z');
+      final explicito = await chamar(
+        '/logs?data_inicio=2026-10-29T03:00:00Z'
+        '&data_fim=2026-10-30T06:00:00%2B03:00',
+      );
+      expect(explicito.dados['logs'], res.dados['logs']);
+    },
+  );
+
+  test('data civil usa regras IANA inclusive no verao historico', () async {
+    await sql("""
+      INSERT INTO log_sistema(empresa_id,usuario_id,acao,data) VALUES
+        (1,1,'antes','2018-01-15T01:59:59Z'),
+        (1,1,'inicio','2018-01-15T02:00:00Z'),
+        (1,1,'fim','2018-01-16T01:59:59Z'),
+        (1,1,'seguinte','2018-01-16T02:00:00Z');
+    """);
+    final res = await chamar(
+      '/logs?data_inicio=2018-01-15&data_fim=2018-01-16',
+    );
+    expect(res.status, 200);
+    expect(
+      (res.dados['logs'] as List).cast<Map<String, dynamic>>().map(
+        (r) => r['acao'],
+      ),
+      ['fim', 'inicio'],
+    );
+  });
+
+  test('transicao do verao respeita o dia de 23 horas de Sao Paulo', () async {
+    await sql("""
+      INSERT INTO log_sistema(empresa_id,usuario_id,acao,data) VALUES
+        (1,1,'antes','2018-11-04T02:59:59Z'),
+        (1,1,'inicio','2018-11-04T03:00:00Z'),
+        (1,1,'fim','2018-11-05T01:59:59Z'),
+        (1,1,'seguinte','2018-11-05T02:00:00Z');
+    """);
+    final res = await chamar(
+      '/logs?data_inicio=2018-11-04&data_fim=2018-11-05',
+    );
+    expect(res.status, 200);
+    expect(
+      (res.dados['logs'] as List).cast<Map<String, dynamic>>().map(
+        (r) => r['acao'],
+      ),
+      ['fim', 'inicio'],
     );
   });
 
@@ -265,8 +339,8 @@ void main() {
     'paginacao desempata por id e informa proxima pagina',
     () async {
       await sql(
-        'INSERT INTO log_sistema(usuario_id,acao,data) '
-        "SELECT 1, n::text, '2026-10-29T00:00:00Z'::timestamptz "
+        'INSERT INTO log_sistema(empresa_id,usuario_id,acao,data) '
+        "SELECT 1, 1, n::text, '2026-10-29T00:00:00Z'::timestamptz "
         'FROM generate_series(1,5) n',
       );
       final primeira = await chamar('/logs?limit=2');
@@ -318,6 +392,7 @@ void main() {
     'data_inicio=2026-10-29T12:00:00',
     'data_inicio=2026-10-30&data_fim=2026-10-29',
     'data_inicio=2026-10-29&data_fim=2026-10-29',
+    'data_inicio=2026-10-29&data_fim=2026-10-29T02:00:00Z',
   ]) {
     test('rejeita filtro invalido: $filtro', () async {
       expect((await chamar('/logs?$filtro')).status, 400);
@@ -468,6 +543,12 @@ void main() {
         201,
       );
       final texto = jsonEncode(await registros());
+      expect(
+        (await banco.execute(
+          'SELECT DISTINCT empresa_id FROM log_sistema',
+        )).map((r) => r[0]),
+        [1],
+      );
       for (final segredo in [
         senha,
         'senha_hash',

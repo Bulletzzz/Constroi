@@ -9,7 +9,9 @@ Future<void> registrarLog(
 }) async {
   await banco.execute(
     Sql.named('''
-      INSERT INTO log_sistema (usuario_id, acao) VALUES (@usuario, @acao)
+      INSERT INTO log_sistema (empresa_id, usuario_id, acao)
+      VALUES ((SELECT empresa_id FROM usuario WHERE id = @usuario),
+              @usuario, @acao)
     '''),
     parameters: {'usuario': usuarioId, 'acao': acao},
   );
@@ -33,8 +35,9 @@ Future<Result> executarEscritaComLog(
   return resultado;
 });
 
-/// Data civil em UTC ou instante ISO 8601 com fuso explicito.
-DateTime? validarDataLog(String valor) {
+/// Valida sem atribuir um instante UTC a uma data civil.
+/// O PostgreSQL aplica America/Sao_Paulo ao resolver os limites da consulta.
+String? validarDataLog(String valor) {
   final partes = RegExp(
     r'^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2}))?$',
   ).firstMatch(valor);
@@ -46,7 +49,7 @@ DateTime? validarDataLog(String valor) {
   if (ano < 1 || data.year != ano || data.month != mes || data.day != dia) {
     return null;
   }
-  if (partes[4] == null) return data;
+  if (partes[4] == null) return valor;
   if (int.parse(partes[4]!) > 23 ||
       int.parse(partes[5]!) > 59 ||
       int.parse(partes[6] ?? '0') > 59) {
@@ -62,5 +65,26 @@ DateTime? validarDataLog(String valor) {
   if (instante == null || instante.year < 1 || instante.year > 9999) {
     return null;
   }
-  return instante;
+  return instante.toIso8601String();
+}
+
+/// Predicados opcionais preservam o acesso pelos indices de empresa/periodo.
+String consultaLogs({
+  bool porUsuario = false,
+  bool comInicio = false,
+  bool comFim = false,
+}) {
+  final filtros = [
+    'empresa_id = @empresa',
+    if (porUsuario) 'usuario_id = @usuario',
+    if (comInicio) 'data >= @inicio',
+    if (comFim) 'data < @fim',
+  ];
+  return '''
+    SELECT id, usuario_id, acao, data
+    FROM log_sistema
+    WHERE ${filtros.join(' AND ')}
+    ORDER BY data DESC, id DESC
+    LIMIT @limite OFFSET @offset
+  ''';
 }

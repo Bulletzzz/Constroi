@@ -13,7 +13,7 @@ const tables = [
   ['recuperacao_senha', 1, 0, 'auth', ['id PK', 'usuario_id FK', 'token_hash', 'expira_em', 'utilizado_em']],
   ['empresa', 2, 0, 'base', ['id PK', 'nome', 'cnpj UQ']],
   ['tentativa_login', 3, 0, 'auth', ['id PK', 'usuario_id FK', 'email_hash', 'sucesso', 'criado_em']],
-  ['log_sistema', 4, 0, 'base', ['id PK', 'usuario_id FK', 'acao', 'data']],
+  ['log_sistema', 4, 0, 'base', ['id PK', 'empresa_id FK composta', 'usuario_id FK composta', 'acao', 'data']],
   ['equipamento', 0, 1, 'base', ['id PK', 'empresa_id FK', 'nome', 'patrimonio', 'status']],
   ['usuario', 1, 1, 'base', ['id PK', 'empresa_id FK', 'nome', 'email', 'tipo / ativo']],
   ['usuario_obra', 2, 1, 'team', ['id PK', 'empresa_id', 'usuario_id FK', 'obra_id FK', 'data_inicio / data_fim']],

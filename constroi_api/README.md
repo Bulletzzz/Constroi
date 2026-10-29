@@ -398,19 +398,23 @@ antes de criar qualquer dado, sem pular caso nem anunciar sucesso.
 ### Gravação e consulta de logs (card 87)
 
 `GET /logs` exige token de **master** (401 sem autenticação, 403 para os outros
-perfis). Retorna somente eventos dos usuários da empresa da sessão, inclusive
+perfis). Retorna somente eventos da empresa da sessão, inclusive os de
 usuários inativos. O ID da empresa e o autor das escritas vêm da autenticação.
 
 | Parâmetro | Regra |
 |---|---|
 | `usuario_id` | Inteiro positivo até 2147483647; usuário ausente ou de outra empresa retorna lista vazia |
-| `data_inicio` | Limite inclusivo; `AAAA-MM-DD` em UTC ou ISO 8601 com fuso explícito |
+| `data_inicio` | Limite inclusivo; `AAAA-MM-DD` em America/Sao_Paulo ou ISO 8601 com fuso explícito |
 | `data_fim` | Limite exclusivo, no mesmo formato; deve ser posterior ao início |
 | `limit` | Padrão 50, de 1 a 200 |
 | `offset` | Padrão 0, de 0 a 10000 |
 
 Exemplo: `GET /logs?usuario_id=7&data_inicio=2026-10-01&data_fim=2026-11-01&limit=50&offset=0`.
-Para horários locais, informe o fuso, como `2026-10-01T00:00:00-03:00`;
+Datas sem horário representam a meia-noite em `America/Sao_Paulo`, conforme
+as regras IANA do PostgreSQL (inclusive horário de verão histórico), como na
+consulta de custos. `2026-10-29` a `2026-10-30` cobre de 29/10 00:00 até
+30/10 00:00 em São Paulo, ou 29/10 03:00Z a 30/10 03:00Z.
+Para um instante com horário, informe o fuso, como `2026-10-01T00:00:00-03:00`;
 encode o sinal `+` como `%2B` quando usar um fuso positivo na URL.
 Datas inexistentes, horários sem fuso, intervalos invertidos e limites inválidos
 retornam 400. Os filtros podem ser combinados ou usados individualmente.
@@ -418,7 +422,7 @@ retornam 400. Os filtros podem ser combinados ou usados individualmente.
 ```json
 {
   "logs": [
-    {"id": 12, "usuario_id": 7, "usuario_nome": "Pessoa",
+    {"id": 12, "usuario_id": 7,
      "acao": "ALTERACAO_PRODUTO produto=2", "data": "2026-10-29T12:00:00.000Z"}
   ],
   "paginacao": {"limit": 50, "offset": 0, "tem_mais": false}
@@ -432,7 +436,20 @@ de período fechado nem uma fotografia imutável.
 
 Todas as escritas de negócio passam por `lib/logs.dart`, na mesma transação
 da alteração. Falha no log reverte a escrita; validações, 404 e conflitos não
-geram eventos de sucesso. A tabela existente `log_sistema` não exige migration.
+geram eventos de sucesso. A migration **014_log_empresa.sql** preenche
+`empresa_id` nos logs existentes a partir do autor, preservando ID, texto e
+instante; torna a empresa obrigatória e vincula `(usuario_id, empresa_id)` ao
+usuário por FK composta. O helper obtém a empresa no banco, a partir do autor.
+Os índices `(empresa_id, data DESC, id DESC)` e
+`(empresa_id, usuario_id, data DESC, id DESC)` atendem a consulta padrão e a
+consulta por usuário, respectivamente. A listagem não faz JOIN nem retorna
+`usuario_nome`; o identificador do autor é `usuario_id`.
+
+Na implantação, interrompa as escritas durante a aplicação da 014 e a troca
+para esta versão da API: a versão antiga ainda insere sem `empresa_id` e a
+nova exige a coluna. Execute o runner pelo ambiente exclusivo de migrations,
+valide a versão registrada e retome com o novo código. Nenhuma migration é
+aplicada automaticamente ao abrir o PR.
 
 | Operação | Evento |
 |---|---|
@@ -456,7 +473,13 @@ baixa de estoque, sem reconstruir histórico anterior à ativação destes event
 
 `integration_test/logs_test.dart` exercita HTTP, middlewares e SQL reais:
 perfis, empresas, filtros, paginação, rotas de escrita, ausência de segredos e
-rollback forçando falha na inserção do log. Usa o banco **local descartável**
+rollback forçando falha na inserção do log. Inclui os limites do dia em São
+Paulo, a preservação de instantes com fuso explícito e o verão histórico.
+`integration_test/migrations_logs_test.dart` confere upgrade com histórico,
+instalação vazia, equivalência do schema consolidado, FK entre empresas e
+EXPLAIN ANALYZE das consultas reais com 50 mil registros, sem forçar o planner.
+As evidências de plano ficam em `.dart_tool/logs-review46-explain.json`.
+Usa o banco **local descartável**
 `constroi_test_*` configurado em `CONSTROI_TEST_DATABASE_URL`, nunca o `.env`.
 Para executar junto às demais suítes destrutivas, mantenha `--concurrency=1`:
 
