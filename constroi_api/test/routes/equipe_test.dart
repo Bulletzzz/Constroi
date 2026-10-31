@@ -14,6 +14,8 @@ class _ContextoFalso extends Mock implements RequestContext {}
 
 class _BancoFalso extends Mock implements Pool<void> {}
 
+class _TransacaoFalsa extends Mock implements TxSession {}
+
 class _LinhaFalsa extends Mock implements ResultRow {}
 
 Result _resultadoDados(Map<String, dynamic> dados) {
@@ -36,6 +38,12 @@ Result _resultado({bool obraEncontrada = false}) {
 }
 
 void main() {
+  setUpAll(
+    () => registerFallbackValue(
+      (TxSession _) async =>
+          Result(rows: [], affectedRows: 0, schema: ResultSchema([])),
+    ),
+  );
   setUpAll(() => registerFallbackValue(Sql.named('SELECT 1')));
 
   for (final nivel in Nivel.values) {
@@ -123,6 +131,27 @@ void main() {
           'data_inicio': DateTime.utc(2026, 10, 13),
         }),
       ];
+
+      final transacao = _TransacaoFalsa();
+      when(() => banco.runTx<Result>(any())).thenAnswer((chamada) {
+        final executar =
+            chamada.positionalArguments.first
+                as Future<Result> Function(TxSession);
+        return executar(transacao);
+      });
+      when(
+        () => transacao.execute(any(), parameters: any(named: 'parameters')),
+      ).thenAnswer((chamada) async {
+        final parameters =
+            chamada.namedArguments[#parameters] as Map<String, dynamic>;
+        if (parameters.containsKey('acao')) {
+          return Result(rows: [], affectedRows: 1, schema: ResultSchema([]));
+        }
+        return banco.execute(
+          chamada.positionalArguments.first! as Object,
+          parameters: parameters,
+        );
+      });
       when(() => contexto.request).thenReturn(
         Request.post(
           Uri.parse('http://localhost/obras/7/equipe'),

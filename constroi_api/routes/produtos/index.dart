@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/produtos.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
@@ -112,7 +113,8 @@ Future<Response> _criar(RequestContext context) async {
     );
   }
 
-  final resultado = await banco.execute(
+  final resultado = await executarEscritaComLog(
+    banco,
     Sql.named('''
       INSERT INTO produto
         (empresa_id, nome, unidade, sku, estoque_minimo, categoria_custo_id)
@@ -128,6 +130,9 @@ Future<Response> _criar(RequestContext context) async {
       'minimo': minimo,
       'categoria': categoria,
     },
+    usuarioId: context.usuario.id,
+    evento: 'CRIACAO_PRODUTO',
+    recurso: 'produto',
   );
 
   final linha = resultado.first.toColumnMap();

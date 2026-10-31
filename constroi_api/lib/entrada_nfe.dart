@@ -1,4 +1,5 @@
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/nfe.dart';
 import 'package:postgres/postgres.dart';
 
@@ -133,16 +134,12 @@ Future<Map<String, Object?>> importarNfe(
         );
         saldos.add({'produto_id': produto, 'saldo': saldo.single[0]});
       }
-      await tx.execute(
-        Sql.named(
-          'INSERT INTO log_sistema (usuario_id, acao) VALUES (@usuario, @acao)',
-        ),
-        parameters: {
-          'usuario': usuario.id,
-          'acao':
-              'ENTRADA_NFE entrada=${entrada['id']} obra=$obraId '
-              'chave=${nota.chave}',
-        },
+      await registrarLog(
+        tx,
+        usuarioId: usuario.id,
+        acao:
+            'ENTRADA_NFE entrada=${entrada['id']} obra=$obraId '
+            'chave=${nota.chave}',
       );
       return {
         'id': entrada['id'],

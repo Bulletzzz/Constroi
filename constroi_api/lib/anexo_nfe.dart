@@ -1,4 +1,5 @@
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/nfe.dart';
 import 'package:postgres/postgres.dart';
 
@@ -46,14 +47,10 @@ Future<Map<String, Object?>> anexarNfe(
           'xml': nota.xml,
         },
       );
-      await tx.execute(
-        Sql.named('''
-        INSERT INTO log_sistema (usuario_id, acao) VALUES (@usuario, @acao)
-      '''),
-        parameters: {
-          'usuario': usuario.id,
-          'acao': 'ANEXO_NFE entrada=$entradaId chave=${nota.chave}',
-        },
+      await registrarLog(
+        tx,
+        usuarioId: usuario.id,
+        acao: 'ANEXO_NFE entrada=$entradaId chave=${nota.chave}',
       );
       return {
         'id': entradaId,

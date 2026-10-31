@@ -15,6 +15,8 @@ class _ContextoFalso extends Mock implements RequestContext {}
 
 class _BancoFalso extends Mock implements Pool<void> {}
 
+class _TransacaoFalsa extends Mock implements TxSession {}
+
 class _LinhaFalsa extends Mock implements ResultRow {}
 
 class _ErroSku extends Mock implements ServerException {}
@@ -30,6 +32,12 @@ Result _resultado(List<Map<String, dynamic>> dados) => Result(
 );
 
 void main() {
+  setUpAll(
+    () => registerFallbackValue(
+      (TxSession _) async =>
+          Result(rows: [], affectedRows: 0, schema: ResultSchema([])),
+    ),
+  );
   late _ContextoFalso contexto;
   late _BancoFalso banco;
   late List<Result> resultados;
@@ -62,6 +70,27 @@ void main() {
       _resultado([]),
       _resultado([produto]),
     ];
+
+    final transacao = _TransacaoFalsa();
+    when(() => banco.runTx<Result>(any())).thenAnswer((chamada) {
+      final executar =
+          chamada.positionalArguments.first
+              as Future<Result> Function(TxSession);
+      return executar(transacao);
+    });
+    when(
+      () => transacao.execute(any(), parameters: any(named: 'parameters')),
+    ).thenAnswer((chamada) async {
+      final parameters =
+          chamada.namedArguments[#parameters] as Map<String, dynamic>;
+      if (parameters.containsKey('acao')) {
+        return Result(rows: [], affectedRows: 1, schema: ResultSchema([]));
+      }
+      return banco.execute(
+        chamada.positionalArguments.first! as Object,
+        parameters: parameters,
+      );
+    });
     when(() => contexto.read<Pool<void>>()).thenReturn(banco);
     when(() => contexto.read<UsuarioAutenticado?>()).thenReturn(
       const UsuarioAutenticado(id: 7, empresaId: 3, nivel: Nivel.engenheiro),

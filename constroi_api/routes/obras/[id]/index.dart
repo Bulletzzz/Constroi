@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/obras.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
@@ -129,7 +130,8 @@ Future<Response> _editar(RequestContext context, int id) async {
 
   campos['id'] = id;
   campos['empresa'] = context.usuario.empresaId;
-  final atualizado = await context.read<Pool<void>>().execute(
+  final atualizado = await executarEscritaComLog(
+    context.read<Pool<void>>(),
     Sql.named('''
       UPDATE obra
       SET ${partes.join(', ')}
@@ -137,6 +139,9 @@ Future<Response> _editar(RequestContext context, int id) async {
       RETURNING id, nome, endereco, status, orcamento_total, empresa_id
     '''),
     parameters: campos,
+    usuarioId: context.usuario.id,
+    evento: 'ALTERACAO_OBRA',
+    recurso: 'obra',
   );
 
   if (atualizado.isEmpty) {

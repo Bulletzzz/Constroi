@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/equipamentos.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -129,7 +130,8 @@ Future<Response> _editar(RequestContext context, int id) async {
   campos['id'] = id;
   campos['empresa'] = empresaId;
 
-  final atualizado = await banco.execute(
+  final atualizado = await executarEscritaComLog(
+    banco,
     Sql.named('''
       UPDATE equipamento
       SET ${partes.join(', ')}
@@ -137,6 +139,9 @@ Future<Response> _editar(RequestContext context, int id) async {
       RETURNING id, nome, patrimonio, status, empresa_id, criado_em, atualizado_em
     '''),
     parameters: campos,
+    usuarioId: context.usuario.id,
+    evento: 'ALTERACAO_EQUIPAMENTO',
+    recurso: 'equipamento',
   );
 
   if (atualizado.isEmpty) {

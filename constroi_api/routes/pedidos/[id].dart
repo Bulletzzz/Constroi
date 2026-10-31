@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/baixa_estoque.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/pedidos.dart';
 import 'package:constroi_api/permissao.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -166,17 +167,12 @@ Future<Response> _recusar(
         '''),
         parameters: {'pedido': id, 'justificativa': justificativa},
       );
-      await transacao.execute(
-        Sql.named('''
-          INSERT INTO log_sistema (usuario_id, acao)
-          VALUES (@usuario, @acao)
-        '''),
-        parameters: {
-          'usuario': usuario.id,
-          'acao':
-              'RECUSA_PEDIDO pedido=$id obra=${pedido['obra_id']} '
-              'protocolo=${pedido['protocolo']}',
-        },
+      await registrarLog(
+        transacao,
+        usuarioId: usuario.id,
+        acao:
+            'RECUSA_PEDIDO pedido=$id obra=${pedido['obra_id']} '
+            'protocolo=${pedido['protocolo']}',
       );
 
       return Response.json(

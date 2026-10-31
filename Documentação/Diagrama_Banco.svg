@@ -89,9 +89,10 @@
     <path d="M 1952 80 H 2308 Q 2320 80 2320 92 V 138 H 1940 V 92 Q 1940 80 1952 80" fill="#2f343a" />
     <text x="1960" y="119" class="title" fill="#f4f6f8">log_sistema</text>
     <text x="1960" y="172" class="field">id PK</text>
-<text x="1960" y="201" class="field">usuario_id FK</text>
-<text x="1960" y="230" class="field">acao</text>
-<text x="1960" y="259" class="field">data</text>
+<text x="1960" y="201" class="field">empresa_id FK composta</text>
+<text x="1960" y="230" class="field">usuario_id FK composta</text>
+<text x="1960" y="259" class="field">acao</text>
+<text x="1960" y="288" class="field">data</text>
   </g>
 <g>
     <rect x="60" y="480" width="380" height="250" rx="12" class="table" />

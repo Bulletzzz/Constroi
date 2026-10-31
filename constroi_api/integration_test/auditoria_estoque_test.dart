@@ -40,7 +40,8 @@ void main() {
             .whereType<File>()
             .where(
               (f) =>
-                  f.path.endsWith('.sql') && f.uri.pathSegments.last != versao,
+                  f.path.endsWith('.sql') &&
+                  f.uri.pathSegments.last.compareTo(versao) < 0,
             )
             .toList()
           ..sort((a, b) => a.path.compareTo(b.path));
@@ -52,7 +53,7 @@ void main() {
     }
   }
 
-  Future<void> semear() => simples('''
+  Future<void> semear({required bool comEmpresaNoLog}) => simples('''
     INSERT INTO empresa(id,nome,cnpj) VALUES (1,'A','A'),(2,'B','B');
     INSERT INTO usuario(id,empresa_id,nome,email,senha_hash,tipo) VALUES
       (1,1,'Eng A','a@a','hash','engenheiro'),
@@ -65,8 +66,10 @@ void main() {
     INSERT INTO pedido(id,usuario_id,obra_id,protocolo,status) VALUES
       (1,1,1,'AUD-1','aprovado'),(2,2,2,'AUD-2','aprovado'),
       (3,1,3,'AUD-3','aprovado'),(4,1,1,'AUD-4','aprovado');
-    INSERT INTO log_sistema(usuario_id,acao) VALUES
-      (1,'BAIXA_ESTOQUE legado sem valores reconstruiveis');
+    INSERT INTO log_sistema
+      (${comEmpresaNoLog ? 'empresa_id,' : ''}usuario_id,acao)
+    VALUES (${comEmpresaNoLog ? '1,' : ''}1,
+      'BAIXA_ESTOQUE legado sem valores reconstruiveis');
   ''');
   Future<Result> inserir([Map<String, Object?> alteracoes = const {}]) => sql(
     '''
@@ -137,7 +140,7 @@ void main() {
   setUp(() async {
     await limpar();
     await simples(await File('../Database/schema.sql').readAsString());
-    await semear();
+    await semear(comEmpresaNoLog: true);
   });
 
   test(
@@ -154,7 +157,11 @@ void main() {
       expect(await definicaoAuditoria(), consolidado);
       expect(
         (await sql('SELECT count(*) FROM schema_migrations')).single[0],
-        13,
+        Directory('migrations')
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.sql'))
+            .length,
       );
     },
   );
@@ -164,16 +171,16 @@ void main() {
     () async {
       await limpar();
       await migrarAntesDaAuditoria();
-      await semear();
+      await semear(comEmpresaNoLog: false);
       final antes = (await sql(
-        'SELECT * FROM log_sistema ORDER BY id',
+        'SELECT id,usuario_id,acao,data FROM log_sistema ORDER BY id',
       )).map((r) => r.toList()).toList();
       final resultado = await migrar();
       expect(resultado.exitCode, 0, reason: '${resultado.stderr}');
       expect('${resultado.stdout}', contains('Aplicada $versao'));
       expect(
         (await sql(
-          'SELECT * FROM log_sistema ORDER BY id',
+          'SELECT id,usuario_id,acao,data FROM log_sistema ORDER BY id',
         )).map((r) => r.toList()).toList(),
         antes,
       );
@@ -227,7 +234,7 @@ void main() {
     () async {
       await limpar();
       await migrarAntesDaAuditoria();
-      await semear();
+      await semear(comEmpresaNoLog: false);
       await simples(
         await File('../Database/infra/auditoria_papeis.sql').readAsString(),
       );
