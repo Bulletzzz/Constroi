@@ -1,7 +1,7 @@
 # Matriz de rastreabilidade
 
-Responsável: Eduardo Sochodolak (QA) · Última verificação: 26/10/2026 · Base: `origin/main` em
-`53adba3`, mais o caso 21 desta branch onde indicado
+Responsável: Eduardo Sochodolak (QA) · Última verificação: 01/11/2026 · Base: `origin/main` em
+`795135f`, mais a tela de Administração desta branch onde indicado
 
 OBS: Infelizmente tem q usar emoji q fica mais visual
 
@@ -27,7 +27,7 @@ dentro do aplicativo Flutter.
 |---|---|---|---|---|---|
 | RF01 | Cadastro de empresa | ✅ `POST /empresas` | ❌ | ❌ | ✅ caso 02 |
 | RF02 | Autenticação | ✅ `POST /login` | ✅ 01_Login | ✅ Login | ✅ casos 02, 03, 09 + E2E 01, 02, 07 |
-| RF03 | Manutenção de usuários | ✅ `/usuarios` (4 rotas) | ❌ | ❌ | ✅ caso 08 |
+| RF03 | Manutenção de usuários | ✅ `/usuarios` (4 rotas) | ❌ | ✅ Administração | ✅ caso 08 + unitário com mock |
 | RF04 | Consulta de estoque | ✅ `GET /estoque` | ✅ 03_Estoque | ✅ Estoque | ✅ caso 14 + E2E 05 |
 | RF05 | Solicitação de produtos | ✅ `POST /pedidos` | ✅ 04_Requisição | ✅ Requisição | ✅ casos 11, 12, 13 |
 | RF06 | Avaliação de pedidos | ✅ `PATCH /pedidos/{id}` | ✅ 05_Aprovações | ✅ Aprovações | ✅ casos 15, 16, 17 |
@@ -59,11 +59,12 @@ Existem, funcionam e são testadas, mas nenhuma corresponde a requisito do docum
 |---|---|---|
 | Rota na API | 10 | 12 |
 | Tela desenhada no Figma | 7 | 12 |
-| Tela funcionando no aplicativo | 6 | 12 |
+| Tela funcionando no aplicativo | 7 | 12 |
 | Teste automatizado | 10 | 12 |
 
 Em 22/09 eram 5 rotas, 0 telas e 0 testes. O fluxo central — pedir, aprovar, baixar estoque —
-está inteiro, com rota, tela e teste de concorrência.
+está inteiro, com rota, tela e teste de concorrência. A sétima tela é a Administração, que
+fecha o RF03.
 
 **O que falta é entrada manual (RF07) e empréstimo (RF12).**
 
@@ -115,11 +116,15 @@ arredondar o percentual em duas casas e tirar o filtro de empresa de `obras_visi
 O que continua fora: não há rota para criar despesa nem para gravar preço na entrada, então
 o caso semeia `despesa_obra` e `item_entrada.valor_unitario` direto no banco.
 
-### 5. RF01 e RF03 continuam sem tela
+### 5. RF01 continua sem tela
 
-Cadastro de empresa e manutenção de usuários têm rota e teste, e não têm tela nem no Figma.
-Ninguém cria conta pelo aplicativo. Há cartão na semana 6 (Tela de Administração) para o RF03;
-para o RF01 não há.
+Cadastro de empresa tem rota e teste, e não tem tela nem no Figma. Ninguém cria a própria
+empresa pelo aplicativo — a primeira conta de cada empresa nasce por chamada direta à API.
+Não há cartão para isso.
+
+O RF03 fechou: a tela de Administração entrou na semana 6 e lista, cria e inativa usuário
+pelo aplicativo. Continua sem protótipo no Figma, então o desenho é decisão de implementação,
+não de design.
 
 ### 6. Três telas sem requisito
 
@@ -127,13 +132,17 @@ Painel, Custos e Equipe estão prontas, em uso e testadas, e não correspondem a
 mesmo apontamento de 22/09 continua: ou viram requisito, ou ficam como funcionalidade que
 ninguém pode cobrar.
 
-### 7. Consultar Logs segue sem RF numerado
+### 7. Consultar Logs tem rota e tela, e segue sem RF numerado
 
-O card 87 implementa `GET /logs`, exclusivo do Master da própria empresa, com filtros
-por usuário/período e paginação. O helper único grava os eventos das rotas de escrita na
-mesma transação da alteração. O contrato e a cobertura estão em `constroi_api/README.md`
-e `constroi_api/integration_test/logs_test.dart`. O caso de uso continua no diagrama;
-a atribuição de um RF numerado segue pendente de decisão de requisitos.
+`GET /logs` é exclusivo do Master da própria empresa, com filtros por usuário/período e
+paginação; o helper único grava os eventos das rotas de escrita na mesma transação da
+alteração. O contrato e a cobertura estão em `constroi_api/README.md` e
+`constroi_api/integration_test/logs_test.dart`.
+
+A consulta agora tem tela: é a segunda aba da Administração, com filtro por autor e por
+período. O caso de uso continua no diagrama e a atribuição de um RF numerado segue pendente
+de decisão de requisitos — ou seja, existe funcionalidade pronta de ponta a ponta que
+ninguém pode cobrar na entrega.
 
 ### 8. A tabela de RF do PDF continua quebrada
 
@@ -146,8 +155,8 @@ do Pedro.
 
 | Camada | Quantidade |
 |---|---|
-| Unidade na API (`dart test test/`) | 222 |
-| Widget no app (`flutter test`) | 132 |
+| Unidade na API (`dart test test/`) | 223 |
+| Widget no app (`flutter test`) | 207 |
 | Integração (`.\testes\executar.ps1`) | 21 casos, 523 verificações |
 | Ponta a ponta (Cypress) | 7 casos, 9 testes |
 
