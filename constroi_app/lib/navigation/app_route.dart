@@ -29,6 +29,12 @@ enum AppRoute {
     'Requisições',
     Icons.description_outlined,
     PerfilUsuario.pedreiro,
+  ),
+  administracao(
+    '/administracao',
+    'Admin',
+    Icons.admin_panel_settings_outlined,
+    PerfilUsuario.master,
   );
 
   const AppRoute(

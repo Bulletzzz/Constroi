@@ -7,6 +7,8 @@ import 'core/api/api_config.dart';
 import 'core/auth/auth_service.dart';
 import 'core/auth/session_manager.dart';
 import 'core/auth/token_storage.dart';
+import 'features/administracao/administracao_screen.dart';
+import 'features/administracao/administracao_service.dart';
 import 'features/custos/custos_screen.dart';
 import 'features/custos/custos_service.dart';
 import 'features/cadastro/cadastro_screen.dart';
@@ -175,6 +177,13 @@ class _ConstroiAppState extends State<ConstroiApp> {
     }
     if (rota == AppRoute.equipe) {
       return EquipeScreen(service: EquipeService(api: _api!), perfil: perfil);
+    }
+    if (rota == AppRoute.administracao) {
+      return AdministracaoScreen(
+        service: AdministracaoService(api: _api!),
+        perfil: perfil,
+        usuarioAtualId: _sessoes!.session?.user?.id,
+      );
     }
     if (rota == AppRoute.requisicoes) {
       final service = PedidosService(api: _api!);
