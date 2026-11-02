@@ -70,6 +70,7 @@ imprime a linha pronta para repetir só aquele.
 | `19_entrada_por_xml` | importação soma a quantidade certa; material fora do catálogo e XML inválido não gravam nada |
 | `20_anexo_de_xml` | anexar documento não mexe no estoque e não aceita duas vezes |
 | `21_custos_da_obra` | total, mês e semana contra valores calculados na mão; uma obra sem orçamento zera o total global |
+| `22_entrada_manual` | entrada sem nota, limite de itens, logs por empresa, saldo, rollback e concorrência |
 
 ## Escrever um caso novo
 

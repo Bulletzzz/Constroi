@@ -48,7 +48,7 @@ Conferir ($primeira.justificativa -eq 'Material recebido sem nota fiscal') 'just
 Conferir (@($primeira.itens).Count -eq 1 -and $primeira.itens[0].quantidade -eq '1.25') 'resposta traz o item com quantidade decimal'
 VerificarBanco $saldo '1.25' 'upsert cria saldo para produto sem estoque'
 VerificarBanco "SELECT COUNT(*)::text FROM item_entrada WHERE entrada_id = $entradaId AND produto_id = $produtoId AND quantidade = 1.25" '1' 'item persistido no banco'
-VerificarBanco "SELECT COUNT(*)::text FROM log_sistema WHERE usuario_id = $engenheiroId AND acao = 'ENTRADA_MANUAL entrada=$entradaId obra=$obraId produto=$produtoId quantidade=1.25 saldo=1.25'" '1' 'log registra entrada, obra, produto, quantidade, saldo e ator'
+VerificarBanco "SELECT COUNT(*)::text FROM log_sistema WHERE usuario_id = $engenheiroId AND empresa_id = (SELECT empresa_id FROM obra WHERE id = $obraId) AND acao = 'ENTRADA_MANUAL entrada=$entradaId obra=$obraId produto=$produtoId quantidade=1.25 saldo=1.25'" '1' 'log registra empresa do ator, entrada, obra, produto, quantidade e saldo'
 
 $entrada.itens = @(@{ produto_id = $produtoId; quantidade = 2.75 })
 $segunda = Chamar POST '/entradas' $c.master @{ entrada = $entrada } 201 'master soma ao saldo existente'
@@ -89,6 +89,10 @@ foreach ($quantidade in @($null, '1', 0, -1, 0.001, 10000000000)) {
 Chamar POST '/entradas' $c.engenheiro @{ entrada = @{
     obra_id = $obraId; justificativa = 'Teste'; itens = @()
 } } 400 'lista vazia nao grava' | Out-Null
+$itensExcedentes = @(1..201 | ForEach-Object { @{ produto_id = $_; quantidade = 1 } })
+Chamar POST '/entradas' $c.engenheiro @{ entrada = @{
+    obra_id = $obraId; justificativa = 'Teste'; itens = $itensExcedentes
+} } 400 'mais de 200 itens nao grava' | Out-Null
 Chamar POST '/entradas' $c.engenheiro @{ entrada = @{
     obra_id = $obraId; justificativa = 'Teste'; itens = @(
         @{ produto_id = $produtoId; quantidade = 1 },

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/entradas.dart';
+import 'package:constroi_api/logs.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -30,8 +31,8 @@ Future<Response> onRequest(RequestContext context) async {
   if (obraId == null || itens == null) {
     return _erro(
       HttpStatus.badRequest,
-      'Informe obra_id e itens com produto_id valido, sem repeticao, '
-      'e quantidade positiva com ate duas casas decimais.',
+      'Informe obra_id e de 1 a 200 itens com produto_id valido, '
+      'sem repeticao, e quantidade positiva com ate duas casas decimais.',
     );
   }
 
@@ -131,18 +132,13 @@ Future<Response> onRequest(RequestContext context) async {
           },
         );
         final saldo = saldos.single.toColumnMap()['saldo'];
-        await transacao.execute(
-          Sql.named('''
-            INSERT INTO log_sistema (usuario_id, acao)
-            VALUES (@usuario, @acao)
-          '''),
-          parameters: {
-            'usuario': usuario.id,
-            'acao':
-                'ENTRADA_MANUAL entrada=${entrada['id']} obra=$obraId '
-                'produto=${item.produtoId} '
-                'quantidade=${item.quantidade.toStringAsFixed(2)} saldo=$saldo',
-          },
+        await registrarLog(
+          transacao,
+          usuarioId: usuario.id,
+          acao:
+              'ENTRADA_MANUAL entrada=${entrada['id']} obra=$obraId '
+              'produto=${item.produtoId} '
+              'quantidade=${item.quantidade.toStringAsFixed(2)} saldo=$saldo',
         );
       }
 

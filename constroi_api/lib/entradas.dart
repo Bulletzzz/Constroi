@@ -4,7 +4,7 @@ int? validarIdEntrada(Object? valor) =>
     valor is int && valor > 0 && valor <= 2147483647 ? valor : null;
 
 List<ItemEntrada>? validarItensEntrada(Object? valor) {
-  if (valor is! List || valor.isEmpty) return null;
+  if (valor is! List || valor.isEmpty || valor.length > 200) return null;
 
   final itens = <ItemEntrada>[];
   final produtos = <int>{};

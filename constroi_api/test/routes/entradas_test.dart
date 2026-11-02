@@ -253,6 +253,10 @@ void main() {
       'itens',
       <Object?>[],
       [null],
+      List.generate(
+        201,
+        (indice) => {'produto_id': indice + 1, 'quantidade': 1},
+      ),
       [
         {'produto_id': 20, 'quantidade': 1},
         {'produto_id': 20, 'quantidade': 2},

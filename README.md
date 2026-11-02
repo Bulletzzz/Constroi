@@ -186,7 +186,8 @@ engenheiro ou master:
 ```
 
 A justificativa é obrigatória, com até 255 caracteres. Não é necessário enviar
-nota fiscal. A obra e os produtos devem pertencer à empresa do token, os produtos
+nota fiscal. Cada entrada aceita de 1 a 200 itens.
+A obra e os produtos devem pertencer à empresa do token, os produtos
 não podem se repetir e as quantidades devem ser positivas, com até duas casas
 decimais e valor máximo de `9999999999.99`.
 
@@ -199,7 +200,7 @@ Os produtos são processados em ordem de ID para evitar deadlock entre entradas
 simultâneas. Cada item gera um log no formato
 `ENTRADA_MANUAL entrada=.. obra=.. produto=.. quantidade=.. saldo=..`, com o saldo
 retornado pelo banco. O caso de integração pode ser executado com
-`.\testes\executar.ps1 -Caso 21_entrada_manual` usando a API e seu banco de teste.
+`.\testes\executar.ps1 -Caso 22_entrada_manual` usando a API e seu banco de teste.
 
 ## Rodando o projeto
 
