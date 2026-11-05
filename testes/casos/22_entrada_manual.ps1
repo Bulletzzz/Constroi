@@ -26,19 +26,7 @@ $entrada = @{
 $contagem = "SELECT COUNT(*)::text FROM entrada_estoque WHERE obra_id = $obraId"
 $saldo = "SELECT quantidade::text FROM estoque WHERE obra_id = $obraId AND produto_id = $produtoId"
 $registros = "SELECT COUNT(*)::text FROM log_sistema WHERE acao LIKE 'ENTRADA_MANUAL %obra=$obraId %'"
-$estado = @"
-SELECT json_build_array(
-    (SELECT COUNT(*) FROM entrada_estoque WHERE obra_id IN ($obraId, $($obraB.id))),
-    (SELECT COUNT(*) FROM item_entrada WHERE entrada_id IN
-        (SELECT id FROM entrada_estoque WHERE obra_id IN ($obraId, $($obraB.id)))),
-    (SELECT COUNT(*) FROM log_sistema WHERE usuario_id IN
-        (SELECT id FROM usuario WHERE empresa_id IN
-            (SELECT empresa_id FROM obra WHERE id IN ($obraId, $($obraB.id))))),
-    (SELECT json_agg(s ORDER BY obra_id, produto_id) FROM
-        (SELECT obra_id, produto_id, quantidade::text FROM estoque
-         WHERE obra_id IN ($obraId, $($obraB.id))) s)
-)::text
-"@
+$estado = "SELECT json_build_array((SELECT COUNT(*) FROM entrada_estoque WHERE obra_id IN ($obraId, $($obraB.id))), (SELECT COUNT(*) FROM item_entrada WHERE entrada_id IN (SELECT id FROM entrada_estoque WHERE obra_id IN ($obraId, $($obraB.id)))), (SELECT COUNT(*) FROM log_sistema WHERE usuario_id IN (SELECT id FROM usuario WHERE empresa_id IN (SELECT empresa_id FROM obra WHERE id IN ($obraId, $($obraB.id))))), (SELECT json_agg(s ORDER BY obra_id, produto_id) FROM (SELECT obra_id, produto_id, quantidade::text FROM estoque WHERE obra_id IN ($obraId, $($obraB.id))) s))::text"
 
 $primeira = Chamar POST '/entradas' $c.engenheiro @{ entrada = $entrada } 201 'engenheiro cria entrada sem nota'
 $entradaId = $primeira.id
