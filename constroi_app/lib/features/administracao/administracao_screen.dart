@@ -153,9 +153,15 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
     _carregarLogs();
   }
 
-  void _descartarLogs() {
+  void _renovarLogs() {
     _logs = null;
     _pagina = 0;
+    if (_aba == AbaAdmin.logs) _carregarLogs();
+  }
+
+  int _naOrdemDoBanco(UsuarioAdmin a, UsuarioAdmin b) {
+    final porNome = a.nome.compareTo(b.nome);
+    return porNome != 0 ? porNome : a.id.compareTo(b.id);
   }
 
   Future<void> _escolherData({required bool inicial}) async {
@@ -167,7 +173,7 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
       firstDate: DateTime(hoje.year - 5),
       lastDate: DateTime(hoje.year + 1, 12, 31),
     );
-    if (escolhida == null) return;
+    if (escolhida == null || !mounted) return;
     setState(() {
       if (inicial) {
         _inicio = escolhida;
@@ -247,10 +253,9 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
       setState(() {
         _salvando = false;
         _abrindoFormulario = false;
-        _usuarios = [..._usuarios, criado]
-          ..sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-        _descartarLogs();
+        _usuarios = [..._usuarios, criado]..sort(_naOrdemDoBanco);
       });
+      _renovarLogs();
       _avisar('${criado.nome} foi cadastrado.');
     } catch (erro) {
       if (!mounted) return;
@@ -302,8 +307,8 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
           for (final item in _usuarios)
             if (item.id == atualizado.id) atualizado else item,
         ];
-        _descartarLogs();
       });
+      _renovarLogs();
       _avisar('${atualizado.nome} foi inativado.');
     } catch (erro) {
       if (!mounted) return;

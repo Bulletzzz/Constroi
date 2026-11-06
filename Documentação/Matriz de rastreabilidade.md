@@ -152,12 +152,12 @@ do Pedro.
 | Camada | Quantidade |
 |---|---|
 | Unidade na API (`dart test test/`) | 242 |
-| Widget no app (`flutter test`) | 207 |
+| Widget no app (`flutter test`) | 209 |
 | Integração (`.\testes\executar.ps1`) | 22 casos, 585 verificações |
 | Ponta a ponta (Cypress) | 7 casos, 9 testes |
 
 Números medidos em 05/11/2026, não deduzidos, com a main já mesclada nesta branch. Os 22
-casos passaram inteiros em 21 minutos. Os 207 testes de widget incluem os 21 da tela de
+casos passaram inteiros em 21 minutos. Os 209 testes de widget incluem os 23 da tela de
 Administração desta branch; na main são 186.
 
 A integração cresceu 62 verificações desde 26/10, todas do caso 22 que veio com a PR #41. As
@@ -186,6 +186,7 @@ A triagem completa dos 20 RNFs continua sendo outro cartão.
 
 1. Descobrir como a migration 011 saiu do Neon e combinar quem mexe no banco compartilhado.
 2. Confirmar a numeração dos RF com o Pedro.
-3. Levar os buracos 2 e 3 para o Johann priorizar — é funcionalidade faltando, com PR aberta
-   nos dois casos.
+3. Levar ao Johann o que sobrou de funcionalidade faltando: o RF12 (empréstimo), sem rota e
+   sem teste, e as telas do RF01 e do RF07, que hoje só funcionam por chamada direta à API.
+   Nenhum dos três tem cartão aberto.
 4. Reconferir ao fim de cada semana. A coluna **Teste** é a que mais envelhece.

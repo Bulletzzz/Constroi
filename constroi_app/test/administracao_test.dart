@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:constroi_app/core/api/api_client.dart';
@@ -180,6 +181,36 @@ void main() {
   });
 
   group('usuarios', () {
+    testWidgets('cadastro mantem a ordem que o banco devolve', (tester) async {
+      await abrir(
+        tester,
+        service((pedido) async {
+          if (pedido.method == 'POST') {
+            return resposta(usuario(3, 'Bruno', 'pedreiro'), 201);
+          }
+          return resposta({
+            'usuarios': [usuario(1, 'Zeca', 'master'), usuario(2, 'ana', 'pedreiro')],
+          });
+        }),
+      );
+
+      await tocar(tester, find.text('NOVO USUÁRIO'));
+      await tester.enterText(find.byType(TextFormField).at(0), 'Bruno');
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'bruno@empresa.test',
+      );
+      await tester.enterText(find.byType(TextFormField).at(2), 'Senha#Forte123');
+      await tocar(tester, find.text('SALVAR'));
+
+      final nomes = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((texto) => texto.data)
+          .where((texto) => ['Zeca', 'ana', 'Bruno'].contains(texto))
+          .toList();
+      expect(nomes, ['Bruno', 'Zeca', 'ana']);
+    });
+
     testWidgets('lista perfis e marca quem esta inativo', (tester) async {
       await abrir(
         tester,
@@ -475,6 +506,54 @@ void main() {
       await tocar(tester, find.text('LOGS'));
       expect(buscas, 2);
       expect(find.text('LOGIN'), findsNWidgets(2));
+    });
+
+    testWidgets('escrita recarrega os logs com a aba de logs ja aberta', (
+      tester,
+    ) async {
+      final liberar = Completer<void>();
+      var buscas = 0;
+      await abrir(
+        tester,
+        service((pedido) async {
+          if (pedido.url.path.endsWith('/logs')) {
+            buscas++;
+            return resposta(
+              paginaDeLogs([
+                for (var i = 0; i < buscas; i++)
+                  evento(i + 1, 2, 'LOGIN usuario=2'),
+              ]),
+            );
+          }
+          if (pedido.method == 'PATCH') {
+            await liberar.future;
+            return resposta(usuario(2, 'Bruno', 'engenheiro', ativo: false));
+          }
+          return resposta({
+            'usuarios': [usuario(2, 'Bruno', 'engenheiro')],
+          });
+        }),
+        usuarioAtualId: 9,
+      );
+
+      await tocar(tester, find.text('LOGS'));
+      expect(buscas, 1);
+
+      await tocar(tester, find.text('USUÁRIOS'));
+      await tocar(tester, find.text('INATIVAR'));
+      await tester.tap(find.widgetWithText(TextButton, 'Inativar'));
+      await tester.pump();
+
+      await tocar(tester, find.text('LOGS'));
+      liberar.complete();
+      await tester.pumpAndSettle();
+
+      expect(buscas, 2);
+      expect(find.text('LOGIN'), findsNWidgets(2));
+      expect(
+        find.text('Nenhum evento registrado para este filtro.'),
+        findsNothing,
+      );
     });
 
     testWidgets('filtro por autor volta para a primeira pagina', (

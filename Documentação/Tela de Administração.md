@@ -20,9 +20,11 @@ quem usa a tela, então o serviço envia o dia seguinte, porque a API trata
 `data_fim` como exclusiva. O avanço de página respeita o teto de offset da API, de
 modo que o botão desabilita antes de a consulta ser recusada.
 
-Toda escrita — cadastro ou inativação — descarta os eventos já carregados, para
-que voltar à aba de Logs mostre o que acabou de acontecer e não a consulta
-anterior.
+Toda escrita — cadastro ou inativação — descarta os eventos já carregados e, se a
+aba de Logs estiver aberta na hora em que a resposta chega, recarrega na mesma
+hora. Assim a aba mostra o que acabou de acontecer, nunca a consulta anterior nem
+uma lista vazia. A lista de pessoas é reordenada na mesma ordem que o banco usa,
+para não mudar sozinha entre uma ação e a próxima atualização.
 
 Há estados de carregamento, falha com nova tentativa, ausência de pessoas e
 ausência de eventos para o filtro. Puxar para atualizar recarrega a aba visível.
