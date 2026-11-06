@@ -317,6 +317,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         Flexible(
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int?>(
+              dropdownColor: Colors.white,
               value: _obra,
               isDense: true,
               isExpanded: true,
@@ -349,25 +350,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     );
   }
 
-  Widget _acoes() => Row(
-    children: [
-      Expanded(
-        child: _botao(
-          rotulo: 'EXPORTAR',
-          icone: Icons.download,
-          aoTocar: () => _emBreve('A exportação'),
-        ),
-      ),
-      const SizedBox(width: 16),
-      Expanded(
-        child: _botao(
-          rotulo: 'NOVO ITEM',
-          icone: Icons.add,
-          destacado: true,
-          aoTocar: () => _emBreve('O cadastro de item'),
-        ),
-      ),
-    ],
+  Widget _acoes() => _botao(
+    rotulo: 'EXPORTAR',
+    icone: Icons.download,
+    aoTocar: () => _emBreve('A exportação'),
   );
 
   Widget _botao({
@@ -478,6 +464,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int?>(
+              dropdownColor: Colors.white,
               value: _categoria,
               isExpanded: true,
               icon: const Icon(Icons.expand_more, color: _tinta),

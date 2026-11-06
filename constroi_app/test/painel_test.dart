@@ -236,6 +236,28 @@ void main() {
     expect(find.text('CARREGAR MAIS'), findsNothing);
   });
 
+  testWidgets('o botao de requisicoes fala conforme o perfil', (tester) async {
+    await abrirPainel(
+      tester,
+      (_) async => ok(respostaPainel()),
+      perfil: PerfilUsuario.pedreiro,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('NOVA\nREQUISIÇÃO'), findsOneWidget);
+    expect(find.text('VER\nREQUISIÇÕES'), findsNothing);
+
+    for (final perfil in [PerfilUsuario.engenheiro, PerfilUsuario.master]) {
+      await abrirPainel(
+        tester,
+        (_) async => ok(respostaPainel()),
+        perfil: perfil,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('VER\nREQUISIÇÕES'), findsOneWidget);
+      expect(find.text('NOVA\nREQUISIÇÃO'), findsNothing);
+    }
+  });
+
   testWidgets('pedreiro pode ler equipe mas nao ve custos nem valor estimado', (
     tester,
   ) async {

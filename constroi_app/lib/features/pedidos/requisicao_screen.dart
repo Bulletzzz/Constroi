@@ -626,6 +626,7 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
+          dropdownColor: Colors.white,
           value: valor,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, color: _tinta),

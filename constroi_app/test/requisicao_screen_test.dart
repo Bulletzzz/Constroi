@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+import 'support/dropdown.dart';
 
 ({PedidosService service, List<Map<String, Object?>> enviados}) montar({
   int statusDaCriacao = 201,
@@ -109,6 +110,12 @@ Future<void> escolherMaterial(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('os seletores abrem com fundo legivel', (tester) async {
+    final montagem = montar();
+    await abrir(tester, montagem.service);
+    conferirDropdownsLegiveis(tester);
+  });
+
   testWidgets('envia a requisicao com quantidade numerica e campos novos', (
     tester,
   ) async {

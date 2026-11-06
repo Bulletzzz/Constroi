@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+import 'support/dropdown.dart';
 
 final categorias = {
   'categorias': [
@@ -110,6 +111,13 @@ Future<void> escrever(
 }
 
 void main() {
+  testWidgets('os seletores abrem com fundo legivel', (tester) async {
+    await abrir(tester, montar(padrao).service);
+    conferirDropdownsLegiveis(tester);
+    await tocar(tester, 'cadastro-tipo-equipamento');
+    conferirDropdownsLegiveis(tester);
+  });
+
   testWidgets('abre em produto e troca para equipamento', (tester) async {
     await abrir(tester, montar(padrao).service);
 

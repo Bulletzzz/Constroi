@@ -370,6 +370,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int?>(
+              dropdownColor: Colors.white,
               value: _categoria,
               isExpanded: true,
               hint: Text(
@@ -410,6 +411,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
+              dropdownColor: Colors.white,
               value: _unidade,
               isExpanded: true,
               items: [
@@ -441,6 +443,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
+              dropdownColor: Colors.white,
               value: _status,
               isExpanded: true,
               items: [

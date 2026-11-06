@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+import 'support/dropdown.dart';
 
 Map<String, dynamic> pedido(int id, String produto) => {
   'id': id,
@@ -83,6 +84,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    conferirDropdownsLegiveis(tester);
     expect(montagem.esperas, hasLength(1));
     expect(montagem.consultas.single.queryParameters['obra_id'], isNull);
     expect(montagem.consultas.single.queryParameters['com_itens'], 'true');

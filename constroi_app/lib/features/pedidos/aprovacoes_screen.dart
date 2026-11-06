@@ -281,6 +281,7 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int?>(
+          dropdownColor: Colors.white,
           value: _obraId,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, color: _tinta),
