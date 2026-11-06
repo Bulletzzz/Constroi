@@ -84,7 +84,19 @@ acessibilidade que antes não existia, passando a ser legível por leitor de tel
 | `equipe-pessoa` | linha clicável que abre o perfil; o identificador se repete nas pessoas |
 | `equipe-vazio` | aviso de obra sem equipe, busca sem resultados ou ausência de obras |
 | `equipe-erro` | falha ao consultar obras ou equipe, com nova tentativa |
-| `nav-painel`, `nav-estoque`, `nav-custos`, `nav-equipe`, `nav-requisicoes` | navegação inferior |
+| `admin-aba-usuarios`, `admin-aba-logs` | abas da tela de administração |
+| `admin-novo-usuario` | abre o formulário de cadastro |
+| `admin-nome`, `admin-email`, `admin-senha`, `admin-tipo` | campos do formulário |
+| `admin-salvar`, `admin-cancelar` | envio e desistência do cadastro |
+| `admin-form-erro` | recusa do cadastro vinda da API |
+| `admin-usuario` | linha de pessoa na lista; o identificador se repete |
+| `admin-usuario-inativar` | ação de inativar da linha, com confirmação |
+| `admin-log-usuario`, `admin-log-inicio`, `admin-log-fim` | filtros de autor e período |
+| `admin-log-limpar` | descarta os filtros aplicados |
+| `admin-log` | linha de evento; o identificador se repete |
+| `admin-log-anterior`, `admin-log-proxima` | paginação dos eventos |
+| `admin-erro`, `admin-vazio` | falha de carga com nova tentativa e ausência de registros |
+| `nav-painel`, `nav-estoque`, `nav-custos`, `nav-equipe`, `nav-requisicoes`, `nav-administracao` | navegação inferior |
 
 ## Massa de dados
 
