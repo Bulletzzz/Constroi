@@ -15,7 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
-import 'support/dropdown.dart';
+import 'support/legibilidade.dart';
 
 Map<String, Object?> usuario(
   int id,

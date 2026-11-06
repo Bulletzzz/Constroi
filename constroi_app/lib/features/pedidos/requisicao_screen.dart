@@ -27,6 +27,8 @@ TextStyle _mini(Color cor, [double espaco = 1.2]) => TextStyle(
 
 enum _Passo { dados, revisao, confirmar }
 
+enum _Aba { nova, minhas }
+
 class RequisicaoScreen extends StatefulWidget {
   const RequisicaoScreen({
     super.key,
@@ -46,7 +48,13 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
   final _local = TextEditingController();
   final _especificacoes = TextEditingController();
 
+  _Aba _aba = _Aba.nova;
   _Passo _passo = _Passo.dados;
+  List<Pedido>? _meus;
+  bool _carregandoMeus = false;
+  String? _erroMeus;
+  int _consultaMeus = 0;
+  SituacaoPedido? _situacaoFiltrada;
   List<ObraDisponivel> _obras = const [];
   List<ProdutoDoCatalogo> _catalogo = const [];
   int? _obraId;
@@ -102,6 +110,50 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
     }
   }
 
+  Future<void> _carregarMeus() async {
+    final consulta = ++_consultaMeus;
+    setState(() {
+      _carregandoMeus = true;
+      _erroMeus = null;
+    });
+    try {
+      final lista = await widget.service.meusPedidos(
+        situacao: _situacaoFiltrada,
+      );
+      if (!mounted || consulta != _consultaMeus) return;
+      setState(() {
+        _meus = lista;
+        _carregandoMeus = false;
+      });
+    } catch (erro) {
+      if (!mounted || consulta != _consultaMeus) return;
+      setState(() {
+        _carregandoMeus = false;
+        _erroMeus = erro is ApiException
+            ? erro.message
+            : 'Não foi possível carregar suas requisições.';
+      });
+    }
+  }
+
+  void _trocarAba(_Aba nova) {
+    if (_aba == nova) return;
+    setState(() => _aba = nova);
+    if (nova == _Aba.minhas && _meus == null && !_carregandoMeus) {
+      _carregarMeus();
+    }
+  }
+
+  void _renovarMeus() {
+    _meus = null;
+    if (_aba == _Aba.minhas) _carregarMeus();
+  }
+
+  void _filtrarPor(SituacaoPedido? situacao) {
+    setState(() => _situacaoFiltrada = situacao);
+    _carregarMeus();
+  }
+
   ProdutoDoCatalogo? get _produto => _produtoId == null
       ? null
       : _catalogo.where((p) => p.id == _produtoId).firstOrNull;
@@ -152,6 +204,7 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
         _passo = _Passo.confirmar;
         _enviando = false;
       });
+      _renovarMeus();
     } on ApiException catch (erro) {
       if (!mounted) return;
       setState(() {
@@ -197,30 +250,242 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
     ),
     body: SafeArea(
       top: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-        children: [
-          _titulo(),
-          const SizedBox(height: 22),
-          _trilha(),
-          const SizedBox(height: 22),
-          if (_carregando)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(_tinta),
+      child: RefreshIndicator(
+        onRefresh: () async {
+          if (_aba == _Aba.minhas) return _carregarMeus();
+          return _carregar();
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          children: [
+            _titulo(),
+            const SizedBox(height: 18),
+            _abas(),
+            const SizedBox(height: 22),
+            if (_aba == _Aba.minhas)
+              ..._conteudoMeus()
+            else ...[
+              _trilha(),
+              const SizedBox(height: 22),
+              if (_carregando)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(_tinta),
+                    ),
+                  ),
+                )
+              else if (_erroDeCarga != null)
+                _aviso(_erroDeCarga!, aoTentar: _carregar)
+              else
+                _cartaoDoPasso(),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _abas() => Row(
+    children: [
+      _botaoAba(_Aba.nova, 'NOVA', 'requisicao-aba-nova'),
+      const SizedBox(width: 8),
+      _botaoAba(_Aba.minhas, 'MINHAS', 'requisicao-aba-minhas'),
+    ],
+  );
+
+  Widget _botaoAba(_Aba aba, String rotulo, String identificador) {
+    final ativa = _aba == aba;
+    return Expanded(
+      child: Semantics(
+        identifier: identificador,
+        button: true,
+        selected: ativa,
+        child: Material(
+          color: ativa ? _tinta : Colors.white,
+          child: InkWell(
+            onTap: () => _trocarAba(aba),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                border: Border.all(color: _tinta, width: 2),
+              ),
+              child: Text(
+                rotulo,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ativa ? _destaque : _tinta,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
                 ),
               ),
-            )
-          else if (_erroDeCarga != null)
-            _aviso(_erroDeCarga!, aoTentar: _carregar)
-          else
-            _cartaoDoPasso(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _conteudoMeus() => [
+    _filtroDeSituacao(),
+    const SizedBox(height: 18),
+    if (_carregandoMeus)
+      const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation(_tinta),
+          ),
+        ),
+      )
+    else if (_erroMeus != null)
+      _aviso(_erroMeus!, aoTentar: _carregarMeus)
+    else if ((_meus ?? const <Pedido>[]).isEmpty)
+      _aviso(
+        _situacaoFiltrada == null
+            ? 'Você ainda não fez nenhuma requisição.'
+            : 'Nenhuma requisição ${_situacaoFiltrada!.rotulo.toLowerCase()}.',
+      )
+    else
+      for (final pedido in _meus!) _cartaoDoPedido(pedido),
+  ];
+
+  Widget _filtroDeSituacao() => Semantics(
+    identifier: 'requisicao-filtro-situacao',
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _chip('Todas', _situacaoFiltrada == null, () => _filtrarPor(null)),
+        for (final situacao in SituacaoPedido.values)
+          _chip(
+            situacao.rotulo,
+            _situacaoFiltrada == situacao,
+            () => _filtrarPor(situacao),
+          ),
+      ],
+    ),
+  );
+
+  Widget _chip(String rotulo, bool ativo, VoidCallback aoTocar) => Material(
+    color: ativo ? _tinta : Colors.white,
+    child: InkWell(
+      onTap: aoTocar,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(border: Border.all(color: _tinta, width: 2)),
+        child: Text(
+          rotulo,
+          style: TextStyle(
+            color: ativo ? _destaque : _tinta,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _cartaoDoPedido(Pedido pedido) => Semantics(
+    identifier: 'requisicao-pedido',
+    container: true,
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 12,
+            runSpacing: 6,
+            children: [
+              Text(
+                pedido.protocoloCurto,
+                style: const TextStyle(
+                  color: _tinta,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+              _selo(pedido.situacao),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            [
+              if (pedido.obraNome != null) pedido.obraNome!,
+              if (pedido.data != null) _quando(pedido.data!),
+            ].join(' · '),
+            style: const TextStyle(color: _apoio, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          for (final item in pedido.itens)
+            Text(
+              item.descricao,
+              style: const TextStyle(color: _tinta, fontSize: 13, height: 1.4),
+            ),
+          if (pedido.urgencia == Urgencia.urgente) ...[
+            const SizedBox(height: 6),
+            Text('Urgente · ${pedido.urgencia.prazo}', style: _mini(_perigo)),
+          ],
+          if (pedido.motivoRecusa != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              color: const Color(0xFFFDE7E7),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('MOTIVO DA RECUSA', style: _mini(_perigo)),
+                  const SizedBox(height: 4),
+                  Text(
+                    pedido.motivoRecusa!,
+                    style: const TextStyle(
+                      color: _tinta,
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     ),
   );
+
+  Widget _selo(SituacaoPedido situacao) {
+    final cor = switch (situacao) {
+      SituacaoPedido.aprovado => const Color(0xFF1B5E20),
+      SituacaoPedido.recusado => _perigo,
+      SituacaoPedido.pendente => _apoio,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      color: cor,
+      child: Text(
+        situacao.rotulo.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  String _quando(DateTime data) =>
+      '${_doisDigitos(data.day)}/${_doisDigitos(data.month)}/${data.year} '
+      '${_doisDigitos(data.hour)}:${_doisDigitos(data.minute)}';
+
+  static String _doisDigitos(int valor) => valor.toString().padLeft(2, '0');
 
   Widget _titulo() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,22 +609,7 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
       ],
       Text('MATERIAL', style: _mini(_rotulo)),
       const SizedBox(height: 8),
-      _seletor<int>(
-        identificador: 'requisicao-material',
-        valor: _produtoId,
-        dica: 'Selecione o material',
-        itens: [
-          for (final produto in _catalogo)
-            DropdownMenuItem(
-              value: produto.id,
-              child: Text(
-                produto.identificacao,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-        ],
-        aoMudar: (valor) => setState(() => _produtoId = valor),
-      ),
+      _seletorDeMaterial(),
       const SizedBox(height: 18),
       Text('QUANTIDADE', style: _mini(_rotulo)),
       const SizedBox(height: 8),
@@ -608,6 +858,48 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
     ),
   );
 
+  Widget _seletorDeMaterial() => Semantics(
+    identifier: 'requisicao-material',
+    button: true,
+    child: Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: _enviando ? null : _escolherMaterial,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          decoration: BoxDecoration(border: Border.all(color: _tinta, width: 2)),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _produto?.identificacao ?? 'Selecione o material',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _produto == null ? _dica : _tinta,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const Icon(Icons.search, color: _tinta, size: 20),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Future<void> _escolherMaterial() async {
+    final escolhido = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      builder: (contexto) => _BuscaDeMaterial(catalogo: _catalogo),
+    );
+    if (escolhido == null || !mounted) return;
+    setState(() => _produtoId = escolhido);
+  }
+
   Widget _seletor<T>({
     required String identificador,
     required T? valor,
@@ -693,20 +985,23 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
     ),
   );
 
-  Widget _aviso(String texto, {required Future<void> Function() aoTentar}) =>
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: _tinta, width: 2),
-        ),
-        child: Column(
-          children: [
-            Text(
-              texto,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: _tinta, fontSize: 13),
-            ),
+  Widget _aviso(String texto, {Future<void> Function()? aoTentar}) => Semantics(
+    identifier: aoTentar == null ? 'requisicao-vazio' : 'requisicao-erro',
+    container: true,
+    child: Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _tinta, width: 2),
+      ),
+      child: Column(
+        children: [
+          Text(
+            texto,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _tinta, fontSize: 13),
+          ),
+          if (aoTentar != null) ...[
             const SizedBox(height: 14),
             _botao(
               identificador: 'requisicao-tentar',
@@ -714,6 +1009,123 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
               aoTocar: aoTentar,
             ),
           ],
+        ],
+      ),
+    ),
+  );
+}
+
+class _BuscaDeMaterial extends StatefulWidget {
+  const _BuscaDeMaterial({required this.catalogo});
+
+  final List<ProdutoDoCatalogo> catalogo;
+
+  @override
+  State<_BuscaDeMaterial> createState() => _BuscaDeMaterialState();
+}
+
+class _BuscaDeMaterialState extends State<_BuscaDeMaterial> {
+  final _busca = TextEditingController();
+
+  @override
+  void dispose() {
+    _busca.dispose();
+    super.dispose();
+  }
+
+  List<ProdutoDoCatalogo> get _encontrados {
+    final termo = _busca.text.trim().toLowerCase();
+    if (termo.isEmpty) return widget.catalogo;
+    return widget.catalogo
+        .where((p) => p.identificacao.toLowerCase().contains(termo))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final encontrados = _encontrados;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-      );
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Semantics(
+                identifier: 'requisicao-busca-material',
+                textField: true,
+                child: TextField(
+                  controller: _busca,
+                  autofocus: true,
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(color: _tinta, fontSize: 14),
+                  decoration: const InputDecoration(
+                    hintText: 'Buscar material ou SKU',
+                    hintStyle: TextStyle(color: _dica, fontSize: 14),
+                    prefixIcon: Icon(Icons.search, color: _tinta),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.zero,
+                      borderSide: BorderSide(color: _tinta, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.zero,
+                      borderSide: BorderSide(color: _tinta, width: 2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.zero,
+                      borderSide: BorderSide(color: _tinta, width: 2),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (encontrados.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(28),
+                child: Semantics(
+                  identifier: 'requisicao-busca-vazia',
+                  child: const Text(
+                    'Nenhum material com esse termo.',
+                    style: TextStyle(color: _apoio, fontSize: 13),
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: encontrados.length,
+                  separatorBuilder: (_, _) =>
+                      const Divider(height: 1, color: _separador),
+                  itemBuilder: (_, indice) {
+                    final produto = encontrados[indice];
+                    return Semantics(
+                      identifier: 'requisicao-material-opcao',
+                      button: true,
+                      child: ListTile(
+                        title: Text(
+                          produto.identificacao,
+                          style: const TextStyle(color: _tinta, fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          produto.categoriaNome ?? produto.unidade,
+                          style: const TextStyle(color: _apoio, fontSize: 12),
+                        ),
+                        onTap: () => Navigator.of(context).pop(produto.id),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

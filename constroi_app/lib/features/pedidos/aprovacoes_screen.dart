@@ -43,6 +43,7 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
   List<Pedido> _pendentes = const [];
   List<ObraDisponivel> _obras = const [];
   int? _obraId;
+  OrdemDoPedido _ordem = OrdemDoPedido.urgencia;
   bool _carregando = true;
   String? _erro;
   int? _decidindo;
@@ -67,7 +68,10 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
         if (!mounted || consulta != _consultaAtual) return;
         setState(() => _obras = obras);
       }
-      final pendentes = await widget.service.pendentes(obraId: _obraId);
+      final pendentes = await widget.service.pendentes(
+        obraId: _obraId,
+        ordem: _ordem,
+      );
       if (!mounted || consulta != _consultaAtual) return;
       setState(() {
         _pendentes = pendentes;
@@ -165,6 +169,8 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
               decoration: InputDecoration(
                 hintText: 'Explique o motivo da recusa',
                 hintStyle: const TextStyle(color: _dica, fontSize: 13),
+                filled: true,
+                fillColor: Colors.white,
                 border: const OutlineInputBorder(),
                 errorText: faltaMotivo ? 'A recusa exige justificativa.' : null,
               ),
@@ -217,8 +223,10 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
             const SizedBox(height: 20),
             if (_obras.length > 1) ...[
               _seletorDeObra(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             ],
+            _seletorDeOrdem(),
+            const SizedBox(height: 16),
             _faixaDaFila(),
             const SizedBox(height: 16),
             if (_erroDaDecisao != null) ...[
@@ -267,6 +275,39 @@ class _AprovacoesScreenState extends State<AprovacoesScreen> {
       const SizedBox(height: 18),
       Container(height: 1.5, color: _tinta),
     ],
+  );
+
+  Widget _seletorDeOrdem() => Semantics(
+    identifier: 'aprovacoes-ordem',
+    button: true,
+    child: Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _tinta, width: 2),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<OrdemDoPedido>(
+          dropdownColor: Colors.white,
+          value: _ordem,
+          isExpanded: true,
+          icon: const Icon(Icons.sort, color: _tinta),
+          style: const TextStyle(color: _tinta, fontSize: 13),
+          onChanged: _carregando
+              ? null
+              : (valor) {
+                  if (valor == null) return;
+                  setState(() => _ordem = valor);
+                  _carregar();
+                },
+          items: [
+            for (final ordem in OrdemDoPedido.values)
+              DropdownMenuItem(value: ordem, child: Text(ordem.rotulo)),
+          ],
+        ),
+      ),
+    ),
   );
 
   Widget _seletorDeObra() => Semantics(

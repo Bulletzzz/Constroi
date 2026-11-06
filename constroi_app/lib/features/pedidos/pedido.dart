@@ -14,6 +14,25 @@ enum Urgencia {
   );
 }
 
+enum SituacaoPedido {
+  pendente('pendente', 'Pendente'),
+  aprovado('aprovado', 'Aprovado'),
+  recusado('recusado', 'Recusado');
+
+  const SituacaoPedido(this.valor, this.rotulo);
+
+  final String valor;
+  final String rotulo;
+
+  static SituacaoPedido daApi(Object? valor) {
+    final texto = '${valor ?? ''}'.trim().toLowerCase();
+    return values.firstWhere(
+      (s) => s.valor == texto,
+      orElse: () => SituacaoPedido.pendente,
+    );
+  }
+}
+
 class ItemDoPedido {
   const ItemDoPedido({
     required this.produtoId,
@@ -56,6 +75,8 @@ class Pedido {
     this.solicitante,
     this.localObra,
     this.justificativa,
+    this.motivoRecusa,
+    this.obraNome,
     this.data,
   });
 
@@ -68,9 +89,13 @@ class Pedido {
   final String? solicitante;
   final String? localObra;
   final String? justificativa;
+  final String? motivoRecusa;
+  final String? obraNome;
   final DateTime? data;
 
-  bool get pendente => status.toLowerCase() == 'pendente';
+  bool get pendente => situacao == SituacaoPedido.pendente;
+
+  SituacaoPedido get situacao => SituacaoPedido.daApi(status);
 
   String get protocoloCurto {
     final semPrefixo = protocolo.startsWith('PED-')
@@ -101,6 +126,8 @@ class Pedido {
       solicitante: _texto(dados['solicitante_nome']),
       localObra: _texto(dados['local_obra']),
       justificativa: _texto(dados['justificativa']),
+      motivoRecusa: _texto(dados['justificativa_recusa']),
+      obraNome: _texto(dados['obra_nome']),
       data: DateTime.tryParse(_texto(dados['data']) ?? '')?.toLocal(),
     );
   }

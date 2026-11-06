@@ -9,7 +9,9 @@ import '../../navigation/perfil_usuario.dart';
 import '../../widgets/app_header.dart';
 import '../painel/painel_model.dart';
 import '../painel/painel_service.dart';
+import 'baixar_arquivo.dart';
 import 'estoque_service.dart';
+import 'exportacao.dart';
 import 'item_estoque.dart';
 
 const _fundo = Color(0xFFF2F2F2);
@@ -64,6 +66,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   bool _somenteBaixo = false;
   bool _carregando = true;
   bool _carregandoMais = false;
+  bool _exportando = false;
   bool _temMais = false;
   String? _erro;
   String? _erroPagina;
@@ -214,12 +217,6 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     ];
   }
 
-  void _emBreve(String recurso) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$recurso ainda não está disponível.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: _fundo,
@@ -350,16 +347,47 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     );
   }
 
-  Widget _acoes() => _botao(
-    rotulo: 'EXPORTAR',
-    icone: Icons.download,
-    aoTocar: () => _emBreve('A exportação'),
+  Widget _acoes() => Semantics(
+    identifier: 'estoque-exportar',
+    button: true,
+    child: _botao(
+      rotulo: _exportando ? 'EXPORTANDO...' : 'EXPORTAR',
+      icone: Icons.download,
+      aoTocar: _exportando ? null : _exportar,
+    ),
   );
+
+  Future<void> _exportar() async {
+    if (_itens.isEmpty) {
+      _avisar('Não há itens para exportar.');
+      return;
+    }
+    setState(() => _exportando = true);
+    try {
+      final recado = await baixarTexto(
+        nomeDoArquivo(DateTime.now()),
+        csvDoEstoque(_itens),
+      );
+      if (!mounted) return;
+      setState(() => _exportando = false);
+      _avisar(recado);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _exportando = false);
+      _avisar('Não foi possível gerar a planilha.');
+    }
+  }
+
+  void _avisar(String texto) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(texto)));
+  }
 
   Widget _botao({
     required String rotulo,
     required IconData icone,
-    required VoidCallback aoTocar,
+    required VoidCallback? aoTocar,
     bool destacado = false,
   }) => SizedBox(
     height: 44,
