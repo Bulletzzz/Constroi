@@ -522,6 +522,7 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<PerfilUsuario>(
+                  dropdownColor: Colors.white,
                   value: _perfilNovo,
                   isExpanded: true,
                   style: const TextStyle(color: _tinta, fontSize: 14),

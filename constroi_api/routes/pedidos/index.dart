@@ -32,6 +32,14 @@ Future<Response> _listar(RequestContext context) async {
   }
   final comItens = pedidoComItens == 'true';
 
+  final ordem = filtros['ordem'] ?? 'recentes';
+  if (!ordensAceitas.contains(ordem)) {
+    return _erro(
+      HttpStatus.badRequest,
+      'A ordem deve ser ${ordensAceitas.join(' ou ')}.',
+    );
+  }
+
   final usuario = context.usuario;
   final condicoes = <String>[
     'o.empresa_id = @empresa',
@@ -84,7 +92,7 @@ Future<Response> _listar(RequestContext context) async {
       JOIN obra o ON o.id = p.obra_id
       JOIN usuario u ON u.id = p.usuario_id
       WHERE ${condicoes.join(' AND ')}
-      ORDER BY p.data DESC, p.id DESC
+      ORDER BY ${ordenacaoDoPedido(ordem)}
       LIMIT @limit OFFSET @offset
     '''),
     parameters: parametros,

@@ -227,6 +227,9 @@ class _AppHomeState extends State<AppHome> {
                                   ),
                                 ),
                               );
+                              final aprova = widget.perfil.possuiNivel(
+                                PerfilUsuario.engenheiro,
+                              );
                               final nova = ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _amarelo,
@@ -245,11 +248,17 @@ class _AppHomeState extends State<AppHome> {
                                       AppRoute.requisicoes.caminho,
                                       arguments: {'obra_id': _obraId},
                                     ),
-                                icon: const Icon(Icons.add),
-                                label: const Text(
-                                  'NOVA\nREQUISIÇÃO',
+                                icon: Icon(
+                                  aprova
+                                      ? Icons.fact_check_outlined
+                                      : Icons.add,
+                                ),
+                                label: Text(
+                                  aprova
+                                      ? 'VER\nREQUISIÇÕES'
+                                      : 'NOVA\nREQUISIÇÃO',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),

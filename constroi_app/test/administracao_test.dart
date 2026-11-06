@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+import 'support/legibilidade.dart';
 
 Map<String, Object?> usuario(
   int id,
@@ -95,6 +96,22 @@ Future<void> tocar(WidgetTester tester, Finder alvo) async {
 }
 
 void main() {
+  testWidgets('os seletores abrem com fundo legivel', (tester) async {
+    await abrir(
+      tester,
+      service(
+        (_) async => resposta({
+          'usuarios': [usuario(1, 'Ana', 'master')],
+        }),
+      ),
+    );
+    await tocar(tester, find.text('NOVO USUÁRIO'));
+    conferirDropdownsLegiveis(tester);
+    await tocar(tester, find.text('CANCELAR'));
+    await tocar(tester, find.text('LOGS'));
+    conferirDropdownsLegiveis(tester);
+  });
+
   group('rota', () {
     test('so o master alcanca a administracao', () {
       expect(

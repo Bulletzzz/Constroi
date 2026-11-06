@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+import 'support/legibilidade.dart';
 
 Map<String, dynamic> item(
   int id, {
@@ -119,6 +120,12 @@ Future<void> abrir(
 }
 
 void main() {
+  testWidgets('os seletores abrem com fundo legivel', (tester) async {
+    final tudo = montar((_) => [item(1)]);
+    await abrir(tester, tudo.service);
+    conferirDropdownsLegiveis(tester);
+  });
+
   testWidgets('engenheiro ve o botao de novo item e o pedreiro nao', (
     tester,
   ) async {
@@ -167,7 +174,7 @@ void main() {
 
   testWidgets('desenha os elementos do Figma 03', (tester) async {
     final tudo = montar((_) => [item(1)]);
-    await abrir(tester, tudo.service);
+    await abrir(tester, tudo.service, aoCadastrar: (_) async {});
 
     expect(find.text('INVENTÁRIO DE MATERIAIS'), findsOneWidget);
     expect(find.text('EXPORTAR'), findsOneWidget);
