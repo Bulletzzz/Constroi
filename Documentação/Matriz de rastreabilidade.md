@@ -1,7 +1,7 @@
 # Matriz de rastreabilidade
 
-Responsável: Eduardo Sochodolak (QA) · Última verificação: 01/11/2026 · Base: `origin/main` em
-`795135f`, mais a tela de Administração desta branch onde indicado
+Responsável: Eduardo Sochodolak (QA) · Última verificação: 05/11/2026 · Base: `origin/main` em
+`6ee328b`, mais a tela de Administração desta branch onde indicado
 
 OBS: Infelizmente tem q usar emoji q fica mais visual
 
@@ -31,9 +31,9 @@ dentro do aplicativo Flutter.
 | RF04 | Consulta de estoque | ✅ `GET /estoque` | ✅ 03_Estoque | ✅ Estoque | ✅ caso 14 + E2E 05 |
 | RF05 | Solicitação de produtos | ✅ `POST /pedidos` | ✅ 04_Requisição | ✅ Requisição | ✅ casos 11, 12, 13 |
 | RF06 | Avaliação de pedidos | ✅ `PATCH /pedidos/{id}` | ✅ 05_Aprovações | ✅ Aprovações | ✅ casos 15, 16, 17 |
-| RF07 | Entrada de estoque manual | ❌ | 🟡 dentro de 05_Aprovações | ❌ | ❌ |
-| RF08 | Entrada via XML da NF-e | ✅ `POST /entradas/xml` | ❌ | ❌ | ✅ caso 19 |
-| RF09 | Anexar XML a registro existente | ✅ `PATCH /entradas/{id}/xml` | ❌ | ❌ | ✅ caso 20 |
+| RF07 | Entrada de estoque manual | ✅ `POST /entradas` | 🟡 dentro de 05_Aprovações | ❌ | ✅ caso 22 |
+| RF08 | Entrada via XML da NF-e | ✅ `POST /entradas/xml` | ❌ | ✅ Importação NF-e | ✅ caso 19 |
+| RF09 | Anexar XML a registro existente | ✅ `PATCH /entradas/{id}/xml` | ❌ | ✅ Importação NF-e | ✅ caso 20 |
 | RF10 | Manutenção de produtos | ✅ `/produtos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 06 |
 | RF11 | Manutenção de equipamentos | ✅ `/equipamentos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 07 |
 | RF12 | Controle de empréstimos | ❌ | ✅ 07_Cadastro | ❌ | ❌ |
@@ -57,16 +57,16 @@ Existem, funcionam e são testadas, mas nenhuma corresponde a requisito do docum
 
 | Camada | Cobertos | Total |
 |---|---|---|
-| Rota na API | 10 | 12 |
+| Rota na API | 11 | 12 |
 | Tela desenhada no Figma | 7 | 12 |
-| Tela funcionando no aplicativo | 7 | 12 |
-| Teste automatizado | 10 | 12 |
+| Tela funcionando no aplicativo | 9 | 12 |
+| Teste automatizado | 11 | 12 |
 
 Em 22/09 eram 5 rotas, 0 telas e 0 testes. O fluxo central — pedir, aprovar, baixar estoque —
-está inteiro, com rota, tela e teste de concorrência. A sétima tela é a Administração, que
-fecha o RF03.
+está inteiro, com rota, tela e teste de concorrência. A tela de Importação de NF-e atende o
+RF08 e o RF09 na mesma rota, e a de Administração fecha o RF03.
 
-**O que falta é entrada manual (RF07) e empréstimo (RF12).**
+**Sem rota e sem teste só resta o empréstimo (RF12). Sem tela: RF01, RF07 e RF12.**
 
 ---
 
@@ -87,23 +87,19 @@ Fica a pergunta em aberto de como a migration saiu de um banco compartilhado: ni
 assumiu, e não há registro. Enquanto não houver resposta, vale rodar a suíte inteira antes
 de confiar no ambiente.
 
-### 2. RF07 não existe, e a ordem ficou estranha
+### 2. ~~RF07 não existe, e a ordem ficou estranha~~ — corrigido em 05/11
 
-Entrada de estoque **manual** não tem rota. A entrada **por XML** tem rota, teste e 32
-verificações. Ou seja: dá para dar entrada lendo uma nota fiscal, e não dá para dar entrada
-digitando — que é o caminho mais simples e o que o RF08 do documento prevê explicitamente
-("entrada pode ser sem nota fiscal").
+A PR #41 entrou com `POST /entradas` e o caso 22, 62 verificações: saldo, rollback do estouro
+numérico, isolamento entre empresas e oito entradas simultâneas sem deadlock. Quem recebe
+material sem nota já registra.
 
-O Pedro abriu a PR #41 com `POST /entradas`, em revisão. Até ela entrar, quem recebe material
-sem nota não registra nada.
+Falta a tela: o RF07 só funciona por chamada direta à API. Não há cartão para isso.
 
-### 3. A importação de NF-e não tem tela
+### 3. ~~A importação de NF-e não tem tela~~ — corrigido pela PR #42
 
-RF08 e RF09 têm rota, caso de integração e 53 verificações somadas — e **nenhuma tela**. Só
-funciona por chamada direta à API.
-
-É a funcionalidade mais vistosa da apresentação e hoje não dá para demonstrar pelo aplicativo.
-O cartão foi aberto depois da regressão de outubro e o Andrew abriu a PR #42, em revisão.
+A tela de Importação de NF-e cobre os dois requisitos na mesma rota: `POST /entradas/xml` para
+importar e `PATCH /entradas/{id}/xml` para anexar a um registro existente. Dá para demonstrar
+pelo aplicativo.
 
 ### 4. ~~A tela de Custos não é testada contra banco~~ — fechado nesta branch
 
@@ -155,17 +151,19 @@ do Pedro.
 
 | Camada | Quantidade |
 |---|---|
-| Unidade na API (`dart test test/`) | 223 |
+| Unidade na API (`dart test test/`) | 242 |
 | Widget no app (`flutter test`) | 207 |
-| Integração (`.\testes\executar.ps1`) | 21 casos, 523 verificações |
+| Integração (`.\testes\executar.ps1`) | 22 casos, 585 verificações |
 | Ponta a ponta (Cypress) | 7 casos, 9 testes |
 
-Números medidos em 26/10/2026, não deduzidos. A integração inclui o caso 21 desta branch;
-na main são 20 casos e 472 verificações.
+Números medidos em 05/11/2026, não deduzidos, com a main já mesclada nesta branch. Os 22
+casos passaram inteiros em 21 minutos. Os 207 testes de widget incluem os 21 da tela de
+Administração desta branch; na main são 186.
 
-Na primeira execução de 26/10 os casos 19 e 20 vieram vermelhos — 53 verificações — porque
-faltava a migration 011 no banco compartilhado. Depois de reaplicada, os 21 casos passam.
-Está registrado no buraco 1.
+A integração cresceu 62 verificações desde 26/10, todas do caso 22 que veio com a PR #41. As
+PRs #40, #45 e #46 entraram sem caso novo: a cobertura dos logs mora em
+`constroi_api/integration_test/logs_test.dart`, que roda fora deste runner — vale um caso
+aqui dentro, e não há cartão para isso.
 
 A suíte de integração fala com a API e o banco reais e confere o resultado no banco, não só a
 resposta. Como rodar está em `testes/README.md`.
