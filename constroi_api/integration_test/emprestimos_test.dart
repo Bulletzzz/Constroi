@@ -155,7 +155,16 @@ void main() {
         !uri.pathSegments.single.startsWith('constroi_test_')) {
       throw StateError('Use banco local descartavel constroi_test_*.');
     }
-    banco = Pool<void>.withUrl(url);
+    banco = Pool<void>.withUrl(
+      uri
+          .replace(
+            queryParameters: {
+              ...uri.queryParameters,
+              'max_connection_count': '20',
+            },
+          )
+          .toString(),
+    );
     addTearDown(() => banco.close());
     await simples('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
     await simples(await File('../Database/schema.sql').readAsString());
