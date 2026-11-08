@@ -71,6 +71,7 @@ imprime a linha pronta para repetir só aquele.
 | `20_anexo_de_xml` | anexar documento não mexe no estoque e não aceita duas vezes |
 | `21_custos_da_obra` | total, mês e semana contra valores calculados na mão; uma obra sem orçamento zera o total global |
 | `22_entrada_manual` | entrada sem nota, limite de itens, logs por empresa, saldo, rollback e concorrência |
+| `23_emprestimo_e_devolucao` | prazo, atraso, isolamento, status do equipamento e empréstimos/devoluções concorrentes |
 
 ## Escrever um caso novo
 
