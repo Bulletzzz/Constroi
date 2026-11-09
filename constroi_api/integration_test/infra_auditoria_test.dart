@@ -9,6 +9,8 @@ import 'package:constroi_api/conexao_api.dart';
 import 'package:postgres/postgres.dart';
 import 'package:test/test.dart';
 
+import 'apoio_pool.dart';
+
 void main() {
   late Pool<void> administrador;
   late String url;
@@ -49,7 +51,7 @@ void main() {
       );
     }
     urlApi = uri.replace(userInfo: 'constroi_api_execucao').toString();
-    administrador = Pool<void>.withUrl(url);
+    administrador = poolDeTeste(url);
     addTearDown(() => administrador.close());
     await administrador.execute(
       'DROP SCHEMA public CASCADE; CREATE SCHEMA public;',

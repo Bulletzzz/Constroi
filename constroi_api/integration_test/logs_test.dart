@@ -33,6 +33,8 @@ import '../routes/usuarios/[id]/index.dart' as usuario;
 import '../routes/usuarios/_middleware.dart' as usuarios_auth;
 import '../routes/usuarios/index.dart' as usuarios;
 
+import 'apoio_pool.dart';
+
 class _ArquivoAmbiente extends Mock implements File {}
 
 void main() {
@@ -106,7 +108,7 @@ void main() {
         'Use banco local descartavel constroi_test_*. Nunca le .env.',
       );
     }
-    banco = Pool<void>.withUrl(url);
+    banco = poolDeTeste(url);
     addTearDown(() => banco.close());
     await sql('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
     final migracao = await Process.run(

@@ -15,6 +15,8 @@ import '../routes/entradas/_middleware.dart' as protecao;
 import '../routes/entradas/xml.dart' as rota;
 import '../test/fixtures/nfe.dart';
 
+import 'apoio_pool.dart';
+
 Future<Object?> importarParaTeste(Pool<void> banco, String xml) => importarNfe(
   banco,
   usuario: const UsuarioAutenticado(
@@ -92,7 +94,7 @@ void main() {
     final parametros = Map<String, String>.from(uri.queryParameters)
       ..remove('max_connection_count');
     urlDireta = uri.replace(queryParameters: parametros).toString();
-    banco = Pool<void>.withUrl(url);
+    banco = poolDeTeste(url);
     addTearDown(() => banco.close());
     await banco.execute(
       'DROP SCHEMA public CASCADE; CREATE SCHEMA public;',

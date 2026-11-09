@@ -8,6 +8,8 @@ import 'package:constroi_api/conexao_api.dart';
 import 'package:postgres/postgres.dart';
 import 'package:test/test.dart';
 
+import 'apoio_pool.dart';
+
 void main() {
   late Pool<void> banco;
   late String url;
@@ -134,7 +136,7 @@ void main() {
         'Nunca le .env.',
       );
     }
-    banco = Pool<void>.withUrl(url);
+    banco = poolDeTeste(url);
     addTearDown(banco.close);
   });
   setUp(() async {

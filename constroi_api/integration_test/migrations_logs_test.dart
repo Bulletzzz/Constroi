@@ -6,6 +6,8 @@ import 'package:constroi_api/logs.dart';
 import 'package:postgres/postgres.dart';
 import 'package:test/test.dart';
 
+import 'apoio_pool.dart';
+
 void main() {
   late Pool<void> banco;
   late String url;
@@ -71,7 +73,7 @@ void main() {
         !uri.pathSegments.single.startsWith('constroi_test_')) {
       throw StateError('Use banco local descartavel constroi_test_*.');
     }
-    banco = Pool<void>.withUrl(url);
+    banco = poolDeTeste(url);
     addTearDown(() => banco.close());
   });
   setUp(limpar);
