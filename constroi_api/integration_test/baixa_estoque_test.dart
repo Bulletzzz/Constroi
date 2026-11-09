@@ -14,6 +14,8 @@ import 'package:test/test.dart';
 import '../routes/pedidos/[id].dart' as rota;
 import '../routes/pedidos/_middleware.dart' as protecao;
 
+import 'apoio_pool.dart';
+
 void main() {
   late Pool<void> banco;
   late String databaseUrl;
@@ -158,7 +160,7 @@ void main() {
     bool mesmoPedido = false,
     List<String>? decisoes,
   }) async {
-    final bloqueador = Pool<void>.withUrl(databaseUrl);
+    final bloqueador = poolDeTeste(databaseUrl);
     late Future<List<({int status, Map<String, dynamic> dados})>> respostas;
     try {
       await bloqueador.runTx((tx) async {
@@ -204,7 +206,7 @@ void main() {
         'descartavel chamado constroi_test_*. Esta suite nao utiliza o .env.',
       );
     }
-    banco = Pool<void>.withUrl(databaseUrl);
+    banco = poolDeTeste(databaseUrl);
     addTearDown(() => banco.close());
     await banco.execute(
       'DROP SCHEMA public CASCADE; CREATE SCHEMA public;',

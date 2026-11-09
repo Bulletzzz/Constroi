@@ -14,6 +14,8 @@ import '../routes/emprestimos/index.dart' as emprestimos;
 import '../routes/equipamentos/[id].dart' as equipamento;
 import '../routes/equipamentos/_middleware.dart' as protecao_equipamento;
 
+import 'apoio_pool.dart';
+
 void main() {
   late Pool<void> banco;
   Pool<void>? bancoHttp;
@@ -114,7 +116,7 @@ void main() {
   Future<List<({int status, Map<String, dynamic> dados})>> disputar(
     List<Future<({int status, Map<String, dynamic> dados})> Function()> acoes,
   ) async {
-    final bloqueador = Pool<void>.withUrl(url);
+    final bloqueador = poolDeTeste(url);
     late Future<List<({int status, Map<String, dynamic> dados})>> respostas;
     try {
       await bloqueador.runTx((tx) async {
@@ -155,16 +157,7 @@ void main() {
         !uri.pathSegments.single.startsWith('constroi_test_')) {
       throw StateError('Use banco local descartavel constroi_test_*.');
     }
-    banco = Pool<void>.withUrl(
-      uri
-          .replace(
-            queryParameters: {
-              ...uri.queryParameters,
-              'max_connection_count': '20',
-            },
-          )
-          .toString(),
-    );
+    banco = poolDeTeste(url);
     addTearDown(() => banco.close());
     await simples('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
     await simples(await File('../Database/schema.sql').readAsString());

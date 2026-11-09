@@ -126,7 +126,7 @@ apagados. Configuração ausente/inadequada ou falha no banco faz a suíte falha
 sem pular os cenários.
 
 ```powershell
-$env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres@127.0.0.1:55434/constroi_test_baixa?sslmode=require&max_connection_count=10'
+$env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres@127.0.0.1:55434/constroi_test_baixa?sslmode=require'
 dart test integration_test/baixa_estoque_test.dart --reporter expanded
 ```
 
@@ -185,7 +185,7 @@ Na pasta `constroi_api`, instale as dependências e execute:
 
 ```powershell
 dart pub get
-$env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres:senha-local-descartavel@127.0.0.1:55435/constroi_test_integracao?sslmode=require&max_connection_count=10'
+$env:CONSTROI_TEST_DATABASE_URL = 'postgresql://postgres:senha-local-descartavel@127.0.0.1:55435/constroi_test_integracao?sslmode=require'
 
 # Todas as suítes, uma por vez: elas compartilham e recriam o mesmo schema.
 dart test integration_test/ --concurrency=1 --reporter expanded
@@ -218,8 +218,9 @@ inclui essa senha. A regressão confere o verificador SCRAM e a conexão TLS do
 papel real. A senha não é impressa nem adicionada ao SQL de provisionamento.
 O mesmo preparo atende PostgreSQL com SCRAM (como o container acima) e trust.
 
-Mantenha `max_connection_count=10`: os cenários de concorrência precisam de mais
-de uma conexão. O teste de migrations remove essa opção somente da conexão
+Não é preciso dimensionar o pool na URL: as suítes abrem a conexão por
+`integration_test/apoio_pool.dart`, que já pede as conexões que os cenários de
+concorrência exigem. O teste de migrations remove essa opção somente da conexão
 direta e do ambiente do runner, mantendo TLS. A suíte verifica schema consolidado
 seguido do runner, reaplicação da 011 preservando XML/dados e aplicação em banco
 vazio seguida de uma segunda rodada sem alterações.
