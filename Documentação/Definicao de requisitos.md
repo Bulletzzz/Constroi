@@ -1,7 +1,7 @@
 # Definicao de requisitos
 
-> Revisão de 08/11/2026: incluídos RF13 (Painel), RF14 (Custos) e RF15 (Equipe), telas já
-> implementadas que não tinham requisito. O PDF é gerado a partir deste arquivo.
+> Revisão de 08/11/2026: incluídos RF13 (Painel), RF14 (Custos), RF15 (Equipe) e RF16 (Logs),
+> funcionalidades já implementadas que não tinham requisito. O PDF é gerado a partir deste arquivo.
 
 ## funcionais
 
@@ -22,6 +22,7 @@
 - Todos os usuarios devem conseguir consultar o painel com os indicadores das obras
 - O engenheiro deve conseguir consultar os custos e o orcamento de uma obra
 - Todos os usuarios devem conseguir consultar a equipe de uma obra
+- O administrador deve conseguir consultar o registro de alteracoes feitas pelos usuarios
 
 ## nao funcionais
 
@@ -69,6 +70,7 @@
 | RF13 | Painel da Obra | O sistema deve exibir indicadores de estoque, requisições pendentes e movimentações recentes das obras a que o usuário tem acesso. | Todos |
 | RF14 | Consulta de Custos | O sistema deve permitir consultar custos, orçamento e lançamentos por obra e período. | Engenheiro |
 | RF15 | Consulta de Equipe | O sistema deve permitir consultar as pessoas vinculadas a cada obra a que o usuário tem acesso e seus perfis. | Todos |
+| RF16 | Consulta de Logs | O sistema deve permitir consultar o registro das alterações feitas pelos usuários da empresa, com filtro por usuário e período. | Administrador |
 
 ## Requisitos não funcionais
 
