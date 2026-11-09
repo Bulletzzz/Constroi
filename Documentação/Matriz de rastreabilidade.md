@@ -36,20 +36,17 @@ dentro do aplicativo Flutter.
 | RF09 | Anexar XML a registro existente | ✅ `PATCH /entradas/{id}/xml` | ❌ | ✅ Importação NF-e | ✅ caso 20 |
 | RF10 | Manutenção de produtos | ✅ `/produtos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 06 |
 | RF11 | Manutenção de equipamentos | ✅ `/equipamentos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 07 |
-| RF12 | Controle de empréstimos | ❌ | ✅ 07_Cadastro | ❌ | ❌ |
+| RF12 | Controle de empréstimos | ✅ `/emprestimos` (2 rotas) | ✅ 07_Cadastro | ❌ | ✅ caso 23 |
+| RF13 | Painel da obra | ✅ `GET /painel` | ✅ 02_Painel | ✅ Painel | ✅ caso 18 + E2E 03, 06 |
+| RF14 | Consulta de custos | ✅ `GET /custos` | ✅ 06_Custos | ✅ Custos | ✅ caso 21 + unitário com mock |
+| RF15 | Consulta de equipe | ✅ `GET /obras/{id}/equipe` | ✅ 08_Equipe | ✅ Equipe | ✅ caso 05 |
+| RF16 | Consulta de logs | ✅ `GET /logs` | 🟡 dentro de 08_Equipe | ✅ Administração, aba Logs | ✅ `integration_test/logs_test.dart` |
 
 A tela de cadastro entrou na main pela PR #38. RF10 e RF11 criam pelo aplicativo; editar e
 inativar continuam só pela API.
 
-### Telas sem RF numerado
-
-Existem, funcionam e são testadas, mas nenhuma corresponde a requisito do documento.
-
-| Tela | Rota | Teste |
-|---|---|---|
-| Painel | ✅ `GET /painel` | ✅ caso 18 + E2E 03, 06 |
-| Custos | ✅ `GET /custos` | ✅ caso 21 (nesta branch) + unitário com mock |
-| Equipe | ✅ `/obras/{id}/equipe` | ✅ caso 05 |
+RF13, RF14, RF15 e RF16 entraram na Definição de requisitos em 08/11/2026 para cobrir as
+telas de Painel, Custos, Equipe e a consulta de Logs, que já existiam sem requisito.
 
 ---
 
@@ -57,16 +54,17 @@ Existem, funcionam e são testadas, mas nenhuma corresponde a requisito do docum
 
 | Camada | Cobertos | Total |
 |---|---|---|
-| Rota na API | 11 | 12 |
-| Tela desenhada no Figma | 7 | 12 |
-| Tela funcionando no aplicativo | 9 | 12 |
-| Teste automatizado | 11 | 12 |
+| Rota na API | 16 | 16 |
+| Tela desenhada no Figma | 10 | 16 |
+| Tela funcionando no aplicativo | 13 | 16 |
+| Teste automatizado | 16 | 16 |
 
 Em 22/09 eram 5 rotas, 0 telas e 0 testes. O fluxo central — pedir, aprovar, baixar estoque —
 está inteiro, com rota, tela e teste de concorrência. A tela de Importação de NF-e atende o
 RF08 e o RF09 na mesma rota, e a de Administração fecha o RF03.
 
-**Sem rota e sem teste só resta o empréstimo (RF12). Sem tela: RF01, RF07 e RF12.**
+**Todo RF tem rota e teste; o empréstimo (RF12) fechou com a PR #49. Sem tela: RF01, RF07 e
+RF12.**
 
 ---
 
@@ -122,13 +120,13 @@ O RF03 fechou: a tela de Administração entrou na semana 6 e lista, cria e inat
 pelo aplicativo. Continua sem protótipo no Figma, então o desenho é decisão de implementação,
 não de design.
 
-### 6. Três telas sem requisito
+### 6. ~~Três telas sem requisito~~ — corrigido em 08/11
 
-Painel, Custos e Equipe estão prontas, em uso e testadas, e não correspondem a RF nenhum. O
-mesmo apontamento de 22/09 continua: ou viram requisito, ou ficam como funcionalidade que
-ninguém pode cobrar.
+Painel, Custos e Equipe viraram RF13, RF14 e RF15 na Definição de requisitos
+(`Definicao de requisitos.md`, de onde o PDF é gerado) e entraram na tabela de requisitos
+acima. O apontamento de 22/09 está fechado.
 
-### 7. Consultar Logs tem rota e tela, e segue sem RF numerado
+### 7. ~~Consultar Logs tem rota e tela, e segue sem RF numerado~~ — corrigido em 08/11
 
 `GET /logs` é exclusivo do Master da própria empresa, com filtros por usuário/período e
 paginação; o helper único grava os eventos das rotas de escrita na mesma transação da
@@ -136,9 +134,7 @@ alteração. O contrato e a cobertura estão em `constroi_api/README.md` e
 `constroi_api/integration_test/logs_test.dart`.
 
 A consulta agora tem tela: é a segunda aba da Administração, com filtro por autor e por
-período. O caso de uso continua no diagrama e a atribuição de um RF numerado segue pendente
-de decisão de requisitos — ou seja, existe funcionalidade pronta de ponta a ponta que
-ninguém pode cobrar na entrega.
+período. Virou o RF16 na Definição de requisitos, junto com Painel, Custos e Equipe.
 
 ### 8. A tabela de RF do PDF continua quebrada
 
@@ -186,7 +182,6 @@ A triagem completa dos 20 RNFs continua sendo outro cartão.
 
 1. Descobrir como a migration 011 saiu do Neon e combinar quem mexe no banco compartilhado.
 2. Confirmar a numeração dos RF com o Pedro.
-3. Levar ao Johann o que sobrou de funcionalidade faltando: o RF12 (empréstimo), sem rota e
-   sem teste, e as telas do RF01 e do RF07, que hoje só funcionam por chamada direta à API.
-   Nenhum dos três tem cartão aberto.
+3. Levar ao Johann o que sobrou de funcionalidade faltando: as telas do RF01, do RF07 e do
+   RF12, que hoje só funcionam por chamada direta à API.
 4. Reconferir ao fim de cada semana. A coluna **Teste** é a que mais envelhece.

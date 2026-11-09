@@ -130,41 +130,68 @@ Future<Response> _editar(RequestContext context, int id) async {
   campos['id'] = id;
   campos['empresa'] = empresaId;
 
-  final atualizado = await executarEscritaComLog(
-    banco,
-    Sql.named('''
+  return banco.runTx((tx) async {
+    final bloqueados = await tx.execute(
+      Sql.named('''
+        SELECT id FROM equipamento
+        WHERE id = @id AND empresa_id = @empresa FOR UPDATE
+      '''),
+      parameters: {'id': id, 'empresa': empresaId},
+    );
+    if (bloqueados.isEmpty) {
+      return _erro(HttpStatus.notFound, 'Equipamento nao encontrado.');
+    }
+    if (status != null && status != 'em_uso') {
+      final abertos = await tx.execute(
+        Sql.named('''
+          SELECT id FROM emprestimo
+          WHERE equipamento_id = @id AND empresa_id = @empresa AND status = 'aberto'
+        '''),
+        parameters: {'id': id, 'empresa': empresaId},
+      );
+      if (abertos.isNotEmpty) {
+        return _erro(
+          HttpStatus.conflict,
+          'Registre a devolucao antes de alterar o status do equipamento.',
+        );
+      }
+    }
+    final atualizado = await tx.execute(
+      Sql.named('''
       UPDATE equipamento
       SET ${partes.join(', ')}
       WHERE id = @id AND empresa_id = @empresa
       RETURNING id, nome, patrimonio, status, empresa_id, criado_em, atualizado_em
     '''),
-    parameters: campos,
-    usuarioId: context.usuario.id,
-    evento: 'ALTERACAO_EQUIPAMENTO',
-    recurso: 'equipamento',
-  );
-
-  if (atualizado.isEmpty) {
-    return Response.json(
-      statusCode: HttpStatus.notFound,
-      body: {'erro': 'Equipamento nao encontrado.'},
+      parameters: campos,
     );
-  }
+    if (atualizado.isEmpty) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'erro': 'Equipamento nao encontrado.'},
+      );
+    }
 
-  final equipamento = atualizado.first.toColumnMap();
-  final criadoEm = equipamento['criado_em'] as DateTime?;
-  final atualizadoEm = equipamento['atualizado_em'] as DateTime?;
-  return Response.json(
-    body: {
-      'id': equipamento['id'],
-      'nome': equipamento['nome'],
-      'patrimonio': equipamento['patrimonio'],
-      'status': equipamento['status'],
-      'empresa_id': equipamento['empresa_id'],
-      'criado_em': criadoEm?.toIso8601String(),
-      'atualizado_em': atualizadoEm?.toIso8601String(),
-    },
-  );
+    await registrarLog(
+      tx,
+      usuarioId: context.usuario.id,
+      acao: 'ALTERACAO_EQUIPAMENTO equipamento=$id',
+    );
+    final equipamento = atualizado.first.toColumnMap();
+    final criadoEm = equipamento['criado_em'] as DateTime?;
+    final atualizadoEm = equipamento['atualizado_em'] as DateTime?;
+    return Response.json(
+      body: {
+        'id': equipamento['id'],
+        'nome': equipamento['nome'],
+        'patrimonio': equipamento['patrimonio'],
+        'status': equipamento['status'],
+        'empresa_id': equipamento['empresa_id'],
+        'criado_em': criadoEm?.toIso8601String(),
+        'atualizado_em': atualizadoEm?.toIso8601String(),
+      },
+    );
+  });
 }
 
 Response _erro(int status, String mensagem) =>

@@ -102,6 +102,8 @@ acesso daquele trecho.
 | `GET` | `/custos` (filtros `obra_id`, `periodo`, `limit`, `offset`) | engenheiro |
 | `GET` `POST` | `/equipamentos` | engenheiro |
 | `GET` `PATCH` | `/equipamentos/{id}` | engenheiro |
+| `GET` `POST` | `/emprestimos` | engenheiro |
+| `PATCH` | `/emprestimos/{id}` | engenheiro |
 | `GET` `POST` | `/pedidos` | pedreiro |
 | `GET` | `/pedidos/{id}` | pedreiro |
 | `PATCH` | `/pedidos/{id}` | engenheiro |
@@ -204,6 +206,21 @@ simultâneas. Cada item gera um log no formato
 `ENTRADA_MANUAL entrada=.. obra=.. produto=.. quantidade=.. saldo=..`, com o saldo
 retornado pelo banco. O caso de integração pode ser executado com
 `.\testes\executar.ps1 -Caso 22_entrada_manual` usando a API e seu banco de teste.
+
+## Empréstimo e devolução de equipamento
+
+Engenheiros e masters registram a saída com `POST /emprestimos`, enviando
+`{"emprestimo":{"equipamento_id":1,"usuario_id":2,"obra_id":3,"dias":7}}`.
+O responsável precisa estar ativo e todas as referências devem pertencer à
+empresa do token. `dias` é inteiro positivo, sem limite comercial de prazo.
+
+`GET /emprestimos?equipamento_id=1&status=aberto` lista os empréstimos da empresa,
+com equipamento, responsável, obra, datas, status e indicador `atrasado`.
+`PATCH /emprestimos/1` com `{"emprestimo":{"status":"devolvido"}}` registra
+a devolução. Um empréstimo aberto deixa o equipamento em `em_uso`; a devolução
+o deixa `disponivel`. Repetições retornam `409` e referências alheias retornam
+`404`. As alterações e os logs são atômicos. Aplique a migration 015 antes de
+usar as rotas. O contrato completo está em [constroi_api/README.md](constroi_api/README.md).
 
 ## Rodando o projeto
 

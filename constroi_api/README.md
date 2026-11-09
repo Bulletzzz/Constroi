@@ -271,6 +271,8 @@ As migrations ficam em `migrations/` e são executadas em ordem numérica. A tab
 - `011_entrada_nfe.sql`: chave da NF-e única por empresa e vínculo com a obra da empresa; entradas antigas permanecem intactas
 - `012_pedido_local_urgencia.sql`: local da obra e nível de urgência no pedido, com urgência restrita a `padrao` ou `urgente`
 - `013_movimentacao_estoque.sql`: auditoria das saídas por aprovação, FKs compostas, unicidade por pedido/produto/tipo e índices de período
+- `014_log_empresa.sql`: empresa obrigatória nos logs, FK composta e índices por empresa/período
+- `015_emprestimos.sql`: empresa e prazo no empréstimo, FKs compostas, validação de datas/status e unicidade do empréstimo aberto
 
 Crie `constroi_api/.env` a partir de `.env.example`. A conexão remota deve conter `sslmode=require`; nunca envie o `.env` ao GitHub.
 `AUDITORIA_CONEXAO_ESTRITA` vem desligada por padrão, preservando a conexão
@@ -489,4 +491,109 @@ Para executar junto às demais suítes destrutivas, mantenha `--concurrency=1`:
 ```powershell
 dart test test/
 dart test integration_test/ --concurrency=1
+```
+
+## Empréstimo e devolução de equipamento (RF12)
+
+As três operações exigem engenheiro ou master. A empresa vem do token;
+equipamento, responsável e obra devem pertencer a ela. O responsável pode ser
+pedreiro, engenheiro ou master, e precisa estar ativo. O autor do log é o
+usuário que fez a operação, mesmo quando o responsável é outra pessoa.
+
+### Criar
+
+`POST /emprestimos`:
+
+```json
+{"emprestimo":{"equipamento_id":1,"usuario_id":2,"obra_id":3,"dias":7}}
+```
+
+Os IDs e `dias` devem ser inteiros positivos representáveis pelo `INTEGER`
+do banco. Não há limite comercial de 30 ou 365 dias. O banco calcula a previsão
+em períodos de 24 horas a partir do instante de criação. Prazos que excedam
+a capacidade de datas da API, até o ano 9999, retornam `400` sem gravar nada.
+Datas, empresa e status enviados pelo cliente não substituem os valores do
+servidor. Somente equipamentos `disponivel` podem ser emprestados.
+
+Retorna `201` com um objeto no mesmo formato de cada item da listagem:
+
+```json
+{
+  "id": 1,
+  "equipamento_id": 1,
+  "equipamento_nome": "Betoneira",
+  "usuario_id": 2,
+  "responsavel_nome": "Responsável",
+  "obra_id": 3,
+  "obra_nome": "Obra A",
+  "data_emprestimo": "2026-11-08T12:00:00.000Z",
+  "data_prevista": "2026-11-15T12:00:00.000Z",
+  "data_devolucao": null,
+  "status": "aberto",
+  "atrasado": false
+}
+```
+
+### Consultar
+
+`GET /emprestimos?equipamento_id=1&status=aberto` retorna
+`{"emprestimos":[...]}`. Os filtros são opcionais e combináveis;
+`status` aceita somente `aberto` ou `devolvido`. A paginação usa `limit`
+(padrão 50, de 1 a 200) e `offset` (padrão zero, até 2147483647).
+A ordem é `data_emprestimo DESC, id DESC`. Filtros ou paginação inválidos
+retornam `400`; buscas sem resultado, inclusive equipamento de outra empresa,
+retornam lista vazia. As datas são ISO 8601 em UTC. `atrasado` é calculado no
+PostgreSQL e só é verdadeiro para empréstimo aberto com prazo vencido.
+
+### Devolver
+
+`PATCH /emprestimos/{id}` com
+`{"emprestimo":{"status":"devolvido"}}` retorna `200` com o mesmo contrato,
+incluindo `data_devolucao` e `atrasado=false`. A operação devolve o equipamento
+para `disponivel`, permitindo novo empréstimo sem alterar o histórico anterior.
+Repetir a devolução retorna `409`, inclusive depois de um novo empréstimo do
+mesmo equipamento, preservando o novo estado.
+
+As escritas bloqueiam primeiro o equipamento. O índice único parcial
+`ux_emprestimo_equipamento_aberto`, com `WHERE status='aberto'`, impede dois
+empréstimos abertos também no banco, independentemente do status do cadastro.
+O PATCH do cadastro não permite tirar o equipamento de `em_uso` enquanto
+houver empréstimo aberto, mas permite editar nome e patrimônio.
+Empréstimo, status do equipamento e log confirmam ou revertem juntos.
+
+Eventos: `EMPRESTIMO_EQUIPAMENTO emprestimo=.. equipamento=.. usuario=.. obra=.. dias=..`
+e `DEVOLUCAO_EQUIPAMENTO emprestimo=.. equipamento=.. usuario=.. obra=..`.
+Dados inválidos retornam `400`, token ausente/inválido `401`, perfil pedreiro
+`403`, referência inexistente/alheia ou responsável inativo `404`, equipamento
+indisponível e devolução repetida `409`.
+
+### Migration e validação
+
+Aplique `015_emprestimos.sql` pelo runner antes de subir esta API. Ela cria
+a chave `(id, empresa_id)` do equipamento e adiciona empresa, previsão,
+FKs compostas, CHECKs de status/datas e índice único parcial ao empréstimo.
+O schema consolidado representa as migrations 001–015.
+
+Se houver empréstimos legados, informe previamente a `data_prevista` real
+em uma coluna `TIMESTAMPTZ` com esse nome. A migration não inventa prazos.
+Ela deriva a empresa do equipamento e recusa, atomicamente, legado sem prazo,
+referências entre empresas, status/datas inválidos ou dois empréstimos abertos
+para o mesmo equipamento. Os registros existentes são preservados.
+
+Com `CONSTROI_TEST_DATABASE_URL` apontando para um PostgreSQL local descartável
+`constroi_test_*`, execute na pasta da API:
+
+```powershell
+dart test test/
+dart test integration_test/ --concurrency=1
+```
+
+As suítes de empréstimo exercitam HTTP e middleware reais, FKs e índice do
+PostgreSQL, empréstimos/devoluções bloqueados simultaneamente, ordem de locks,
+rollback quando o log falha, papel restrito, migração vazia/upgrade,
+reaplicação e equivalência com o schema consolidado.
+Na raiz, com API e banco de teste correspondentes:
+
+```powershell
+.\testes\executar.ps1 -Caso 23_emprestimo_e_devolucao
 ```
