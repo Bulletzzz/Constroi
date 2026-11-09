@@ -37,19 +37,15 @@ dentro do aplicativo Flutter.
 | RF10 | Manutenção de produtos | ✅ `/produtos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 06 |
 | RF11 | Manutenção de equipamentos | ✅ `/equipamentos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 07 |
 | RF12 | Controle de empréstimos | ❌ | ✅ 07_Cadastro | ❌ | ❌ |
+| RF13 | Painel da obra | ✅ `GET /painel` | ✅ 02_Painel | ✅ Painel | ✅ caso 18 + E2E 03, 06 |
+| RF14 | Consulta de custos | ✅ `GET /custos` | ✅ 06_Custos | ✅ Custos | ✅ caso 21 + unitário com mock |
+| RF15 | Consulta de equipe | ✅ `GET /obras/{id}/equipe` | ✅ 08_Equipe | ✅ Equipe | ✅ caso 05 |
 
 A tela de cadastro entrou na main pela PR #38. RF10 e RF11 criam pelo aplicativo; editar e
 inativar continuam só pela API.
 
-### Telas sem RF numerado
-
-Existem, funcionam e são testadas, mas nenhuma corresponde a requisito do documento.
-
-| Tela | Rota | Teste |
-|---|---|---|
-| Painel | ✅ `GET /painel` | ✅ caso 18 + E2E 03, 06 |
-| Custos | ✅ `GET /custos` | ✅ caso 21 (nesta branch) + unitário com mock |
-| Equipe | ✅ `/obras/{id}/equipe` | ✅ caso 05 |
+RF13, RF14 e RF15 entraram na Definição de requisitos em 08/11/2026 para cobrir as telas de
+Painel, Custos e Equipe, que já existiam sem requisito.
 
 ---
 
@@ -57,10 +53,10 @@ Existem, funcionam e são testadas, mas nenhuma corresponde a requisito do docum
 
 | Camada | Cobertos | Total |
 |---|---|---|
-| Rota na API | 11 | 12 |
-| Tela desenhada no Figma | 7 | 12 |
-| Tela funcionando no aplicativo | 9 | 12 |
-| Teste automatizado | 11 | 12 |
+| Rota na API | 14 | 15 |
+| Tela desenhada no Figma | 10 | 15 |
+| Tela funcionando no aplicativo | 12 | 15 |
+| Teste automatizado | 14 | 15 |
 
 Em 22/09 eram 5 rotas, 0 telas e 0 testes. O fluxo central — pedir, aprovar, baixar estoque —
 está inteiro, com rota, tela e teste de concorrência. A tela de Importação de NF-e atende o
@@ -122,11 +118,11 @@ O RF03 fechou: a tela de Administração entrou na semana 6 e lista, cria e inat
 pelo aplicativo. Continua sem protótipo no Figma, então o desenho é decisão de implementação,
 não de design.
 
-### 6. Três telas sem requisito
+### 6. ~~Três telas sem requisito~~ — corrigido em 08/11
 
-Painel, Custos e Equipe estão prontas, em uso e testadas, e não correspondem a RF nenhum. O
-mesmo apontamento de 22/09 continua: ou viram requisito, ou ficam como funcionalidade que
-ninguém pode cobrar.
+Painel, Custos e Equipe viraram RF13, RF14 e RF15 na Definição de requisitos
+(`Definicao de requisitos.md`, de onde o PDF é gerado) e entraram na tabela de requisitos
+acima. O apontamento de 22/09 está fechado.
 
 ### 7. Consultar Logs tem rota e tela, e segue sem RF numerado
 
