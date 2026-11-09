@@ -98,7 +98,7 @@
     <rect x="60" y="480" width="380" height="250" rx="12" class="table" />
     <path d="M 72 480 H 428 Q 440 480 440 492 V 538 H 60 V 492 Q 60 480 72 480" fill="#2f343a" />
     <text x="80" y="519" class="title" fill="#f4f6f8">equipamento</text>
-    <text x="80" y="572" class="field">id PK</text>
+    <text x="80" y="572" class="field">id PK / UQ id+empresa</text>
 <text x="80" y="601" class="field">empresa_id FK</text>
 <text x="80" y="630" class="field">nome</text>
 <text x="80" y="659" class="field">patrimonio</text>
@@ -135,14 +135,17 @@
 <text x="1490" y="688" class="field">orcamento_total</text>
   </g>
 <g>
-    <rect x="1940" y="480" width="380" height="250" rx="12" class="table" />
+    <rect x="1940" y="480" width="380" height="322" rx="12" class="table" />
     <path d="M 1952 480 H 2308 Q 2320 480 2320 492 V 538 H 1940 V 492 Q 1940 480 1952 480" fill="#2f343a" />
     <text x="1960" y="519" class="title" fill="#f4f6f8">emprestimo</text>
-    <text x="1960" y="572" class="field">id PK</text>
-<text x="1960" y="601" class="field">equipamento_id FK</text>
-<text x="1960" y="630" class="field">usuario_id FK</text>
-<text x="1960" y="659" class="field">obra_id FK</text>
-<text x="1960" y="688" class="field">datas / status</text>
+    <text x="1960" y="572" class="field">id PK / empresa_id</text>
+<text x="1960" y="601" class="field">equipamento_id FK composta</text>
+<text x="1960" y="630" class="field">usuario_id FK composta</text>
+<text x="1960" y="659" class="field">obra_id FK composta</text>
+<text x="1960" y="688" class="field">data_emprestimo</text>
+<text x="1960" y="717" class="field">data_prevista / data_devolucao</text>
+<text x="1960" y="746" class="field">status: aberto / devolvido</text>
+<text x="1960" y="775" class="field">UQ equipamento WHERE aberto</text>
   </g>
 <g>
     <rect x="60" y="880" width="380" height="250" rx="12" class="table" />

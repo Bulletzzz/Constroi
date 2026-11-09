@@ -1,6 +1,6 @@
 Project Constroi {
   database_type: 'PostgreSQL'
-  Note: 'Estado consolidado depois das migrations 001 a 014'
+  Note: 'Estado consolidado depois das migrations 001 a 015'
 }
 
 Table empresa {
@@ -157,17 +157,27 @@ Table equipamento {
   status varchar(30) [not null]
   criado_em timestamptz [not null]
   atualizado_em timestamptz [not null]
-  indexes { (empresa_id, patrimonio) [unique] }
+  indexes {
+    (empresa_id, patrimonio) [unique]
+    (id, empresa_id) [unique]
+  }
 }
 
 Table emprestimo {
   id integer [pk, increment]
-  equipamento_id integer [not null, ref: > equipamento.id]
-  usuario_id integer [not null, ref: > usuario.id]
-  obra_id integer [not null, ref: > obra.id]
+  empresa_id integer [not null]
+  equipamento_id integer [not null]
+  usuario_id integer [not null]
+  obra_id integer [not null]
   data_emprestimo timestamptz [not null]
+  data_prevista timestamptz [not null]
   data_devolucao timestamptz
   status varchar(30) [not null]
+  indexes {
+    (equipamento_id, status) [name: 'ix_emprestimo_equipamento_status']
+    (empresa_id, data_emprestimo, id) [name: 'ix_emprestimo_empresa_data']
+  }
+  Note: 'CHECK: aberto ou devolvido; datas finitas e coerentes. Indice unico parcial em equipamento_id WHERE status = aberto. Indice de empresa ordena data e id em DESC.'
 }
 
 Table log_sistema {
@@ -223,3 +233,6 @@ Ref: movimentacao_estoque.(pedido_id, obra_id) > pedido.(id, obra_id) [delete: r
 Ref: entrada_estoque.(obra_id, empresa_nfe_id) > obra.(id, empresa_id)
 
 Ref fk_log_usuario_empresa: log_sistema.(usuario_id, empresa_id) > usuario.(id, empresa_id) [delete: restrict]
+Ref: emprestimo.(equipamento_id, empresa_id) > equipamento.(id, empresa_id) [delete: restrict]
+Ref: emprestimo.(usuario_id, empresa_id) > usuario.(id, empresa_id) [delete: restrict]
+Ref: emprestimo.(obra_id, empresa_id) > obra.(id, empresa_id) [delete: restrict]
