@@ -1,3 +1,5 @@
+import '../../core/catalogo/opcoes.dart';
+
 enum Urgencia {
   padrao('padrao', 'Padrão', '3 a 5 dias'),
   urgente('urgente', 'Urgente', 'Até 24 horas');
@@ -8,10 +10,8 @@ enum Urgencia {
   final String rotulo;
   final String prazo;
 
-  static Urgencia daApi(Object? valor) => values.firstWhere(
-    (u) => u.valor == valor,
-    orElse: () => Urgencia.padrao,
-  );
+  static Urgencia daApi(Object? valor) =>
+      values.firstWhere((u) => u.valor == valor, orElse: () => Urgencia.padrao);
 }
 
 enum SituacaoPedido {
@@ -60,7 +60,9 @@ class ItemDoPedido {
 
   String get descricao {
     final nome = produtoNome ?? 'Produto $produtoId';
-    return unidade == null ? '$quantidade · $nome' : '$quantidade $unidade · $nome';
+    return unidade == null
+        ? '$quantidade · $nome'
+        : '${formatarQuantidade(quantidade, unidade!)} ${unidadeParaQuantidade(unidade!, quantidade)} · $nome';
   }
 }
 

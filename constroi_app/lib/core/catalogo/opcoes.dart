@@ -54,3 +54,25 @@ String rotuloDoStatus(String codigo) => statusDoEquipamento
       orElse: () => StatusEquipamento(codigo, codigo),
     )
     .rotulo;
+
+bool quantidadeInteiraObrigatoria(String unidade) =>
+    {'un', 'saco', 'sacos'}.contains(unidade.trim().toLowerCase());
+
+String formatarQuantidade(String quantidade, String unidade) {
+  final numero = num.tryParse(quantidade);
+  if (quantidadeInteiraObrigatoria(unidade) &&
+      numero != null &&
+      numero == numero.truncateToDouble()) {
+    return numero.toStringAsFixed(0);
+  }
+  return quantidade;
+}
+
+String unidadeParaQuantidade(String unidade, String quantidade) {
+  if (!{'saco', 'sacos'}.contains(unidade.trim().toLowerCase())) {
+    return unidade;
+  }
+  final valor = num.tryParse(quantidade.replaceAll(',', '.'));
+  if (valor == null) return unidade;
+  return valor.abs() == 1 ? 'saco' : 'sacos';
+}

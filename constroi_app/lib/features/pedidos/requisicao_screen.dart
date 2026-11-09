@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/catalogo/opcoes.dart';
 import '../../navigation/app_bottom_navigation.dart';
 import '../../navigation/app_route.dart';
 import '../../navigation/perfil_usuario.dart';
@@ -165,6 +166,10 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
     final valor = double.tryParse(texto);
     if (valor == null || valor <= 0) {
       return 'Informe uma quantidade maior que zero.';
+    }
+    if (quantidadeInteiraObrigatoria(_produto!.unidade) &&
+        valor != valor.truncateToDouble()) {
+      return 'Informe uma quantidade inteira para este material.';
     }
     if (texto.contains('.') && texto.split('.').last.length > 2) {
       return 'A quantidade aceita no máximo duas casas decimais.';
@@ -696,14 +701,12 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
         _linhaDeRevisao('MATERIAL', _produto?.identificacao ?? '—'),
         _linhaDeRevisao(
           'QUANTIDADE',
-          '${_quantidade.text.trim()} ${_produto?.unidade ?? ''}'.trim(),
+          '${_quantidade.text.trim()} ${unidadeParaQuantidade(_produto?.unidade ?? '', _quantidade.text.trim())}'
+              .trim(),
         ),
         _linhaDeRevisao('OBRA', obra?.nome ?? '—'),
         _linhaDeRevisao('LOCAL DA OBRA', local.isEmpty ? '—' : local),
-        _linhaDeRevisao(
-          'URGÊNCIA',
-          '${_urgencia.rotulo} · ${_urgencia.prazo}',
-        ),
+        _linhaDeRevisao('URGÊNCIA', '${_urgencia.rotulo} · ${_urgencia.prazo}'),
         _linhaDeRevisao(
           'ESPECIFICAÇÕES',
           especificacoes.isEmpty ? '—' : especificacoes,
@@ -868,7 +871,9 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
         child: Container(
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 13),
-          decoration: BoxDecoration(border: Border.all(color: _tinta, width: 2)),
+          decoration: BoxDecoration(
+            border: Border.all(color: _tinta, width: 2),
+          ),
           child: Row(
             children: [
               Expanded(
@@ -922,10 +927,7 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
           value: valor,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, color: _tinta),
-          hint: Text(
-            dica,
-            style: const TextStyle(color: _dica, fontSize: 13),
-          ),
+          hint: Text(dica, style: const TextStyle(color: _dica, fontSize: 13)),
           style: const TextStyle(color: _tinta, fontSize: 13),
           onChanged: _enviando ? null : aoMudar,
           items: itens,

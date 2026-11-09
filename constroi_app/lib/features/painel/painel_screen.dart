@@ -1,3 +1,4 @@
+import '../../core/catalogo/opcoes.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/app_header.dart';
@@ -651,7 +652,10 @@ class _LinhaMovimento extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    movimento.unidade,
+                    unidadeParaQuantidade(
+                      movimento.unidade,
+                      movimento.quantidade.toString(),
+                    ),
                     style: const TextStyle(color: _cinza, fontSize: 9),
                   ),
                 ],

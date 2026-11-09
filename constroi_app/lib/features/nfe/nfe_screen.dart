@@ -1,3 +1,4 @@
+import '../../core/catalogo/opcoes.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -506,7 +507,7 @@ class _NfeScreenState extends State<NfeScreen> {
                     const SizedBox(height: 6),
                     Text('Código: ${material.codigo}'),
                     Text(
-                      'Quantidade: ${material.quantidade.replaceAll('.', ',')} ${material.unidade}',
+                      'Quantidade: ${formatarQuantidade(material.quantidade, material.unidade).replaceAll('.', ',')} ${unidadeParaQuantidade(material.unidade, material.quantidade)}',
                     ),
                   ],
                 ),

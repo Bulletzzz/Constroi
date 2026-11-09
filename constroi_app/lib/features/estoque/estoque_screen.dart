@@ -1,3 +1,4 @@
+import '../../core/catalogo/opcoes.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -156,7 +157,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   int? get _obraAtual => widget.obraId ?? _obra;
 
   String _detalheDaLinha(ItemEstoque item) {
-    final saldo = '${item.quantidade} ${item.unidade}'.trim();
+    final quantidade = formatarQuantidade(item.quantidade, item.unidade);
+    final saldo =
+        '$quantidade ${unidadeParaQuantidade(item.unidade, item.quantidade)}'
+            .trim();
     if (_obraAtual != null) return saldo;
     return '$saldo · ${_nomeDeObra(item.obraId)}';
   }

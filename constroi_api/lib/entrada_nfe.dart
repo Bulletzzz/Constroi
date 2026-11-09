@@ -1,6 +1,7 @@
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/nfe.dart';
+import 'package:constroi_api/quantidades.dart';
 import 'package:postgres/postgres.dart';
 
 Future<Map<String, Object?>> importarNfe(
@@ -66,6 +67,15 @@ Future<Map<String, Object?>> importarNfe(
                 : 'unidade_diferente',
           });
         } else {
+          if (!quantidadeValidaParaUnidade(
+            item.unidade,
+            num.parse(item.quantidade),
+          )) {
+            throw const FalhaNfe(
+              422,
+              'A quantidade de unidades e sacos deve ser inteira.',
+            );
+          }
           itens.add((
             produto: candidatos.single['id']! as int,
             quantidade: item.quantidade,

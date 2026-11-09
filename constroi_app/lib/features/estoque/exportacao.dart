@@ -1,3 +1,4 @@
+import '../../core/catalogo/opcoes.dart';
 import 'item_estoque.dart';
 
 const _colunas = [
@@ -18,8 +19,8 @@ String csvDoEstoque(List<ItemEstoque> itens) {
       _linha([
         item.identificacao,
         item.produtoNome,
-        item.unidade,
-        item.quantidade,
+        unidadeParaQuantidade(item.unidade, item.quantidade),
+        formatarQuantidade(item.quantidade, item.unidade),
         item.estoqueMinimo,
         item.baixo ? 'sim' : 'nao',
         item.categoriaNome ?? '',
