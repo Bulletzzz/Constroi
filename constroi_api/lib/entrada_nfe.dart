@@ -25,7 +25,7 @@ Future<Map<String, Object?>> importarNfe(
       if (obras.isEmpty) throw const FalhaNfe(404, 'Obra nao encontrada.');
       final catalogo = await tx.execute(
         Sql.named('''
-        SELECT id, nome, unidade, sku FROM produto
+        SELECT id, nome, unidade, sku, categoria_custo_id FROM produto
         WHERE empresa_id = @empresa AND
           (LOWER(sku) = ANY(@codigos::text[]) OR LOWER(nome) = ANY(@nomes::text[]))
         ORDER BY id FOR SHARE
@@ -38,7 +38,8 @@ Future<Map<String, Object?>> importarNfe(
       );
       final produtos = catalogo.map((r) => r.toColumnMap()).toList();
       final pendencias = <Map<String, Object?>>[];
-      final itens = <({int produto, String quantidade})>[];
+      final itens =
+          <({int produto, String quantidade, String? preco, int? categoria})>[];
       for (final item in nota.itens) {
         var candidatos = produtos
             .where(
@@ -76,9 +77,12 @@ Future<Map<String, Object?>> importarNfe(
               'A quantidade de unidades e sacos deve ser inteira.',
             );
           }
+          final categoria = candidatos.single['categoria_custo_id'] as int?;
           itens.add((
             produto: candidatos.single['id']! as int,
             quantidade: item.quantidade,
+            preco: categoria == null ? null : item.valorUnitario,
+            categoria: categoria,
           ));
         }
       }
@@ -114,13 +118,17 @@ Future<Map<String, Object?>> importarNfe(
       for (final item in itens) {
         await tx.execute(
           Sql.named(
-            'INSERT INTO item_entrada (entrada_id, produto_id, quantidade) '
-            'VALUES (@entrada, @produto, @quantidade::numeric)',
+            'INSERT INTO item_entrada (entrada_id, produto_id, quantidade, '
+            'valor_unitario, categoria_custo_id) '
+            'VALUES (@entrada, @produto, @quantidade::numeric, '
+            '@preco::numeric, @categoria)',
           ),
           parameters: {
             'entrada': entrada['id'],
             'produto': item.produto,
             'quantidade': item.quantidade,
+            'preco': item.preco,
+            'categoria': item.preco == null ? null : item.categoria,
           },
         );
         quantidades.putIfAbsent(item.produto, () => []).add(item.quantidade);

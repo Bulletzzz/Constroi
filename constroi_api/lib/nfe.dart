@@ -17,6 +17,7 @@ typedef MaterialNfe = ({
   String nome,
   String unidade,
   String quantidade,
+  String? valorUnitario,
 });
 
 class NotaFiscal {
@@ -91,6 +92,7 @@ NotaFiscal lerNfe(List<int> bytes) {
         nome: nome,
         unidade: unidade,
         quantidade: quantidade,
+        valorUnitario: dinheiroNfe(_texto(produto, 'vUnCom')),
       ));
     }
     return NotaFiscal(
@@ -122,6 +124,20 @@ XmlElement? _filho(XmlElement elemento, String nome) {
 
 String _texto(XmlElement elemento, String nome) =>
     _filho(elemento, nome)?.innerText.trim() ?? '';
+
+String? dinheiroNfe(String texto) {
+  final partes = RegExp(r'^(\d{1,12})(?:\.(\d{1,10}))?$').firstMatch(texto);
+  if (partes == null) return null;
+  final fracao = (partes[2] ?? '').padRight(3, '0');
+  var centavos =
+      BigInt.parse(partes[1]!) * BigInt.from(100) +
+      BigInt.parse(fracao.substring(0, 2));
+  if (int.parse(fracao[2]) >= 5) centavos += BigInt.one;
+  if (centavos <= BigInt.zero) return null;
+  final inteiro = centavos ~/ BigInt.from(100);
+  final resto = (centavos % BigInt.from(100)).toString().padLeft(2, '0');
+  return '$inteiro.$resto';
+}
 
 /// Aceita zeros extras de qCom, nunca arredonda nem usa double.
 String? decimalNfe(String texto) {

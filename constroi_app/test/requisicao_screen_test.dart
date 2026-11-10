@@ -291,7 +291,7 @@ void main() {
 
     await tocar(tester, 'REVISAR');
     expect(find.text('CONFIRA ANTES DE ENVIAR'), findsOneWidget);
-    expect(find.text('150 saco'), findsOneWidget);
+    expect(find.text('150 sacos'), findsOneWidget);
 
     await tocar(tester, 'ENVIAR');
 
@@ -311,11 +311,15 @@ void main() {
   });
 
   testWidgets('quantidade decimal com virgula vira numero', (tester) async {
-    final montagem = montar();
+    final montagem = montar(
+      catalogo: [
+        {'id': 21, 'nome': 'Areia media', 'unidade': 'm3', 'sku': 'ARE-01'},
+      ],
+    );
     await abrir(tester, montagem.service);
 
-    await escolherMaterial(tester);
-    await tester.enterText(find.byType(TextField).at(0), '2,５'.replaceAll('５', '5'));
+    await escolherMaterial(tester, alvo: 'Areia media · ARE-01');
+    await tester.enterText(find.byType(TextField).at(0), '2,5');
     await tester.pumpAndSettle();
     await tocar(tester, 'REVISAR');
     await tocar(tester, 'ENVIAR');
@@ -342,7 +346,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(0), '1,555');
     await tocar(tester, 'REVISAR');
     expect(
-      find.text('A quantidade aceita no máximo duas casas decimais.'),
+      find.text('Informe uma quantidade inteira para este material.'),
       findsOneWidget,
     );
     expect(montagem.enviados, isEmpty);

@@ -202,6 +202,44 @@ void main() {
     },
   );
   test(
+    'preco da nota alimenta o custo so quando o produto tem categoria',
+    () async {
+      await sql('UPDATE produto SET categoria_custo_id=2 WHERE id=1');
+      final res = await enviar(
+        xml: xmlNfe(itens: materialXml(valorUnitario: '38.5000000000')),
+      );
+      expect(res.status, 201, reason: '${res.body}');
+      expect(
+        (await sql(
+          'SELECT valor_unitario::text,categoria_custo_id FROM item_entrada',
+        )).single.toList(),
+        ['38.50', 2],
+      );
+      expect(
+        (await sql(
+          "SELECT valor::text FROM vw_lancamento_custo WHERE origem='material'",
+        )).single[0],
+        '48.13',
+      );
+    },
+  );
+  test('produto sem categoria entra sem preco em vez de falhar', () async {
+    final res = await enviar(
+      xml: xmlNfe(itens: materialXml(valorUnitario: '38.50')),
+    );
+    expect(res.status, 201, reason: '${res.body}');
+    expect(
+      (await sql(
+        'SELECT valor_unitario,categoria_custo_id FROM item_entrada',
+      )).single.toList(),
+      [null, null],
+    );
+    expect(
+      (await sql('SELECT count(*) FROM vw_lancamento_custo')).single[0],
+      0,
+    );
+  });
+  test(
     'casa nome unico sem SKU e agrega repeticoes com precisao decimal',
     () async {
       await sql('UPDATE produto SET sku=NULL WHERE id=1');

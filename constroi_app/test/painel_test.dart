@@ -12,6 +12,7 @@ import 'package:constroi_app/navigation/app_bottom_navigation.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/screens/login_screen.dart';
 import 'package:constroi_app/features/custos/custos_screen.dart';
+import 'package:constroi_app/features/estoque/estoque_service.dart';
 import 'package:constroi_app/theme/app_theme.dart';
 import 'package:constroi_app/widgets/app_home.dart';
 import 'package:flutter/material.dart';
@@ -77,6 +78,7 @@ Future<void> abrirPainel(
   PerfilUsuario perfil = PerfilUsuario.master,
   Size tamanho = const Size(390, 844),
   double escala = 1,
+  List<RouteSettings>? rotas,
 }) async {
   tester.view.physicalSize = tamanho;
   tester.view.devicePixelRatio = 1;
@@ -97,6 +99,14 @@ Future<void> abrirPainel(
         ).copyWith(textScaler: TextScaler.linear(escala)),
         child: child!,
       ),
+      onGenerateRoute: rotas == null
+          ? null
+          : (settings) {
+              rotas.add(settings);
+              return MaterialPageRoute<void>(
+                builder: (_) => const Scaffold(body: Text('destino')),
+              );
+            },
       home: AppHome(
         key: UniqueKey(),
         service: PainelService(api),
@@ -109,6 +119,102 @@ Future<void> abrirPainel(
 }
 
 void main() {
+  group('indicadores clicaveis', () {
+    for (final caso in [
+      ('TOTAL DE ITENS', '/estoque', 'todos'),
+      ('RUPTURAS CRÍTICAS', '/estoque', 'zerado'),
+      ('ESTOQUE BAIXO', '/estoque', 'baixo'),
+      ('VALOR ESTIMADO', '/estoque', 'todos'),
+    ]) {
+      testWidgets('${caso.$1} abre o estoque filtrado em ${caso.$3}', (
+        tester,
+      ) async {
+        final rotas = <RouteSettings>[];
+        await abrirPainel(
+          tester,
+          (_) async => ok(respostaPainel()),
+          tamanho: const Size(390, 2400),
+          rotas: rotas,
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(caso.$1));
+        await tester.pumpAndSettle();
+
+        expect(rotas.single.name, caso.$2);
+        expect((rotas.single.arguments! as Map)['saldo'], caso.$3);
+      });
+    }
+
+    testWidgets('REQUISIÇÕES PENDENTES abre as requisicoes', (tester) async {
+      final rotas = <RouteSettings>[];
+      await abrirPainel(
+        tester,
+        (_) async => ok(respostaPainel()),
+        tamanho: const Size(390, 2400),
+        rotas: rotas,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('REQUISIÇÕES PENDENTES'));
+      await tester.pumpAndSettle();
+
+      expect(rotas.single.name, '/requisicoes');
+    });
+
+    testWidgets('a ruptura do painel chega no estoque como zerado=true', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(400, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final consultas = <Uri>[];
+      await tester.pumpWidget(
+        ConstroiApp(
+          config: ApiConfig('https://api.constroi.test'),
+          storage: MemoryTokenStorage()..token = tokenPerfil('master'),
+          httpClient: MockClient((request) async {
+            consultas.add(request.url);
+            if (request.url.path == '/estoque') {
+              return ok({'estoque': <Object?>[]});
+            }
+            return ok(respostaPainel());
+          }),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('RUPTURAS CRÍTICAS'));
+      await tester.pumpAndSettle();
+
+      final estoque = consultas.lastWhere((uri) => uri.path == '/estoque');
+      expect(estoque.queryParameters['zerado'], 'true');
+      expect(find.text(FiltroDeSaldo.zerado.rotulo), findsOneWidget);
+    });
+
+    testWidgets('pedreiro nao ve valor estimado e os demais seguem clicaveis', (
+      tester,
+    ) async {
+      final rotas = <RouteSettings>[];
+      await abrirPainel(
+        tester,
+        (_) async => ok(respostaPainel()),
+        perfil: PerfilUsuario.pedreiro,
+        tamanho: const Size(390, 2400),
+        rotas: rotas,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('VALOR ESTIMADO'), findsNothing);
+
+      await tester.tap(find.text('ESTOQUE BAIXO'));
+      await tester.pumpAndSettle();
+
+      expect(rotas.single.name, '/estoque');
+      expect((rotas.single.arguments! as Map)['saldo'], 'baixo');
+    });
+  });
+
   test('decimais e moeda sao lidos sem converter ausencia em zero', () {
     final dados = PainelDados.fromJson(respostaPainel(valor: null));
     expect(dados.indicadores.valorEstimado, isNull);

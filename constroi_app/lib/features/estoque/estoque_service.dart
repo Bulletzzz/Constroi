@@ -5,6 +5,19 @@ const limiteMinimo = 1;
 const limiteMaximo = 200;
 const limitePadrao = 50;
 
+enum FiltroDeSaldo {
+  todos('TODOS'),
+  baixo('ABAIXO DO MÍNIMO'),
+  zerado('ZERADOS');
+
+  const FiltroDeSaldo(this.rotulo);
+
+  final String rotulo;
+
+  static FiltroDeSaldo porNome(Object? valor) => FiltroDeSaldo.values
+      .firstWhere((filtro) => filtro.name == valor, orElse: () => todos);
+}
+
 class PaginaDeEstoque {
   const PaginaDeEstoque({required this.itens, required this.temMais});
 
@@ -21,7 +34,7 @@ class EstoqueService {
     int? obraId,
     String busca = '',
     int? categoriaId,
-    bool somenteBaixo = false,
+    FiltroDeSaldo saldo = FiltroDeSaldo.todos,
     int limite = limitePadrao,
     int deslocamento = 0,
   }) async {
@@ -38,7 +51,8 @@ class EstoqueService {
     };
     if (obraId != null) consulta['obra_id'] = '$obraId';
     if (categoriaId != null) consulta['categoria_id'] = '$categoriaId';
-    if (somenteBaixo) consulta['baixo'] = 'true';
+    if (saldo == FiltroDeSaldo.baixo) consulta['baixo'] = 'true';
+    if (saldo == FiltroDeSaldo.zerado) consulta['zerado'] = 'true';
     final termo = busca.trim();
     if (termo.isNotEmpty) consulta['busca'] = termo;
 

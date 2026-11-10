@@ -51,6 +51,16 @@ void main() {
     expect(linha.split(';'), hasLength(9));
   });
 
+  test('a unidade na planilha nao muda com a quantidade', () {
+    final uma = csvDoEstoque([item(quantidade: '1.00')]).split('\r\n').last;
+    final varias = csvDoEstoque([item(quantidade: '12.00')]).split('\r\n').last;
+
+    expect(uma.split(';')[2], 'saco');
+    expect(varias.split(';')[2], 'saco');
+    expect(uma.split(';')[3], '1');
+    expect(varias.split(';')[3], '12');
+  });
+
   test('lista vazia devolve apenas o cabecalho', () {
     expect(csvDoEstoque(const []).split('\r\n'), hasLength(1));
   });

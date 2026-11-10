@@ -309,6 +309,25 @@ duas vezes: a primeira aplica todas, a segunda não aplica nenhuma. O arquivo
 padrão é `.env.migrations`, alterável por `MIGRATION_ENV_FILE`. Não há fallback
 para `.env`, `DATABASE_ENV_FILE` ou `DATABASE_URL`.
 
+## Dados de demonstração
+
+`bin/semear.dart` preenche a empresa de CNPJ `00.000.000/0001-00` com um
+histórico de 70 dias: quatro obras com orçamento, dezoito produtos, nove
+equipamentos, equipes, entradas com preço, pedidos nos três estados, baixas de
+estoque, despesas, empréstimos e os eventos correspondentes. Usa a
+`DATABASE_URL` do `.env`.
+
+```powershell
+cd constroi_api
+dart run bin/semear.dart --confirmar
+```
+
+Sem `--confirmar` o script apenas descreve o que faria. Antes de inserir, ele
+apaga dessa empresa as entradas, movimentações, despesas, empréstimos, pedidos,
+saldos de estoque, vínculos de equipe e eventos; empresa, usuários, produtos e
+equipamentos existentes são preservados e atualizados. Rodar duas vezes deixa o
+banco no mesmo estado. Os usuários criados recebem a senha `Senha#Forte123`.
+
 ## Consulta de estoque (RF05)
 
 Após aplicar a migration 009, `GET /estoque` retorna os saldos das obras acessíveis,
@@ -329,10 +348,13 @@ Filtros combináveis:
 | `categoria_id` | Opcional; inteiro positivo até 2147483647, filtra `produto.categoria_custo_id` |
 | `busca` | Trecho literal do nome ou SKU, sem diferenciar maiúsculas; até 150 caracteres |
 | `baixo` | `true` para somente saldo menor ou igual ao mínimo; padrão `false` |
+| `zerado` | `true` para somente saldo igual a zero; padrão `false` |
 | `limit` | De 1 a 200; padrão 50 |
 | `offset` | De 0 a 10000; padrão 0 |
 
 Exemplo: `GET /estoque?obra_id=7&categoria_id=2&busca=CIM&baixo=true&limit=50&offset=0`.
+`baixo` e `zerado` são independentes e podem ser combinados; `baixo` já inclui os
+saldos zerados, então `zerado` serve para isolar a ruptura.
 Ordenação por nome/ID do produto, obra e ID do saldo para paginação estável entre obras.
 Categorias inexistentes ou sem saldos visíveis retornam lista vazia. Produtos sem
 categoria continuam na consulta sem filtro, com os dois campos de categoria nulos.
@@ -597,3 +619,31 @@ Na raiz, com API e banco de teste correspondentes:
 ```powershell
 .\testes\executar.ps1 -Caso 23_emprestimo_e_devolucao
 ```
+
+## Lançamento de custos (RF14)
+
+A tela de custos soma duas origens, ambas na view `vw_lancamento_custo`:
+material comprado com preço registrado e despesas avulsas.
+
+`POST /custos/despesas` grava serviços e locações, restrito a engenheiro ou
+master pelo middleware de `/custos`:
+
+```json
+{"despesa": {"obra_id": 7, "categoria_custo_id": 3,
+  "descricao": "Locacao de bomba de concreto", "valor": "6800.00"}}
+```
+
+O valor chega como texto decimal com ponto, de `0.01` a `999999999999.99`, e é
+validado sem ponto flutuante. Obra de outra empresa retorna 404; categoria
+inexistente, 400. A gravação e o evento `CRIACAO_DESPESA` ficam na mesma
+transação.
+
+O preço do material vem da NF-e: o parser lê `vUnCom` e grava
+`item_entrada.valor_unitario` junto da categoria do produto. Como a coluna é
+`NUMERIC(14,2)` e a NF-e permite até dez decimais no preço unitário, o valor é
+**arredondado para o centavo mais próximo** com `BigInt`, nunca com `double`.
+O total do lançamento sai de quantidade × preço arredondado, com diferença
+máxima de meio centavo por unidade comprada. Produto sem
+`categoria_custo_id` entra sem preço, porque a constraint
+`ck_item_entrada_valor_com_categoria` exige categoria junto do valor — esses
+saldos aparecem em `itens_sem_preco`. Nota sem `vUnCom` não inventa preço.

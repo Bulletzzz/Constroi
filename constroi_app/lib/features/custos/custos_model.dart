@@ -30,6 +30,33 @@ class TotalObra extends ResumoCusto {
   final String nome;
 }
 
+class CategoriaDeCusto {
+  const CategoriaDeCusto(this.id, this.nome);
+
+  final int id;
+  final String nome;
+
+  static CategoriaDeCusto? talvezDoJson(Object? dados) {
+    if (dados is! Map) return null;
+    final id = dados['id'];
+    final nome = '${dados['nome'] ?? ''}'.trim();
+    if (id is! int || nome.isEmpty) return null;
+    return CategoriaDeCusto(id, nome);
+  }
+}
+
+String? valorParaApi(String digitado) {
+  final bruto = digitado.trim();
+  final texto = bruto.contains(',')
+      ? bruto.replaceAll('.', '').replaceAll(',', '.')
+      : bruto;
+  if (!RegExp(r'^\d{1,12}(\.\d{1,2})?$').hasMatch(texto)) return null;
+  final partes = texto.split('.');
+  final centavos = (partes.length == 1 ? '' : partes[1]).padRight(2, '0');
+  if (int.parse(partes.first) == 0 && int.parse(centavos) == 0) return null;
+  return '${partes.first}.$centavos';
+}
+
 class CategoriaCusto {
   CategoriaCusto.fromJson(Map dados)
     : nome = dados['nome'] as String,

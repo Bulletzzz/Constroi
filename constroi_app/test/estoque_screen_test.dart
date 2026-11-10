@@ -55,8 +55,8 @@ Map<String, dynamic> item(
   return (service: EstoqueService(api: api), chamadas: chamadas);
 }
 
-
-({EstoqueService estoque, PainelService painel, List<Uri> chamadas}) montarComPainel(
+({EstoqueService estoque, PainelService painel, List<Uri> chamadas})
+montarComPainel(
   List<Map<String, dynamic>> itens, {
   List<Map<String, dynamic>> obras = const [
     {'id': 7, 'nome': 'Obra Alpha'},
@@ -130,11 +130,7 @@ void main() {
     tester,
   ) async {
     final tudo = montar((_) => [item(1)]);
-    await abrir(
-      tester,
-      tudo.service,
-      aoCadastrar: (_) async {},
-    );
+    await abrir(tester, tudo.service, aoCadastrar: (_) async {});
     expect(find.bySemanticsIdentifier('estoque-novo-item'), findsOneWidget);
 
     await abrir(
@@ -149,7 +145,11 @@ void main() {
   testWidgets('sem o callback o botao nao aparece nem para o master', (
     tester,
   ) async {
-    await abrir(tester, montar((_) => [item(1)]).service, perfil: PerfilUsuario.master);
+    await abrir(
+      tester,
+      montar((_) => [item(1)]).service,
+      perfil: PerfilUsuario.master,
+    );
     expect(find.bySemanticsIdentifier('estoque-novo-item'), findsNothing);
   });
 
@@ -181,10 +181,14 @@ void main() {
     expect(find.text('NOVO ITEM'), findsOneWidget);
     expect(find.text('Buscar SKU ou nome'), findsOneWidget);
     expect(find.text('CATEGORIA:'), findsOneWidget);
-    expect(find.text('SOMENTE ESTOQUE BAIXO'), findsOneWidget);
+    expect(find.text('SALDO:'), findsOneWidget);
+    for (final filtro in FiltroDeSaldo.values) {
+      expect(find.text(filtro.rotulo), findsOneWidget);
+    }
     expect(find.text('STS'), findsOneWidget);
     expect(find.text('SKU / ID'), findsOneWidget);
     expect(find.text('DESCRIÇÃO'), findsOneWidget);
+    expect(find.text('SALDO'), findsOneWidget);
     expect(find.text('CIM-01'), findsOneWidget);
     expect(find.text('Cimento CP-II'), findsOneWidget);
   });
@@ -213,21 +217,46 @@ void main() {
     expect(tudo.chamadas.last.queryParameters['busca'], 'cim');
   });
 
-  testWidgets('somente estoque baixo envia o filtro', (tester) async {
+  testWidgets('filtro de saldo troca entre baixo, zerado e todos', (
+    tester,
+  ) async {
     final tudo = montar((_) => [item(1, baixo: true)]);
     await abrir(tester, tudo.service);
 
-    await tester.tap(find.byType(Checkbox));
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text(FiltroDeSaldo.baixo.rotulo));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters['baixo'], 'true');
+    expect(tudo.chamadas.last.queryParameters.containsKey('zerado'), isFalse);
+
+    await tester.tap(find.text(FiltroDeSaldo.zerado.rotulo));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters['zerado'], 'true');
+    expect(tudo.chamadas.last.queryParameters.containsKey('baixo'), isFalse);
+
+    await tester.tap(find.text(FiltroDeSaldo.todos.rotulo));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters.containsKey('baixo'), isFalse);
+    expect(tudo.chamadas.last.queryParameters.containsKey('zerado'), isFalse);
+  });
+
+  testWidgets('a ruptura do resumo filtra a tabela nos zerados', (
+    tester,
+  ) async {
+    final tudo = montar((_) => [item(1, baixo: true)]);
+    await abrir(tester, tudo.service);
+
+    await tester.tap(find.text('RUPTURAS CRÍTICAS'));
     await tester.pumpAndSettle();
 
-    expect(tudo.chamadas.last.queryParameters['baixo'], 'true');
+    expect(tudo.chamadas.last.queryParameters['zerado'], 'true');
   });
 
   testWidgets('filtro de categoria usa as categorias carregadas', (
     tester,
   ) async {
-    final tudo = montar((_) => [item(1), item(2, categoria: 9, categoriaNome: 'Madeira')]);
+    final tudo = montar(
+      (_) => [item(1), item(2, categoria: 9, categoriaNome: 'Madeira')],
+    );
     await abrir(tester, tudo.service);
 
     await tester.tap(find.byType(DropdownButton<int?>));
@@ -308,7 +337,9 @@ void main() {
   });
 
   testWidgets('layout aguenta texto ampliado sem estourar', (tester) async {
-    final tudo = montar((_) => [item(1, nome: 'Vergalhao CA-50 (12m) nervurado')]);
+    final tudo = montar(
+      (_) => [item(1, nome: 'Vergalhao CA-50 (12m) nervurado')],
+    );
     tester.view.physicalSize = const Size(390, 2600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -484,7 +515,9 @@ void main() {
     await tester.fling(find.byType(ListView), const Offset(0, 320), 1000);
     await tester.pumpAndSettle();
 
-    final depois = tudo.chamadas.where((u) => u.path.endsWith('/painel')).length;
+    final depois = tudo.chamadas
+        .where((u) => u.path.endsWith('/painel'))
+        .length;
     expect(depois, antes + 1);
   });
 

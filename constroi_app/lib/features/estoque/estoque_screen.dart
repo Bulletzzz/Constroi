@@ -40,6 +40,8 @@ class EstoqueScreen extends StatefulWidget {
     required this.perfil,
     this.painel,
     this.obraId,
+    this.buscaInicial,
+    this.saldoInicial = FiltroDeSaldo.todos,
     this.aoCadastrar,
   });
 
@@ -47,6 +49,8 @@ class EstoqueScreen extends StatefulWidget {
   final PainelService? painel;
   final PerfilUsuario perfil;
   final int? obraId;
+  final String? buscaInicial;
+  final FiltroDeSaldo saldoInicial;
   final Future<void> Function(BuildContext)? aoCadastrar;
 
   @override
@@ -64,7 +68,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   final _categoriasVistas = <int, String>{};
   int? _obra;
   int? _categoria;
-  bool _somenteBaixo = false;
+  late FiltroDeSaldo _saldo = widget.saldoInicial;
   bool _carregando = true;
   bool _carregandoMais = false;
   bool _exportando = false;
@@ -75,6 +79,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   @override
   void initState() {
     super.initState();
+    _busca.text = widget.buscaInicial ?? '';
     unawaited(_carregarIndicadores());
     _buscar();
   }
@@ -104,7 +109,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         obraId: _obraAtual,
         busca: _busca.text,
         categoriaId: _categoria,
-        somenteBaixo: _somenteBaixo,
+        saldo: _saldo,
         deslocamento: continuando ? _itens.length : 0,
       );
       if (!mounted || consulta != _consultaAtual) return;
@@ -156,13 +161,52 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
   int? get _obraAtual => widget.obraId ?? _obra;
 
-  String _detalheDaLinha(ItemEstoque item) {
+  String _detalheDaLinha(ItemEstoque item) =>
+      _obraAtual != null ? '' : _nomeDeObra(item.obraId);
+
+  String _saldoEmTexto(ItemEstoque item) {
     final quantidade = formatarQuantidade(item.quantidade, item.unidade);
-    final saldo =
-        '$quantidade ${unidadeParaQuantidade(item.unidade, item.quantidade)}'
-            .trim();
-    if (_obraAtual != null) return saldo;
-    return '$saldo · ${_nomeDeObra(item.obraId)}';
+    return '$quantidade ${unidadeParaQuantidade(item.unidade, item.quantidade)}'
+        .trim();
+  }
+
+  Widget _saldoDaLinha(ItemEstoque item) {
+    final zerado = num.tryParse(item.quantidade) == 0;
+    return Expanded(
+      flex: 2,
+      child: Semantics(
+        identifier: 'estoque-saldo',
+        label: '${_saldoEmTexto(item)} de ${item.produtoNome}',
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                zerado ? 'SEM SALDO' : _saldoEmTexto(item),
+                style: TextStyle(
+                  color: item.baixo ? _perigo : _tinta,
+                  fontSize: zerado ? 13 : 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'mín. ${formatarQuantidade(item.estoqueMinimo, item.unidade)}',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: item.baixo ? _perigo : _apoio,
+                fontSize: 10,
+                fontWeight: item.baixo ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _nomeDeObra(int id) {
@@ -275,7 +319,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           const SizedBox(height: 16),
           _filtroDeCategoria(),
           const SizedBox(height: 16),
-          _caixaEstoqueBaixo(),
+          _filtroDeSaldo(),
           const SizedBox(height: 16),
           Container(height: 2, color: _tinta),
           const SizedBox(height: 14),
@@ -283,21 +327,30 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           const SizedBox(height: 24),
           _cartaoResumo(
             rotulo: 'ITENS MONITORADOS',
+            identificador: 'estoque-resumo-itens',
             valor: _numero(_indicadores?.totalItens),
             icone: Icons.inventory_2_outlined,
+            aoTocar: () => _aplicarSaldo(FiltroDeSaldo.todos),
           ),
           const SizedBox(height: 16),
           _cartaoResumo(
             rotulo: 'RUPTURAS CRÍTICAS',
+            identificador: 'estoque-resumo-rupturas',
             valor: _numero(_indicadores?.rupturasCriticas),
             icone: Icons.warning_rounded,
             alerta: true,
+            aoTocar: () => _aplicarSaldo(FiltroDeSaldo.zerado),
           ),
           const SizedBox(height: 16),
           _cartaoResumo(
             rotulo: 'ENTREGAS PENDENTES',
+            identificador: 'estoque-resumo-pendentes',
             valor: _numero(_indicadores?.requisicoesPendentes),
             icone: Icons.local_shipping_outlined,
+            aoTocar: () => Navigator.of(context).pushReplacementNamed(
+              AppRoute.requisicoes.caminho,
+              arguments: {'obra_id': _obraAtual},
+            ),
           ),
         ],
       ),
@@ -513,38 +566,48 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     ],
   );
 
-  Widget _caixaEstoqueBaixo() => Row(
+  Widget _filtroDeSaldo() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      SizedBox(
-        width: 20,
-        height: 20,
-        child: Checkbox(
-          value: _somenteBaixo,
-          onChanged: (valor) {
-            setState(() => _somenteBaixo = valor ?? false);
-            _buscar();
-          },
-          fillColor: WidgetStateProperty.resolveWith(
-            (estados) =>
-                estados.contains(WidgetState.selected) ? _tinta : Colors.white,
-          ),
-          checkColor: Colors.white,
-          side: const BorderSide(color: _tinta, width: 2),
-          shape: const RoundedRectangleBorder(),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-        ),
-      ),
-      const SizedBox(width: 11),
-      Flexible(
-        child: Text(
-          'SOMENTE ESTOQUE BAIXO',
-          overflow: TextOverflow.ellipsis,
-          style: _mini(_tinta),
-        ),
+      Text('SALDO:', style: _mini(_rotulo)),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final filtro in FiltroDeSaldo.values) _chipDeSaldo(filtro),
+        ],
       ),
     ],
   );
+
+  Widget _chipDeSaldo(FiltroDeSaldo filtro) {
+    final ativo = _saldo == filtro;
+    return Semantics(
+      identifier: 'estoque-filtro-${filtro.name}',
+      button: true,
+      selected: ativo,
+      child: InkWell(
+        onTap: ativo
+            ? null
+            : () {
+                setState(() => _saldo = filtro);
+                _buscar();
+              },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: ativo ? _tinta : Colors.white,
+            border: Border.all(color: _tinta, width: 2),
+          ),
+          child: Text(
+            filtro.rotulo,
+            style: _mini(ativo ? Colors.white : _tinta),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _tabela() => Container(
     decoration: BoxDecoration(
@@ -565,7 +628,18 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                 width: 104,
                 child: Text('SKU / ID', style: _mini(_rotulo, 1)),
               ),
-              Expanded(child: Text('DESCRIÇÃO', style: _mini(_rotulo, 1))),
+              Expanded(
+                flex: 3,
+                child: Text('DESCRIÇÃO', style: _mini(_rotulo, 1)),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'SALDO',
+                  textAlign: TextAlign.right,
+                  style: _mini(_rotulo, 1),
+                ),
+              ),
             ],
           ),
         ),
@@ -604,12 +678,12 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         border: const Border(bottom: BorderSide(color: _separador)),
       ),
       child: SizedBox(
-        height: 56,
+        height: 64,
         child: Row(
           children: [
             Container(
               width: 4,
-              height: 40,
+              height: 48,
               color: item.baixo ? _perigo : _tinta,
             ),
             const SizedBox(width: 9),
@@ -640,6 +714,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
               ),
             ),
             Expanded(
+              flex: 3,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -649,20 +724,17 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: _tinta, fontSize: 13),
                   ),
-                  Text(
-                    _detalheDaLinha(item),
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: item.baixo ? _perigo : _apoio,
-                      fontSize: 11,
-                      fontWeight: item.baixo
-                          ? FontWeight.w700
-                          : FontWeight.w400,
+                  if (_detalheDaLinha(item).isNotEmpty)
+                    Text(
+                      _detalheDaLinha(item),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _apoio, fontSize: 11),
                     ),
-                  ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            _saldoDaLinha(item),
             const SizedBox(width: 12),
           ],
         ),
@@ -730,44 +802,68 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     required String rotulo,
     required String valor,
     required IconData icone,
+    required String identificador,
     bool alerta = false,
-  }) => Container(
-    decoration: BoxDecoration(
-      color: alerta ? _perigoFundo : _linhaPar,
-      border: Border.all(color: _separador),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(height: 4, color: alerta ? _perigo : _tinta),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(25, 22, 22, 22),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(rotulo, style: _mini(_rotulo)),
-                    const SizedBox(height: 10),
-                    Text(
-                      valor,
-                      style: TextStyle(
+    VoidCallback? aoTocar,
+  }) => Semantics(
+    identifier: identificador,
+    button: aoTocar != null,
+    child: InkWell(
+      onTap: aoTocar,
+      child: Container(
+        decoration: BoxDecoration(
+          color: alerta ? _perigoFundo : _linhaPar,
+          border: Border.all(color: _separador),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(height: 4, color: alerta ? _perigo : _tinta),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(25, 22, 22, 22),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(rotulo, style: _mini(_rotulo)),
+                        const SizedBox(height: 10),
+                        Text(
+                          valor,
+                          style: TextStyle(
+                            color: alerta ? _perigo : _tinta,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(icone, size: 20, color: alerta ? _perigo : _tinta),
+                  if (aoTocar != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 20,
                         color: alerta ? _perigo : _tinta,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-              Icon(icone, size: 20, color: alerta ? _perigo : _tinta),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     ),
   );
+
+  void _aplicarSaldo(FiltroDeSaldo filtro) {
+    if (_saldo == filtro) return;
+    setState(() => _saldo = filtro);
+    _buscar();
+  }
 }

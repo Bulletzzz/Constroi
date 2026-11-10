@@ -47,7 +47,7 @@ void main() {
       obraId: 3,
       busca: '  cimento  ',
       categoriaId: 2,
-      somenteBaixo: true,
+      saldo: FiltroDeSaldo.baixo,
       limite: 20,
       deslocamento: 40,
     );
@@ -60,6 +60,26 @@ void main() {
       'baixo': 'true',
       'busca': 'cimento',
     });
+  });
+
+  test('filtro de zerados vai como zerado, nunca como baixo', () async {
+    final tudo = montar((_) => _comItens([]));
+
+    await tudo.estoque.listar(saldo: FiltroDeSaldo.zerado);
+
+    expect(tudo.chamadas.single.queryParameters, {
+      'limit': '50',
+      'offset': '0',
+      'zerado': 'true',
+    });
+  });
+
+  test('nome invalido de filtro cai em todos', () {
+    expect(FiltroDeSaldo.porNome('zerado'), FiltroDeSaldo.zerado);
+    expect(FiltroDeSaldo.porNome('baixo'), FiltroDeSaldo.baixo);
+    expect(FiltroDeSaldo.porNome('inexistente'), FiltroDeSaldo.todos);
+    expect(FiltroDeSaldo.porNome(null), FiltroDeSaldo.todos);
+    expect(FiltroDeSaldo.porNome(7), FiltroDeSaldo.todos);
   });
 
   test('omite filtros vazios e o baixo quando nao marcado', () async {
@@ -87,9 +107,11 @@ void main() {
   });
 
   test('quantidade continua texto para nao perder centavo', () async {
-    final tudo = montar((_) => _comItens([
-      {..._umItem, 'quantidade': '1234567.89'},
-    ]));
+    final tudo = montar(
+      (_) => _comItens([
+        {..._umItem, 'quantidade': '1234567.89'},
+      ]),
+    );
 
     final pagina = await tudo.estoque.listar();
 
@@ -97,11 +119,13 @@ void main() {
   });
 
   test('item malformado e ignorado sem derrubar a lista', () async {
-    final tudo = montar((_) => _comItens([
-      _umItem,
-      {'id': null, 'obra_id': 'x'},
-      {..._umItem, 'id': 2},
-    ]));
+    final tudo = montar(
+      (_) => _comItens([
+        _umItem,
+        {'id': null, 'obra_id': 'x'},
+        {..._umItem, 'id': 2},
+      ]),
+    );
 
     final pagina = await tudo.estoque.listar();
 
@@ -139,10 +163,7 @@ void main() {
   test('resposta fora do formato vira ApiException', () async {
     final tudo = montar((_) => http.Response(jsonEncode({'itens': []}), 200));
 
-    await expectLater(
-      tudo.estoque.listar(),
-      throwsA(isA<ApiException>()),
-    );
+    await expectLater(tudo.estoque.listar(), throwsA(isA<ApiException>()));
   });
 
   test('erro da API sobe para a tela tratar', () async {
@@ -153,7 +174,11 @@ void main() {
     await expectLater(
       tudo.estoque.listar(),
       throwsA(
-        isA<ApiException>().having((e) => e.message, 'mensagem', 'Obra invalida.'),
+        isA<ApiException>().having(
+          (e) => e.message,
+          'mensagem',
+          'Obra invalida.',
+        ),
       ),
     );
   });

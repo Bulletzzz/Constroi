@@ -187,13 +187,12 @@ void main() {
       expect(pedida.queryParameters['offset'], '0');
     });
 
-    test('evento e detalhe saem da acao gravada pela API', () {
+    test('a acao gravada pela API chega inteira no registro', () {
       final registro = RegistroLog.fromJson(
         evento(9, 2, 'CRIACAO_PRODUTO produto=15'),
       );
-      expect(registro.evento, 'CRIACAO_PRODUTO');
-      expect(registro.detalhe, 'produto=15');
-      expect(RegistroLog.fromJson(evento(9, 2, 'LOGIN')).detalhe, isEmpty);
+      expect(registro.acao, 'CRIACAO_PRODUTO produto=15');
+      expect(registro.usuarioId, 2);
     });
   });
 
@@ -206,7 +205,10 @@ void main() {
             return resposta(usuario(3, 'Bruno', 'pedreiro'), 201);
           }
           return resposta({
-            'usuarios': [usuario(1, 'Zeca', 'master'), usuario(2, 'ana', 'pedreiro')],
+            'usuarios': [
+              usuario(1, 'Zeca', 'master'),
+              usuario(2, 'ana', 'pedreiro'),
+            ],
           });
         }),
       );
@@ -217,7 +219,10 @@ void main() {
         find.byType(TextFormField).at(1),
         'bruno@empresa.test',
       );
-      await tester.enterText(find.byType(TextFormField).at(2), 'Senha#Forte123');
+      await tester.enterText(
+        find.byType(TextFormField).at(2),
+        'Senha#Forte123',
+      );
       await tocar(tester, find.text('SALVAR'));
 
       final nomes = tester
@@ -255,7 +260,10 @@ void main() {
         tester,
         service(
           (_) async => resposta({
-            'usuarios': [usuario(1, 'Ana', 'master'), usuario(2, 'Bruno', 'pedreiro')],
+            'usuarios': [
+              usuario(1, 'Ana', 'master'),
+              usuario(2, 'Bruno', 'pedreiro'),
+            ],
           }),
         ),
         usuarioAtualId: 1,
@@ -272,17 +280,14 @@ void main() {
         service((pedido) async {
           if (pedido.method == 'POST') {
             criou = true;
-            expect(
-              jsonDecode(pedido.body),
-              {
-                'usuario': {
-                  'nome': 'Ana Lima',
-                  'email': 'ana@empresa.test',
-                  'senha': 'senha-bem-longa',
-                  'tipo': 'engenheiro',
-                },
+            expect(jsonDecode(pedido.body), {
+              'usuario': {
+                'nome': 'Ana Lima',
+                'email': 'ana@empresa.test',
+                'senha': 'senha-bem-longa',
+                'tipo': 'engenheiro',
               },
-            );
+            });
             return resposta(usuario(9, 'Ana Lima', 'engenheiro'), 201);
           }
           return resposta({
@@ -397,6 +402,45 @@ void main() {
       expect(find.text('0 ativos de 1'), findsOneWidget);
     });
 
+    testWidgets('reativar pede confirmacao e devolve o acesso', (tester) async {
+      var corpo = '';
+      var caminho = '';
+      await abrir(
+        tester,
+        service((pedido) async {
+          if (pedido.method == 'PATCH') {
+            corpo = pedido.body;
+            caminho = pedido.url.path;
+            return resposta(usuario(2, 'Bruno', 'pedreiro'));
+          }
+          return resposta({
+            'usuarios': [usuario(2, 'Bruno', 'pedreiro', ativo: false)],
+          });
+        }),
+      );
+
+      expect(find.text('INATIVO'), findsOneWidget);
+      expect(find.text('INATIVAR'), findsNothing);
+
+      await tocar(tester, find.text('REATIVAR'));
+      expect(find.text('Reativar usuário'), findsOneWidget);
+
+      await tocar(tester, find.text('Cancelar'));
+      expect(caminho, isEmpty);
+      expect(find.text('INATIVO'), findsOneWidget);
+
+      await tocar(tester, find.text('REATIVAR'));
+      await tocar(tester, find.widgetWithText(TextButton, 'Reativar'));
+
+      expect(caminho, endsWith('/usuarios/2'));
+      expect(jsonDecode(corpo), {
+        'usuario': {'ativo': true},
+      });
+      expect(find.text('INATIVO'), findsNothing);
+      expect(find.text('INATIVAR'), findsOneWidget);
+      expect(find.text('1 ativos de 1'), findsOneWidget);
+    });
+
     testWidgets('erro de carga oferece tentar de novo', (tester) async {
       var tentativas = 0;
       await abrir(
@@ -441,10 +485,85 @@ void main() {
 
       await tocar(tester, find.text('LOGS'));
 
-      expect(find.text('CRIACAO_PRODUTO'), findsOneWidget);
-      expect(find.text('produto=15'), findsOneWidget);
-      expect(find.text('Bruno'), findsOneWidget);
-      expect(find.text('Usuário #99'), findsOneWidget);
+      expect(find.text('Bruno cadastrou o produto #15'), findsOneWidget);
+      expect(find.text('Usuário #99 entrou no sistema'), findsOneWidget);
+    });
+
+    testWidgets('evento mostra nome de produto e obra vindos do catalogo', (
+      tester,
+    ) async {
+      await abrir(
+        tester,
+        service((pedido) async {
+          final caminho = pedido.url.path;
+          if (caminho.endsWith('/logs')) {
+            return resposta(
+              paginaDeLogs([
+                evento(
+                  1,
+                  2,
+                  'ENTRADA_MANUAL entrada=4 obra=110 produto=114'
+                  ' quantidade=300.00 saldo=300.00',
+                ),
+              ]),
+            );
+          }
+          if (caminho.endsWith('/produtos')) {
+            return resposta({
+              'produtos': [
+                {'id': 114, 'nome': 'Cimento CP-II 50kg', 'unidade': 'saco'},
+              ],
+            });
+          }
+          if (caminho.endsWith('/obras')) {
+            return resposta({
+              'obras': [
+                {'id': 110, 'nome': 'Residencial Vista Verde'},
+              ],
+            });
+          }
+          return resposta({
+            'usuarios': [usuario(2, 'Bruno', 'engenheiro')],
+          });
+        }),
+      );
+
+      await tocar(tester, find.text('LOGS'));
+
+      expect(find.text('Bruno registrou entrada de material'), findsOneWidget);
+      expect(
+        find.text(
+          '300 sacos de Cimento CP-II 50kg · saldo 300 sacos'
+          ' · obra Residencial Vista Verde',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('catalogo fora do ar nao derruba a lista de eventos', (
+      tester,
+    ) async {
+      await abrir(
+        tester,
+        service((pedido) async {
+          final caminho = pedido.url.path;
+          if (caminho.endsWith('/logs')) {
+            return resposta(
+              paginaDeLogs([evento(1, 2, 'CRIACAO_PRODUTO produto=114')]),
+            );
+          }
+          if (caminho.endsWith('/usuarios')) {
+            return resposta({
+              'usuarios': [usuario(2, 'Bruno', 'engenheiro')],
+            });
+          }
+          return resposta({'erro': 'Servico indisponivel.'}, 503);
+        }),
+      );
+
+      await tocar(tester, find.text('LOGS'));
+
+      expect(find.text('Bruno cadastrou o produto #114'), findsOneWidget);
     });
 
     testWidgets('proxima pagina so habilita quando a API diz que ha mais', (
@@ -477,11 +596,15 @@ void main() {
       expect(find.text('página 2'), findsOneWidget);
 
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Próxima')).onPressed,
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Próxima'))
+            .onPressed,
         isNull,
       );
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Anterior')).onPressed,
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Anterior'))
+            .onPressed,
         isNotNull,
       );
     });
@@ -522,7 +645,7 @@ void main() {
 
       await tocar(tester, find.text('LOGS'));
       expect(buscas, 2);
-      expect(find.text('LOGIN'), findsNWidgets(2));
+      expect(find.text('Bruno entrou no sistema'), findsNWidgets(2));
     });
 
     testWidgets('escrita recarrega os logs com a aba de logs ja aberta', (
@@ -566,7 +689,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(buscas, 2);
-      expect(find.text('LOGIN'), findsNWidgets(2));
+      expect(find.text('Bruno entrou no sistema'), findsNWidgets(2));
       expect(
         find.text('Nenhum evento registrado para este filtro.'),
         findsNothing,

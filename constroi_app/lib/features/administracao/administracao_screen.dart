@@ -6,6 +6,7 @@ import '../../navigation/app_route.dart';
 import '../../navigation/perfil_usuario.dart';
 import '../../widgets/app_header.dart';
 import 'administracao_service.dart';
+import 'evento_legivel.dart';
 
 const _tinta = Color(0xFF1A1C1C);
 const _amarelo = Color(0xFFFFD700);
@@ -43,7 +44,8 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
   bool _carregandoUsuarios = true;
   String? _erroUsuarios;
   int _consultaUsuarios = 0;
-  int? _inativando;
+  int? _alterando;
+  DicionarioDeNomes _dicionario = const DicionarioDeNomes();
 
   bool _abrindoFormulario = false;
   bool _salvando = false;
@@ -63,6 +65,7 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
   void initState() {
     super.initState();
     _carregarUsuarios();
+    _carregarApoio();
   }
 
   @override
@@ -76,6 +79,19 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
   Map<int, String> get _nomesPorId => {
     for (final usuario in _usuarios) usuario.id: usuario.nome,
   };
+
+  DicionarioDeNomes get _nomes => _dicionario.comUsuarios(_nomesPorId);
+
+  Future<void> _carregarApoio() async {
+    try {
+      final nomes = await widget.service.nomesDeApoio();
+      if (!mounted) return;
+      setState(() => _dicionario = nomes);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _dicionario = const DicionarioDeNomes());
+    }
+  }
 
   bool get _podeAvancar =>
       (_logs?.temMais ?? false) &&
@@ -269,20 +285,21 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
     }
   }
 
-  Future<void> _inativar(UsuarioAdmin usuario) async {
+  Future<bool> _confirmar({
+    required String titulo,
+    required String texto,
+    required String acao,
+    required Color cor,
+  }) async {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (contexto) => AlertDialog(
         backgroundColor: Colors.white,
-        title: const Text(
-          'Inativar usuário',
-          style: TextStyle(color: _tinta, fontWeight: FontWeight.w700),
+        title: Text(
+          titulo,
+          style: const TextStyle(color: _tinta, fontWeight: FontWeight.w700),
         ),
-        content: Text(
-          '${usuario.nome} perde o acesso ao sistema. '
-          'O histórico de ações continua registrado.',
-          style: const TextStyle(color: _tinta),
-        ),
+        content: Text(texto, style: const TextStyle(color: _tinta)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(contexto, false),
@@ -290,32 +307,75 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(contexto, true),
-            child: const Text('Inativar', style: TextStyle(color: _perigo)),
+            child: Text(acao, style: TextStyle(color: cor)),
           ),
         ],
       ),
     );
-    if (confirmado != true || !mounted) return;
+    return confirmado == true && mounted;
+  }
 
-    setState(() => _inativando = usuario.id);
+  Future<void> _inativar(UsuarioAdmin usuario) async {
+    final confirmado = await _confirmar(
+      titulo: 'Inativar usuário',
+      texto:
+          '${usuario.nome} perde o acesso ao sistema. '
+          'O histórico de ações continua registrado.',
+      acao: 'Inativar',
+      cor: _perigo,
+    );
+    if (!confirmado) return;
+
+    await _trocarAcesso(
+      usuario,
+      () => widget.service.inativar(usuario.id),
+      'foi inativado.',
+      'Não foi possível inativar. Confira a conexão.',
+    );
+  }
+
+  Future<void> _reativar(UsuarioAdmin usuario) async {
+    final confirmado = await _confirmar(
+      titulo: 'Reativar usuário',
+      texto:
+          '${usuario.nome} volta a entrar no sistema com o mesmo perfil '
+          'e a mesma senha.',
+      acao: 'Reativar',
+      cor: _tinta,
+    );
+    if (!confirmado) return;
+
+    await _trocarAcesso(
+      usuario,
+      () => widget.service.reativar(usuario.id),
+      'voltou a ter acesso.',
+      'Não foi possível reativar. Confira a conexão.',
+    );
+  }
+
+  Future<void> _trocarAcesso(
+    UsuarioAdmin usuario,
+    Future<UsuarioAdmin> Function() chamada,
+    String aviso,
+    String falha,
+  ) async {
+    setState(() => _alterando = usuario.id);
     try {
-      final atualizado = await widget.service.inativar(usuario.id);
+      final atualizado = await chamada();
       if (!mounted) return;
       setState(() {
-        _inativando = null;
+        _alterando = null;
         _usuarios = [
           for (final item in _usuarios)
             if (item.id == atualizado.id) atualizado else item,
         ];
       });
       _renovarLogs();
-      _avisar('${atualizado.nome} foi inativado.');
+      _avisar('${atualizado.nome} $aviso');
     } catch (erro) {
       if (!mounted) return;
-      setState(() => _inativando = null);
-      _avisar(
-        _mensagem(erro, 'Não foi possível inativar. Confira a conexão.'),
-      );
+      setState(() => _alterando = null);
+      _avisar(_mensagem(erro, falha));
     }
   }
 
@@ -425,10 +485,13 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
   List<Widget> _conteudoUsuarios() => [
     if (_abrindoFormulario) _formularioDeUsuario() else _botaoNovoUsuario(),
     const SizedBox(height: 20),
-    _faixa('PESSOAS', _carregandoUsuarios || _erroUsuarios != null
-        ? null
-        : '${_usuarios.where((u) => u.ativo).length} ativos de '
-              '${_usuarios.length}'),
+    _faixa(
+      'PESSOAS',
+      _carregandoUsuarios || _erroUsuarios != null
+          ? null
+          : '${_usuarios.where((u) => u.ativo).length} ativos de '
+                '${_usuarios.length}',
+    ),
     if (_carregandoUsuarios)
       _girando()
     else if (_erroUsuarios != null)
@@ -684,6 +747,19 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
                     usuario.email,
                     style: const TextStyle(color: _apoio, fontSize: 12),
                   ),
+                  if (!usuario.ativo)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      color: _apoio,
+                      child: const Text(
+                        'INATIVO',
+                        style: TextStyle(color: Colors.white, fontSize: 10),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -695,54 +771,76 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
                 style: const TextStyle(color: _tinta, fontSize: 13),
               ),
             ),
-            if (!usuario.ativo)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                color: _apoio,
-                child: const Text(
-                  'INATIVO',
-                  style: TextStyle(color: Colors.white, fontSize: 11),
-                ),
-              )
-            else if (ehVoce)
-              const Text(
-                'Você',
-                style: TextStyle(color: _apoio, fontSize: 12),
-              )
-            else
-              Semantics(
-                identifier: 'admin-usuario-inativar',
-                button: true,
-                child: TextButton(
-                  onPressed: _inativando == null
-                      ? () => _inativar(usuario)
-                      : null,
-                  child: Text(
-                    _inativando == usuario.id ? 'INATIVANDO...' : 'INATIVAR',
-                    style: const TextStyle(color: _perigo, fontSize: 12),
-                  ),
-                ),
+            Expanded(
+              flex: 2,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: _acaoDaLinha(usuario, ehVoce),
               ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _acaoDaLinha(UsuarioAdmin usuario, bool ehVoce) {
+    if (ehVoce) {
+      return const Text(
+        'Você',
+        style: TextStyle(color: _apoio, fontSize: 12),
+        textAlign: TextAlign.right,
+      );
+    }
+    final ocupado = _alterando == usuario.id;
+    if (!usuario.ativo) {
+      return _botaoDaLinha(
+        identificador: 'admin-usuario-reativar',
+        rotulo: ocupado ? 'REATIVANDO...' : 'REATIVAR',
+        cor: _tinta,
+        aoTocar: () => _reativar(usuario),
+      );
+    }
+    return _botaoDaLinha(
+      identificador: 'admin-usuario-inativar',
+      rotulo: ocupado ? 'INATIVANDO...' : 'INATIVAR',
+      cor: _perigo,
+      aoTocar: () => _inativar(usuario),
+    );
+  }
+
+  Widget _botaoDaLinha({
+    required String identificador,
+    required String rotulo,
+    required Color cor,
+    required VoidCallback aoTocar,
+  }) => Semantics(
+    identifier: identificador,
+    button: true,
+    child: TextButton(
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: _alterando == null ? aoTocar : null,
+      child: Text(
+        rotulo,
+        textAlign: TextAlign.right,
+        style: TextStyle(color: cor, fontSize: 12),
+      ),
+    ),
+  );
+
   List<Widget> _conteudoLogs() {
     final registros = _logs?.registros ?? const <RegistroLog>[];
-    final nomes = _nomesPorId;
+    final nomes = _nomes;
     return [
       _filtrosDeLog(),
       const SizedBox(height: 20),
       _faixa(
         'EVENTOS',
-        _carregandoLogs || _erroLogs != null
-            ? null
-            : 'página ${_pagina + 1}',
+        _carregandoLogs || _erroLogs != null ? null : 'página ${_pagina + 1}',
       ),
       if (_carregandoLogs)
         _girando()
@@ -775,7 +873,10 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
             style: TextStyle(color: _apoio, fontSize: 14),
           ),
           items: [
-            const DropdownMenuItem(value: null, child: Text('Todos os autores')),
+            const DropdownMenuItem(
+              value: null,
+              child: Text('Todos os autores'),
+            ),
             for (final usuario in _usuarios)
               DropdownMenuItem(
                 value: usuario.id,
@@ -856,49 +957,50 @@ class _AdministracaoScreenState extends State<AdministracaoScreen> {
     ),
   );
 
-  Widget _linhaLog(RegistroLog registro, int indice, Map<int, String> nomes) =>
-      Semantics(
-        identifier: 'admin-log',
-        container: true,
-        child: Container(
-          color: indice.isEven ? Colors.white : const Color(0xFFEAEAEA),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                spacing: 12,
-                runSpacing: 2,
-                children: [
-                  Text(
-                    registro.evento,
-                    style: const TextStyle(
-                      color: _tinta,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                  Text(
-                    registro.momento,
-                    style: const TextStyle(color: _apoio, fontSize: 12),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                nomes[registro.usuarioId] ?? 'Usuário #${registro.usuarioId}',
-                style: const TextStyle(color: _tinta, fontSize: 13),
-              ),
-              if (registro.detalhe.isNotEmpty)
+  Widget _linhaLog(RegistroLog registro, int indice, DicionarioDeNomes nomes) {
+    final legivel = lerEvento(registro.acao, nomes);
+    final autor =
+        nomes.usuarios[registro.usuarioId] ?? 'Usuário #${registro.usuarioId}';
+    return Semantics(
+      identifier: 'admin-log',
+      container: true,
+      child: Container(
+        color: indice.isEven ? Colors.white : const Color(0xFFEAEAEA),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: 12,
+              runSpacing: 2,
+              children: [
                 Text(
-                  registro.detalhe,
+                  '$autor ${legivel.titulo}',
+                  style: const TextStyle(
+                    color: _tinta,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                Text(
+                  registro.momento,
                   style: const TextStyle(color: _apoio, fontSize: 12),
                 ),
+              ],
+            ),
+            if (legivel.detalhe.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                legivel.detalhe,
+                style: const TextStyle(color: _apoio, fontSize: 12),
+              ),
             ],
-          ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   Widget _paginacao() => Padding(
     padding: const EdgeInsets.only(top: 12),

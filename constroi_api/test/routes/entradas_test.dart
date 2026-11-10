@@ -24,6 +24,10 @@ Result _resultado(List<Map<String, dynamic>> dados) => Result(
   rows: dados.map((dados) {
     final linha = _LinhaFalsa();
     when(linha.toColumnMap).thenReturn(dados);
+    final valores = dados.values.toList();
+    for (var posicao = 0; posicao < valores.length; posicao++) {
+      when(() => linha[posicao]).thenReturn(valores[posicao]);
+    }
     return linha;
   }).toList(),
   affectedRows: dados.length,
@@ -81,8 +85,8 @@ void main() {
         {'id': 10},
       ]),
       _resultado([
-        {'id': 20},
-        {'id': 21},
+        {'id': 20, 'unidade': 'm3'},
+        {'id': 21, 'unidade': 'un'},
       ]),
       _resultado([
         {
@@ -231,6 +235,19 @@ void main() {
     ]);
     final resposta = await rota.onRequest(contexto);
     expect(resposta.statusCode, HttpStatus.badRequest);
+    expect(parametros, hasLength(2));
+  });
+
+  test('quantidade fracionada em unidade inteira nao grava nada', () async {
+    resultados[1] = _resultado([
+      {'id': 20, 'unidade': 'saco'},
+      {'id': 21, 'unidade': 'un'},
+    ]);
+    final resposta = await rota.onRequest(contexto);
+    expect(resposta.statusCode, HttpStatus.badRequest);
+    expect(jsonDecode(await resposta.body()), {
+      'erro': 'A quantidade de unidades e sacos deve ser inteira.',
+    });
     expect(parametros, hasLength(2));
   });
 
