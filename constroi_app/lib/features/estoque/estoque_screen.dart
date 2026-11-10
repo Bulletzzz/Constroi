@@ -59,6 +59,7 @@ class EstoqueScreen extends StatefulWidget {
 
 class _EstoqueScreenState extends State<EstoqueScreen> {
   final _busca = TextEditingController();
+  final _inicioDaTabela = GlobalKey();
   final _itens = <ItemEstoque>[];
 
   Timer? _aguardandoDigitacao;
@@ -70,11 +71,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   int? _categoria;
   late FiltroDeSaldo _saldo = widget.saldoInicial;
   bool _carregando = true;
-  bool _carregandoMais = false;
   bool _exportando = false;
   bool _temMais = false;
+  int _pagina = 0;
   String? _erro;
-  String? _erroPagina;
 
   @override
   void initState() {
@@ -91,17 +91,12 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     super.dispose();
   }
 
-  Future<void> _buscar({bool continuando = false}) async {
+  Future<void> _buscar() async {
     _aguardandoDigitacao?.cancel();
     final consulta = ++_consultaAtual;
     setState(() {
-      _erroPagina = null;
-      if (continuando) {
-        _carregandoMais = true;
-      } else {
-        _carregando = true;
-        _erro = null;
-      }
+      _carregando = true;
+      _erro = null;
     });
 
     try {
@@ -110,12 +105,13 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         busca: _busca.text,
         categoriaId: _categoria,
         saldo: _saldo,
-        deslocamento: continuando ? _itens.length : 0,
+        deslocamento: _pagina * limitePadrao,
       );
       if (!mounted || consulta != _consultaAtual) return;
       setState(() {
-        if (!continuando) _itens.clear();
-        _itens.addAll(pagina.itens);
+        _itens
+          ..clear()
+          ..addAll(pagina.itens);
         for (final item in pagina.itens) {
           final id = item.categoriaId;
           if (id != null) {
@@ -124,18 +120,31 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         }
         _temMais = pagina.temMais;
         _carregando = false;
-        _carregandoMais = false;
         _erro = null;
       });
     } on ApiException catch (erro) {
-      _registrarFalha(consulta, continuando, erro.message);
+      _registrarFalha(consulta, erro.message);
     } catch (_) {
       _registrarFalha(
         consulta,
-        continuando,
         'Não foi possível falar com o servidor. Confira a conexão.',
       );
     }
+  }
+
+  Future<void> _irParaPagina(int destino) async {
+    if (destino < 0 || destino == _pagina) return;
+    setState(() => _pagina = destino);
+    await _buscar();
+    final inicio = _inicioDaTabela.currentContext;
+    if (inicio != null && inicio.mounted) {
+      await Scrollable.ensureVisible(inicio, duration: Duration.zero);
+    }
+  }
+
+  void _refazerBusca() {
+    _pagina = 0;
+    _buscar();
   }
 
   Future<void> _carregarIndicadores() async {
@@ -227,16 +236,11 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
   String _numero(int? valor) => valor == null ? '—' : '$valor';
 
-  void _registrarFalha(int consulta, bool continuando, String mensagem) {
+  void _registrarFalha(int consulta, String mensagem) {
     if (!mounted || consulta != _consultaAtual) return;
     setState(() {
-      if (continuando) {
-        _erroPagina = mensagem;
-      } else {
-        _erro = mensagem;
-      }
+      _erro = mensagem;
       _carregando = false;
-      _carregandoMais = false;
     });
   }
 
@@ -248,7 +252,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     _aguardandoDigitacao?.cancel();
     _aguardandoDigitacao = Timer(
       const Duration(milliseconds: 400),
-      () => _buscar(),
+      _refazerBusca,
     );
   }
 
@@ -323,7 +327,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           const SizedBox(height: 16),
           Container(height: 2, color: _tinta),
           const SizedBox(height: 14),
-          _tabela(),
+          _tabela(key: _inicioDaTabela),
           const SizedBox(height: 24),
           _cartaoResumo(
             rotulo: 'ITENS MONITORADOS',
@@ -395,7 +399,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                   _categoria = null;
                 });
                 unawaited(_carregarIndicadores());
-                _buscar();
+                _refazerBusca();
               },
             ),
           ),
@@ -486,7 +490,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     child: OutlinedButton.icon(
       onPressed: () async {
         await widget.aoCadastrar!(context);
-        if (mounted) await _buscar();
+        if (mounted) _refazerBusca();
       },
       icon: const Icon(Icons.add, size: 20),
       label: const Text(
@@ -521,7 +525,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
             child: TextField(
               controller: _busca,
               onChanged: _digitou,
-              onSubmitted: (_) => _buscar(),
+              onSubmitted: (_) => _refazerBusca(),
               style: const TextStyle(color: _tinta, fontSize: 13),
               decoration: const InputDecoration.collapsed(
                 hintText: 'Buscar SKU ou nome',
@@ -557,7 +561,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
               items: _categorias,
               onChanged: (valor) {
                 setState(() => _categoria = valor);
-                _buscar();
+                _refazerBusca();
               },
             ),
           ),
@@ -588,12 +592,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       button: true,
       selected: ativo,
       child: InkWell(
-        onTap: ativo
-            ? null
-            : () {
-                setState(() => _saldo = filtro);
-                _buscar();
-              },
+        onTap: ativo ? null : () => _aplicarSaldo(filtro),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
@@ -609,7 +608,8 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     );
   }
 
-  Widget _tabela() => Container(
+  Widget _tabela({Key? key}) => Container(
+    key: key,
     decoration: BoxDecoration(
       color: Colors.white,
       border: Border.all(color: _tinta, width: 2),
@@ -663,8 +663,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           )
         else ...[
           for (var i = 0; i < _itens.length; i++) _linha(_itens[i], i.isOdd),
-          if (_erroPagina != null) _falhaDaPagina(),
-          if (_temMais && _erroPagina == null) _carregarMais(),
+          if (_temMais || _pagina > 0) _paginacao(),
         ],
       ],
     ),
@@ -762,40 +761,33 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     ),
   );
 
-  Widget _falhaDaPagina() => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-    child: Column(
+  Widget _paginacao() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    decoration: const BoxDecoration(
+      border: Border(top: BorderSide(color: _tinta, width: 2)),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          _erroPagina!,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: _perigo, fontSize: 12, height: 1.4),
+        Semantics(
+          identifier: 'estoque-pagina-anterior',
+          button: true,
+          child: TextButton(
+            onPressed: _pagina == 0 ? null : () => _irParaPagina(_pagina - 1),
+            child: Text('ANTERIOR', style: _mini(_tinta)),
+          ),
         ),
-        TextButton(
-          onPressed: () => _buscar(continuando: true),
-          child: Text('TENTAR CARREGAR DE NOVO', style: _mini(_tinta)),
+        Text('PÁGINA ${_pagina + 1}', style: _mini(_rotulo)),
+        Semantics(
+          identifier: 'estoque-pagina-proxima',
+          button: true,
+          child: TextButton(
+            onPressed: !_temMais ? null : () => _irParaPagina(_pagina + 1),
+            child: Text('PRÓXIMA', style: _mini(_tinta)),
+          ),
         ),
       ],
     ),
-  );
-
-  Widget _carregarMais() => SizedBox(
-    height: 52,
-    child: _carregandoMais
-        ? const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                valueColor: AlwaysStoppedAnimation(_tinta),
-              ),
-            ),
-          )
-        : TextButton(
-            onPressed: () => _buscar(continuando: true),
-            child: Text('CARREGAR MAIS', style: _mini(_tinta)),
-          ),
   );
 
   Widget _cartaoResumo({
@@ -864,6 +856,6 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   void _aplicarSaldo(FiltroDeSaldo filtro) {
     if (_saldo == filtro) return;
     setState(() => _saldo = filtro);
-    _buscar();
+    _refazerBusca();
   }
 }

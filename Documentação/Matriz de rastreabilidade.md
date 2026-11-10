@@ -28,7 +28,7 @@ dentro do aplicativo Flutter.
 | RF01 | Cadastro de empresa | ✅ `POST /empresas` | ❌ | ❌ | ✅ caso 02 |
 | RF02 | Autenticação | ✅ `POST /login` | ✅ 01_Login | ✅ Login | ✅ casos 02, 03, 09 + E2E 01, 02, 07 |
 | RF03 | Manutenção de usuários | ✅ `/usuarios` (4 rotas) | ❌ | ✅ Administração | ✅ caso 08 + unitário com mock |
-| RF04 | Consulta de estoque | ✅ `GET /estoque` | ✅ 03_Estoque | ✅ Estoque | ✅ caso 14 + E2E 05 |
+| RF04 | Consulta de estoque | ✅ `GET /estoque` | ✅ 03_Estoque | ✅ Estoque | ✅ caso 14 + E2E 05 + 31 widgets |
 | RF05 | Solicitação de produtos | ✅ `POST /pedidos` | ✅ 04_Requisição | ✅ Requisição | ✅ casos 11, 12, 13 |
 | RF06 | Avaliação de pedidos | ✅ `PATCH /pedidos/{id}` | ✅ 05_Aprovações | ✅ Aprovações | ✅ casos 15, 16, 17 |
 | RF07 | Entrada de estoque manual | ✅ `POST /entradas` | 🟡 dentro de 05_Aprovações | ❌ | ✅ caso 22 |
@@ -179,7 +179,7 @@ do Pedro.
 | Camada | Quantidade | Medido em |
 |---|---|---|
 | Unidade na API (`dart test test/`) | 294 | 10/11/2026 |
-| Widget no app (`flutter test`) | 275 | 10/11/2026 |
+| Widget no app (`flutter test`) | 279 | 10/11/2026 |
 | Integração Dart (`dart test integration_test/`) | 149 | 10/11/2026 |
 | Integração (`.\testes\executar.ps1`) | 23 casos, 659 verificações | 09/11/2026 |
 | Ponta a ponta (Cypress) | 7 casos, 9 testes | 05/11/2026 |

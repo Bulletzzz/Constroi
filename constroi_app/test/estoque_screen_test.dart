@@ -198,7 +198,7 @@ void main() {
     await abrir(tester, tudo.service);
 
     expect(tudo.chamadas.single.queryParameters, {
-      'limit': '50',
+      'limit': '21',
       'offset': '0',
     });
   });
@@ -267,23 +267,71 @@ void main() {
     expect(tudo.chamadas.last.queryParameters['categoria_id'], '9');
   });
 
-  testWidgets('carregar mais avanca o offset sem perder a pagina', (
+  testWidgets('proxima pagina troca os itens e avanca o offset', (
     tester,
   ) async {
     final tudo = montar(
       (chamada) => chamada == 1
-          ? List.generate(50, (i) => item(i + 1, sku: 'SKU-$i'))
+          ? List.generate(21, (i) => item(i + 1, sku: 'SKU-$i'))
           : [item(999, sku: 'SKU-NOVO')],
     );
     await abrir(tester, tudo.service);
 
-    await tester.ensureVisible(find.text('CARREGAR MAIS'));
+    expect(find.text('SKU-20'), findsNothing);
+    expect(find.text('PÁGINA 1'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('CARREGAR MAIS'));
+    await tester.tap(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
 
-    expect(tudo.chamadas.last.queryParameters['offset'], '50');
-    expect(find.text('SKU-0'), findsOneWidget);
+    expect(tudo.chamadas.last.queryParameters['offset'], '20');
+    expect(find.text('SKU-0'), findsNothing);
+    expect(find.text('SKU-NOVO'), findsOneWidget);
+    expect(find.text('PÁGINA 2'), findsOneWidget);
+  });
+
+  testWidgets('anterior volta a pagina e o filtro reinicia na primeira', (
+    tester,
+  ) async {
+    final tudo = montar(
+      (chamada) =>
+          List.generate(21, (i) => item(i + 1, sku: 'SKU-$chamada-$i')),
+    );
+    await abrir(tester, tudo.service);
+
+    await tester.ensureVisible(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    expect(find.text('PÁGINA 2'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('ANTERIOR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ANTERIOR'));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters['offset'], '0');
+    expect(find.text('PÁGINA 1'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    expect(find.text('PÁGINA 2'), findsOneWidget);
+
+    await tester.tap(find.text(FiltroDeSaldo.baixo.rotulo));
+    await tester.pumpAndSettle();
+
+    expect(tudo.chamadas.last.queryParameters['offset'], '0');
+    expect(find.text('PÁGINA 1'), findsOneWidget);
+  });
+
+  testWidgets('pagina unica nao mostra navegacao', (tester) async {
+    final tudo = montar((_) => [item(1)]);
+    await abrir(tester, tudo.service);
+
+    expect(find.text('PRÓXIMA'), findsNothing);
+    expect(find.text('PÁGINA 1'), findsNothing);
   });
 
   testWidgets('item abaixo do minimo aparece em vermelho', (tester) async {
@@ -521,7 +569,7 @@ void main() {
     expect(depois, antes + 1);
   });
 
-  testWidgets('falha ao carregar mais nao apaga o que ja estava na tela', (
+  testWidgets('falha ao trocar de pagina explica e deixa tentar de novo', (
     tester,
   ) async {
     final chamadas = <Uri>[];
@@ -533,7 +581,7 @@ void main() {
         if (chamadas.length == 1) {
           return http.Response(
             jsonEncode({
-              'estoque': List.generate(50, (i) => item(i + 1, sku: 'SKU-$i')),
+              'estoque': List.generate(21, (i) => item(i + 1, sku: 'SKU-$i')),
             }),
             200,
           );
@@ -543,14 +591,14 @@ void main() {
     );
     await abrir(tester, EstoqueService(api: api));
 
-    await tester.ensureVisible(find.text('CARREGAR MAIS'));
+    await tester.ensureVisible(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('CARREGAR MAIS'));
+    await tester.tap(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
 
     expect(find.text('Banco indisponivel.'), findsOneWidget);
-    expect(find.text('SKU-0'), findsOneWidget);
-    expect(find.text('TENTAR CARREGAR DE NOVO'), findsOneWidget);
+    expect(find.text('TENTAR DE NOVO'), findsOneWidget);
+    expect(chamadas.last.queryParameters['offset'], '20');
   });
 
   testWidgets('submeter a busca nao dispara duas consultas', (tester) async {

@@ -2,8 +2,8 @@ import '../../core/api/api_client.dart';
 import 'item_estoque.dart';
 
 const limiteMinimo = 1;
-const limiteMaximo = 200;
-const limitePadrao = 50;
+const limiteMaximo = 199;
+const limitePadrao = 20;
 
 enum FiltroDeSaldo {
   todos('TODOS'),
@@ -46,7 +46,7 @@ class EstoqueService {
     }
 
     final consulta = <String, String>{
-      'limit': '$limite',
+      'limit': '${limite + 1}',
       'offset': '$deslocamento',
     };
     if (obraId != null) consulta['obra_id'] = '$obraId';
@@ -61,14 +61,15 @@ class EstoqueService {
       throw const ApiException(500, 'Resposta inesperada do servidor.');
     }
 
-    final itens = (resposta['estoque'] as List)
+    final recebidos = resposta['estoque'] as List;
+    final itens = recebidos
         .map(ItemEstoque.talvezDoJson)
         .whereType<ItemEstoque>()
         .toList();
 
     return PaginaDeEstoque(
-      itens: itens,
-      temMais: (resposta['estoque'] as List).length >= limite,
+      itens: itens.take(limite).toList(),
+      temMais: recebidos.length > limite,
     );
   }
 }
