@@ -58,14 +58,10 @@ String rotuloDoStatus(String codigo) => statusDoEquipamento
 bool quantidadeInteiraObrigatoria(String unidade) =>
     {'un', 'saco', 'sacos'}.contains(unidade.trim().toLowerCase());
 
-String formatarQuantidade(String quantidade, String unidade) {
+String formatarQuantidade(String quantidade) {
   final numero = num.tryParse(quantidade);
-  if (quantidadeInteiraObrigatoria(unidade) &&
-      numero != null &&
-      numero == numero.truncateToDouble()) {
-    return numero.toStringAsFixed(0);
-  }
-  return quantidade;
+  if (numero == null || numero != numero.truncateToDouble()) return quantidade;
+  return numero.toStringAsFixed(0);
 }
 
 String unidadeParaQuantidade(String unidade, String quantidade) {

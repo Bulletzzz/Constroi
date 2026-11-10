@@ -179,14 +179,16 @@ do Pedro.
 | Camada | Quantidade | Medido em |
 |---|---|---|
 | Unidade na API (`dart test test/`) | 294 | 10/11/2026 |
-| Widget no app (`flutter test`) | 272 | 10/11/2026 |
+| Widget no app (`flutter test`) | 275 | 10/11/2026 |
+| Integração Dart (`dart test integration_test/`) | 149 | 10/11/2026 |
 | Integração (`.\testes\executar.ps1`) | 23 casos, 659 verificações | 09/11/2026 |
 | Ponta a ponta (Cypress) | 7 casos, 9 testes | 05/11/2026 |
 
-Números medidos, não deduzidos. Os de unidade e de widget são da branch
-`fix/ajustes-de-uso` em 10/11; na main são 242 e 209. O runner de integração e o Cypress não
-foram rodados hoje — exigem API e banco de teste no ar, e o Docker estava parado — então
-valem a última medição, com a data ao lado.
+Números medidos, não deduzidos. Os de unidade, widget e integração Dart são da branch
+`fix/ajustes-de-uso` em 10/11; na main a unidade e o widget são 242 e 209. As 9 suítes de
+`integration_test/` rodaram em 1min47 contra um PostgreSQL 17 descartável com TLS, com o
+`max_connection_count=20` da PR #50 passado pela URL. O runner de `testes/` e o Cypress não
+foram rodados hoje; valem a última medição, com a data ao lado.
 
 A API cresceu 52 unitários nesta branch: 39 da rota de despesa, 8 do filtro de zerados e 5
 do preço da NF-e. O app cresceu 63: 15 do texto legível do evento, 2 da reativação de
@@ -194,8 +196,14 @@ usuário, 2 dos nomes do catálogo nos eventos, 7 dos indicadores clicáveis, 2 
 saldo e 12 do lançamento de despesa, mais os ajustes dos que já existiam.
 
 `constroi_api/integration_test/` roda fora do runner de `testes/` e ganhou dois casos de
-preço da NF-e nesta branch, ainda não executados contra banco. A cobertura dos logs também
-mora lá — vale um caso dentro do runner, e não há cartão para isso.
+preço da NF-e nesta branch, os dois verdes contra banco. A cobertura dos logs também mora
+lá — vale um caso dentro do runner, e não há cartão para isso.
+
+O commit `fad194d`, do Andrew, quebrou 32 testes ao exigir quantidade inteira em `un` e
+`saco` sem atualizar as fixtures: 17 unitários da API (`SELECT id` virou `SELECT id,
+unidade` e as linhas falsas tinham uma coluna só), 10 de integração da NF-e (a fixture
+importava 1,25 saco) e 5 de widget. Todos corrigidos nesta branch, e a regra dele ganhou
+teste de rota, que não existia.
 
 A suíte de integração fala com a API e o banco reais e confere o resultado no banco, não só a
 resposta. Como rodar está em `testes/README.md`.

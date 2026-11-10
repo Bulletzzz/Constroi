@@ -12,7 +12,7 @@ String materialXml({
   String codigo = 'CIM-01',
   String nome = 'Cimento',
   String quantidade = '1.2500',
-  String unidade = 'saco',
+  String unidade = 'kg',
   String? valorUnitario,
 }) {
   final preco = valorUnitario == null ? '' : '<vUnCom>$valorUnitario</vUnCom>';

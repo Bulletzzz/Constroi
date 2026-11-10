@@ -128,7 +128,7 @@ void main() {
       INSERT INTO empresa (id,nome,cnpj) VALUES (1,'A','A'),(2,'B','B');
       INSERT INTO usuario (id,empresa_id,nome,email,senha_hash,tipo) VALUES (1,1,'Eng A','a@a','hash','engenheiro'),(2,2,'Eng B','b@b','hash','engenheiro');
       INSERT INTO obra (id,empresa_id,nome,endereco,status) VALUES (1,1,'A','Rua','ativa'),(2,2,'B','Rua','ativa');
-      INSERT INTO produto (id,empresa_id,nome,unidade,sku) VALUES (1,1,'Cimento','saco','CIM-01'),(2,1,'Areia','kg','ARE-01'),(3,2,'Cimento','saco','CIM-01');
+      INSERT INTO produto (id,empresa_id,nome,unidade,sku) VALUES (1,1,'Cimento','kg','CIM-01'),(2,1,'Areia','kg','ARE-01'),(3,2,'Cimento','kg','CIM-01');
       INSERT INTO estoque (obra_id,produto_id,quantidade) VALUES (1,1,5);
     ''', queryMode: QueryMode.simple);
   });
@@ -182,13 +182,13 @@ void main() {
       );
       expect(
         (await enviar(
-          xml: xmlNfe(itens: materialXml(unidade: 'kg')),
+          xml: xmlNfe(itens: materialXml(unidade: 'saco')),
         )).status,
         422,
       );
       await sql(
         'INSERT INTO produto (id,empresa_id,nome,unidade) '
-        "VALUES (4,1,'Duplicado','saco'),(5,1,'Duplicado','saco')",
+        "VALUES (4,1,'Duplicado','kg'),(5,1,'Duplicado','kg')",
       );
       expect(
         (await enviar(
@@ -306,9 +306,7 @@ void main() {
       importarParaTeste(
         banco,
         xmlNfe(
-          itens:
-              materialXml() +
-              materialXml(codigo: 'ARE-01', nome: 'Areia', unidade: 'kg'),
+          itens: materialXml() + materialXml(codigo: 'ARE-01', nome: 'Areia'),
         ),
       ),
       throwsA(isA<ServerException>()),

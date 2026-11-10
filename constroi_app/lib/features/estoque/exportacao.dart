@@ -20,7 +20,7 @@ String csvDoEstoque(List<ItemEstoque> itens) {
         item.identificacao,
         item.produtoNome,
         item.unidade,
-        formatarQuantidade(item.quantidade, item.unidade),
+        formatarQuantidade(item.quantidade),
         item.estoqueMinimo,
         item.baixo ? 'sim' : 'nao',
         item.categoriaNome ?? '',

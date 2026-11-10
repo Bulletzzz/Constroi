@@ -165,7 +165,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       _obraAtual != null ? '' : _nomeDeObra(item.obraId);
 
   String _saldoEmTexto(ItemEstoque item) {
-    final quantidade = formatarQuantidade(item.quantidade, item.unidade);
+    final quantidade = formatarQuantidade(item.quantidade);
     return '$quantidade ${unidadeParaQuantidade(item.unidade, item.quantidade)}'
         .trim();
   }
@@ -195,7 +195,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              'mín. ${formatarQuantidade(item.estoqueMinimo, item.unidade)}',
+              'mín. ${formatarQuantidade(item.estoqueMinimo)}',
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: item.baixo ? _perigo : _apoio,

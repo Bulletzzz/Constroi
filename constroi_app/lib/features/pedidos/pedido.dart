@@ -62,7 +62,7 @@ class ItemDoPedido {
     final nome = produtoNome ?? 'Produto $produtoId';
     return unidade == null
         ? '$quantidade · $nome'
-        : '${formatarQuantidade(quantidade, unidade!)} ${unidadeParaQuantidade(unidade!, quantidade)} · $nome';
+        : '${formatarQuantidade(quantidade)} ${unidadeParaQuantidade(unidade!, quantidade)} · $nome';
   }
 }
 

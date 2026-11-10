@@ -196,7 +196,7 @@ String _numero(
 ) {
   final id = int.tryParse(campos['produto'] ?? '');
   final unidade = id == null ? null : nomes.unidades[id];
-  final numero = formatarQuantidade(valor, unidade ?? '');
+  final numero = formatarQuantidade(valor);
   if (unidade == null || unidade.isEmpty) return numero;
   return '$numero ${unidadeParaQuantidade(unidade, valor)}';
 }

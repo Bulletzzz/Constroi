@@ -507,7 +507,7 @@ class _NfeScreenState extends State<NfeScreen> {
                     const SizedBox(height: 6),
                     Text('Código: ${material.codigo}'),
                     Text(
-                      'Quantidade: ${formatarQuantidade(material.quantidade, material.unidade).replaceAll('.', ',')} ${unidadeParaQuantidade(material.unidade, material.quantidade)}',
+                      'Quantidade: ${formatarQuantidade(material.quantidade).replaceAll('.', ',')} ${unidadeParaQuantidade(material.unidade, material.quantidade)}',
                     ),
                   ],
                 ),
