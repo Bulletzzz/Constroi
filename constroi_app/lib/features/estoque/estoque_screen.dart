@@ -40,6 +40,7 @@ class EstoqueScreen extends StatefulWidget {
     required this.perfil,
     this.painel,
     this.obraId,
+    this.obraInicial,
     this.buscaInicial,
     this.saldoInicial = FiltroDeSaldo.todos,
     this.aoCadastrar,
@@ -49,6 +50,7 @@ class EstoqueScreen extends StatefulWidget {
   final PainelService? painel;
   final PerfilUsuario perfil;
   final int? obraId;
+  final int? obraInicial;
   final String? buscaInicial;
   final FiltroDeSaldo saldoInicial;
   final Future<void> Function(BuildContext)? aoCadastrar;
@@ -67,7 +69,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   IndicadoresPainel? _indicadores;
   final _obras = <ObraPainel>[];
   final _categoriasVistas = <int, String>{};
-  int? _obra;
+  late int? _obra = widget.obraInicial;
   int? _categoria;
   late FiltroDeSaldo _saldo = widget.saldoInicial;
   bool _carregando = true;

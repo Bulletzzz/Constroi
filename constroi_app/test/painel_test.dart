@@ -192,6 +192,48 @@ void main() {
       expect(find.text(FiltroDeSaldo.zerado.rotulo), findsOneWidget);
     });
 
+    testWidgets('obra do painel chega escolhida, e nao travada, no estoque', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(400, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final consultas = <Uri>[];
+      await tester.pumpWidget(
+        ConstroiApp(
+          config: ApiConfig('https://api.constroi.test'),
+          storage: MemoryTokenStorage()..token = tokenPerfil('master'),
+          httpClient: MockClient((request) async {
+            consultas.add(request.url);
+            if (request.url.path == '/estoque') {
+              return ok({'estoque': <Object?>[]});
+            }
+            final obra = int.tryParse(
+              request.url.queryParameters['obra_id'] ?? '',
+            );
+            return ok(respostaPainel(obraId: obra));
+          }),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButtonFormField<int>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Segunda obra').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('ESTOQUE BAIXO'));
+      await tester.pumpAndSettle();
+
+      expect(
+        consultas
+            .lastWhere((uri) => uri.path == '/estoque')
+            .queryParameters['obra_id'],
+        '11',
+      );
+      expect(find.byType(DropdownButton<int?>), findsWidgets);
+    });
+
     testWidgets('pedreiro nao ve valor estimado e os demais seguem clicaveis', (
       tester,
     ) async {

@@ -39,7 +39,8 @@ String nomeDoArquivo(DateTime agora) =>
 String _linha(List<String> valores) => valores.map(_celula).join(';');
 
 String _celula(String valor) {
-  final limpo = valor.replaceAll('"', '""');
+  final seguro = valor.startsWith(RegExp(r'[=+\-@\t\r]')) ? "'$valor" : valor;
+  final limpo = seguro.replaceAll('"', '""');
   return limpo.contains(RegExp('[;"\r\n]')) ? '"$limpo"' : limpo;
 }
 

@@ -22,6 +22,21 @@ ItemEstoque item({
 );
 
 void main() {
+  test('celula que comeca com formula nao e executavel na planilha', () {
+    final csv = csvDoEstoque([
+      item(sku: '=1+1', nome: '+HYPERLINK("http://x")'),
+      item(sku: '-100', nome: '@SUM(A1)'),
+      item(sku: 'CIM-01', nome: 'Cimento CP-II'),
+    ]);
+    final linhas = csv.split('\r\n');
+
+    expect(linhas[1], startsWith("'=1+1;"));
+    expect(linhas[1], contains("'+HYPERLINK(\"\"http://x\"\")"));
+    expect(linhas[2], startsWith("'-100;"));
+    expect(linhas[2], contains("'@SUM(A1)"));
+    expect(linhas[3], startsWith('CIM-01;Cimento CP-II;'));
+  });
+
   test('o cabecalho e a linha trazem as colunas do estoque', () {
     final linhas = csvDoEstoque([item()]).split('\r\n');
 
@@ -43,9 +58,7 @@ void main() {
   });
 
   test('nome com ponto e virgula ou aspas vira celula escapada', () {
-    final linha = csvDoEstoque([
-      item(nome: 'Tubo 1"; PVC'),
-    ]).split('\r\n').last;
+    final linha = csvDoEstoque([item(nome: 'Tubo 1"; PVC')]).split('\r\n').last;
 
     expect(linha, contains('"Tubo 1""; PVC"'));
     expect(linha.split(';'), hasLength(9));

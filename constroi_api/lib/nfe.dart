@@ -125,6 +125,8 @@ XmlElement? _filho(XmlElement elemento, String nome) {
 String _texto(XmlElement elemento, String nome) =>
     _filho(elemento, nome)?.innerText.trim() ?? '';
 
+final tetoDoValorUnitario = BigInt.parse('99999999999999');
+
 String? dinheiroNfe(String texto) {
   final partes = RegExp(r'^(\d{1,12})(?:\.(\d{1,10}))?$').firstMatch(texto);
   if (partes == null) return null;
@@ -133,7 +135,7 @@ String? dinheiroNfe(String texto) {
       BigInt.parse(partes[1]!) * BigInt.from(100) +
       BigInt.parse(fracao.substring(0, 2));
   if (int.parse(fracao[2]) >= 5) centavos += BigInt.one;
-  if (centavos <= BigInt.zero) return null;
+  if (centavos <= BigInt.zero || centavos > tetoDoValorUnitario) return null;
   final inteiro = centavos ~/ BigInt.from(100);
   final resto = (centavos % BigInt.from(100)).toString().padLeft(2, '0');
   return '$inteiro.$resto';

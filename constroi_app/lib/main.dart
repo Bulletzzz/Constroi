@@ -172,7 +172,7 @@ class _ConstroiAppState extends State<ConstroiApp> {
         service: EstoqueService(api: _api!),
         painel: PainelService(_api!),
         perfil: perfil,
-        obraId: argumentos['obra_id'] is int
+        obraInicial: argumentos['obra_id'] is int
             ? argumentos['obra_id'] as int
             : null,
         buscaInicial: argumentos['busca'] is String
