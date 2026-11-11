@@ -326,7 +326,13 @@ Sem `--confirmar` o script apenas descreve o que faria. Antes de inserir, ele
 apaga dessa empresa as entradas, movimentações, despesas, empréstimos, pedidos,
 saldos de estoque, vínculos de equipe e eventos; empresa, usuários, produtos e
 equipamentos existentes são preservados e atualizados. Rodar duas vezes deixa o
-banco no mesmo estado. Os usuários criados recebem a senha `Senha#Forte123`.
+banco no mesmo estado.
+
+A senha dos usuários semeados vem de `SEED_SENHA`, no `.env`, que fica fora do
+git — nenhuma senha de acesso é publicada neste repositório. O script recusa
+rodar sem ela e aplica a mesma senha a todos os usuários da empresa de teste,
+inclusive aos que já existiam. Com a API exposta na internet, troque essa senha
+e rode o seed de novo.
 
 ## Consulta de estoque (RF05)
 

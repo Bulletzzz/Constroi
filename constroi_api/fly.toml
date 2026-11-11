@@ -1,0 +1,29 @@
+app = "constroi-api"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+  build-target = "producao"
+
+[env]
+  PORT = "8080"
+  AUDITORIA_CONEXAO_ESTRITA = "false"
+  DATABASE_TRANSACTION_TIMEOUT_MS = "30000"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_start_machines = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+[[http_service.checks]]
+  grace_period = "30s"
+  interval = "1m"
+  method = "GET"
+  path = "/"
+  timeout = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

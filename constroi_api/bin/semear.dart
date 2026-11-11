@@ -6,7 +6,7 @@ import 'package:dotenv/dotenv.dart';
 import 'package:postgres/postgres.dart';
 
 const cnpjDaEmpresa = '00.000.000/0001-00';
-const senhaDosNovos = 'Senha#Forte123';
+const variavelDaSenha = 'SEED_SENHA';
 const prefixoDoProtocolo = 'PED-5EED';
 
 typedef Pessoa = ({
@@ -1116,17 +1116,27 @@ Future<void> main(List<String> argumentos) async {
     return;
   }
 
+  final senha = ambiente[variavelDaSenha]?.trim();
+  if (senha == null || erroDaSenha(senha) != null) {
+    stderr.writeln(
+      'Defina $variavelDaSenha no .env com a senha dos usuarios semeados. '
+      '${senha == null ? '' : erroDaSenha(senha)}',
+    );
+    exitCode = 1;
+    return;
+  }
+
   final conexao = await Connection.openFromUrl(
     normalizarDatabaseUrl(databaseUrl),
   );
   try {
-    await conexao.runTx(semear);
+    await conexao.runTx((tx) => semear(tx, senha));
   } finally {
     await conexao.close();
   }
 }
 
-Future<void> semear(Session tx) async {
+Future<void> semear(Session tx, String senha) async {
   final empresas = await tx.execute(
     Sql.named('SELECT id FROM empresa WHERE cnpj = @cnpj'),
     parameters: {'cnpj': cnpjDaEmpresa},
@@ -1138,7 +1148,7 @@ Future<void> semear(Session tx) async {
 
   await limpar(tx, empresaId);
 
-  final pessoas = await prepararPessoas(tx, empresaId);
+  final pessoas = await prepararPessoas(tx, empresaId, senha);
   final obras = await prepararObras(tx, empresaId);
   final produtos = await prepararProdutos(tx, empresaId);
   final equipamentos = await prepararEquipamentos(tx, empresaId);
@@ -1185,7 +1195,11 @@ Future<void> limpar(Session tx, int empresaId) async {
   }
 }
 
-Future<Map<String, int>> prepararPessoas(Session tx, int empresaId) async {
+Future<Map<String, int>> prepararPessoas(
+  Session tx,
+  int empresaId,
+  String senha,
+) async {
   final pessoas = <String, int>{};
   for (final entrada in emailsExistentes.entries) {
     final achadas = await tx.execute(
@@ -1206,7 +1220,17 @@ Future<Map<String, int>> prepararPessoas(Session tx, int empresaId) async {
     if (achadas.isNotEmpty) pessoas[entrada.key] = achadas.first[0]! as int;
   }
 
-  final hash = gerarHash(senhaDosNovos);
+  final hash = gerarHash(senha);
+  for (final entrada in pessoas.entries) {
+    await tx.execute(
+      Sql.named('''
+        UPDATE usuario SET senha_hash = @hash,
+          atualizado_em = CURRENT_TIMESTAMP
+        WHERE id = @id
+      '''),
+      parameters: {'id': entrada.value, 'hash': hash},
+    );
+  }
   for (final pessoa in pessoasNovas) {
     final criada = await tx.execute(
       Sql.named('''
@@ -1832,5 +1856,5 @@ Future<void> resumir(Session tx, int empresaId) async {
     );
     stdout.writeln('  ${contagem.key}: ${total.first[0]}');
   }
-  stdout.writeln('Senha dos usuarios novos: $senhaDosNovos');
+  stdout.writeln('Senha de todos os usuarios: a de $variavelDaSenha.');
 }
