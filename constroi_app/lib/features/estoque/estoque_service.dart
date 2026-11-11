@@ -2,8 +2,21 @@ import '../../core/api/api_client.dart';
 import 'item_estoque.dart';
 
 const limiteMinimo = 1;
-const limiteMaximo = 200;
-const limitePadrao = 50;
+const limiteMaximo = 199;
+const limitePadrao = 20;
+
+enum FiltroDeSaldo {
+  todos('TODOS'),
+  baixo('ABAIXO DO MÍNIMO'),
+  zerado('ZERADOS');
+
+  const FiltroDeSaldo(this.rotulo);
+
+  final String rotulo;
+
+  static FiltroDeSaldo porNome(Object? valor) => FiltroDeSaldo.values
+      .firstWhere((filtro) => filtro.name == valor, orElse: () => todos);
+}
 
 class PaginaDeEstoque {
   const PaginaDeEstoque({required this.itens, required this.temMais});
@@ -21,7 +34,7 @@ class EstoqueService {
     int? obraId,
     String busca = '',
     int? categoriaId,
-    bool somenteBaixo = false,
+    FiltroDeSaldo saldo = FiltroDeSaldo.todos,
     int limite = limitePadrao,
     int deslocamento = 0,
   }) async {
@@ -33,12 +46,13 @@ class EstoqueService {
     }
 
     final consulta = <String, String>{
-      'limit': '$limite',
+      'limit': '${limite + 1}',
       'offset': '$deslocamento',
     };
     if (obraId != null) consulta['obra_id'] = '$obraId';
     if (categoriaId != null) consulta['categoria_id'] = '$categoriaId';
-    if (somenteBaixo) consulta['baixo'] = 'true';
+    if (saldo == FiltroDeSaldo.baixo) consulta['baixo'] = 'true';
+    if (saldo == FiltroDeSaldo.zerado) consulta['zerado'] = 'true';
     final termo = busca.trim();
     if (termo.isNotEmpty) consulta['busca'] = termo;
 
@@ -47,14 +61,15 @@ class EstoqueService {
       throw const ApiException(500, 'Resposta inesperada do servidor.');
     }
 
-    final itens = (resposta['estoque'] as List)
+    final recebidos = resposta['estoque'] as List;
+    final itens = recebidos
         .map(ItemEstoque.talvezDoJson)
         .whereType<ItemEstoque>()
         .toList();
 
     return PaginaDeEstoque(
-      itens: itens,
-      temMais: (resposta['estoque'] as List).length >= limite,
+      itens: itens.take(limite).toList(),
+      temMais: recebidos.length > limite,
     );
   }
 }

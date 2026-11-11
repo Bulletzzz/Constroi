@@ -1,3 +1,4 @@
+import '../../core/catalogo/opcoes.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,7 +10,9 @@ import '../../navigation/perfil_usuario.dart';
 import '../../widgets/app_header.dart';
 import '../painel/painel_model.dart';
 import '../painel/painel_service.dart';
+import 'baixar_arquivo.dart';
 import 'estoque_service.dart';
+import 'exportacao.dart';
 import 'item_estoque.dart';
 
 const _fundo = Color(0xFFF2F2F2);
@@ -37,6 +40,9 @@ class EstoqueScreen extends StatefulWidget {
     required this.perfil,
     this.painel,
     this.obraId,
+    this.obraInicial,
+    this.buscaInicial,
+    this.saldoInicial = FiltroDeSaldo.todos,
     this.aoCadastrar,
   });
 
@@ -44,6 +50,9 @@ class EstoqueScreen extends StatefulWidget {
   final PainelService? painel;
   final PerfilUsuario perfil;
   final int? obraId;
+  final int? obraInicial;
+  final String? buscaInicial;
+  final FiltroDeSaldo saldoInicial;
   final Future<void> Function(BuildContext)? aoCadastrar;
 
   @override
@@ -52,6 +61,7 @@ class EstoqueScreen extends StatefulWidget {
 
 class _EstoqueScreenState extends State<EstoqueScreen> {
   final _busca = TextEditingController();
+  final _inicioDaTabela = GlobalKey();
   final _itens = <ItemEstoque>[];
 
   Timer? _aguardandoDigitacao;
@@ -59,18 +69,19 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   IndicadoresPainel? _indicadores;
   final _obras = <ObraPainel>[];
   final _categoriasVistas = <int, String>{};
-  int? _obra;
+  late int? _obra = widget.obraInicial;
   int? _categoria;
-  bool _somenteBaixo = false;
+  late FiltroDeSaldo _saldo = widget.saldoInicial;
   bool _carregando = true;
-  bool _carregandoMais = false;
+  bool _exportando = false;
   bool _temMais = false;
+  int _pagina = 0;
   String? _erro;
-  String? _erroPagina;
 
   @override
   void initState() {
     super.initState();
+    _busca.text = widget.buscaInicial ?? '';
     unawaited(_carregarIndicadores());
     _buscar();
   }
@@ -82,17 +93,12 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     super.dispose();
   }
 
-  Future<void> _buscar({bool continuando = false}) async {
+  Future<void> _buscar() async {
     _aguardandoDigitacao?.cancel();
     final consulta = ++_consultaAtual;
     setState(() {
-      _erroPagina = null;
-      if (continuando) {
-        _carregandoMais = true;
-      } else {
-        _carregando = true;
-        _erro = null;
-      }
+      _carregando = true;
+      _erro = null;
     });
 
     try {
@@ -100,13 +106,14 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         obraId: _obraAtual,
         busca: _busca.text,
         categoriaId: _categoria,
-        somenteBaixo: _somenteBaixo,
-        deslocamento: continuando ? _itens.length : 0,
+        saldo: _saldo,
+        deslocamento: _pagina * limitePadrao,
       );
       if (!mounted || consulta != _consultaAtual) return;
       setState(() {
-        if (!continuando) _itens.clear();
-        _itens.addAll(pagina.itens);
+        _itens
+          ..clear()
+          ..addAll(pagina.itens);
         for (final item in pagina.itens) {
           final id = item.categoriaId;
           if (id != null) {
@@ -115,18 +122,31 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         }
         _temMais = pagina.temMais;
         _carregando = false;
-        _carregandoMais = false;
         _erro = null;
       });
     } on ApiException catch (erro) {
-      _registrarFalha(consulta, continuando, erro.message);
+      _registrarFalha(consulta, erro.message);
     } catch (_) {
       _registrarFalha(
         consulta,
-        continuando,
         'Não foi possível falar com o servidor. Confira a conexão.',
       );
     }
+  }
+
+  Future<void> _irParaPagina(int destino) async {
+    if (destino < 0 || destino == _pagina) return;
+    setState(() => _pagina = destino);
+    await _buscar();
+    final inicio = _inicioDaTabela.currentContext;
+    if (inicio != null && inicio.mounted) {
+      await Scrollable.ensureVisible(inicio, duration: Duration.zero);
+    }
+  }
+
+  void _refazerBusca() {
+    _pagina = 0;
+    _buscar();
   }
 
   Future<void> _carregarIndicadores() async {
@@ -152,10 +172,52 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
   int? get _obraAtual => widget.obraId ?? _obra;
 
-  String _detalheDaLinha(ItemEstoque item) {
-    final saldo = '${item.quantidade} ${item.unidade}'.trim();
-    if (_obraAtual != null) return saldo;
-    return '$saldo · ${_nomeDeObra(item.obraId)}';
+  String _detalheDaLinha(ItemEstoque item) =>
+      _obraAtual != null ? '' : _nomeDeObra(item.obraId);
+
+  String _saldoEmTexto(ItemEstoque item) {
+    final quantidade = formatarQuantidade(item.quantidade);
+    return '$quantidade ${unidadeParaQuantidade(item.unidade, item.quantidade)}'
+        .trim();
+  }
+
+  Widget _saldoDaLinha(ItemEstoque item) {
+    final zerado = num.tryParse(item.quantidade) == 0;
+    return Expanded(
+      flex: 2,
+      child: Semantics(
+        identifier: 'estoque-saldo',
+        label: '${_saldoEmTexto(item)} de ${item.produtoNome}',
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                zerado ? 'SEM SALDO' : _saldoEmTexto(item),
+                style: TextStyle(
+                  color: item.baixo ? _perigo : _tinta,
+                  fontSize: zerado ? 13 : 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'mín. ${formatarQuantidade(item.estoqueMinimo)}',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: item.baixo ? _perigo : _apoio,
+                fontSize: 10,
+                fontWeight: item.baixo ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _nomeDeObra(int id) {
@@ -176,16 +238,11 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
   String _numero(int? valor) => valor == null ? '—' : '$valor';
 
-  void _registrarFalha(int consulta, bool continuando, String mensagem) {
+  void _registrarFalha(int consulta, String mensagem) {
     if (!mounted || consulta != _consultaAtual) return;
     setState(() {
-      if (continuando) {
-        _erroPagina = mensagem;
-      } else {
-        _erro = mensagem;
-      }
+      _erro = mensagem;
       _carregando = false;
-      _carregandoMais = false;
     });
   }
 
@@ -197,7 +254,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     _aguardandoDigitacao?.cancel();
     _aguardandoDigitacao = Timer(
       const Duration(milliseconds: 400),
-      () => _buscar(),
+      _refazerBusca,
     );
   }
 
@@ -212,12 +269,6 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       for (final e in nomes)
         DropdownMenuItem<int?>(value: e.key, child: Text(e.value)),
     ];
-  }
-
-  void _emBreve(String recurso) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$recurso ainda não está disponível.')),
-    );
   }
 
   @override
@@ -274,29 +325,38 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           const SizedBox(height: 16),
           _filtroDeCategoria(),
           const SizedBox(height: 16),
-          _caixaEstoqueBaixo(),
+          _filtroDeSaldo(),
           const SizedBox(height: 16),
           Container(height: 2, color: _tinta),
           const SizedBox(height: 14),
-          _tabela(),
+          _tabela(key: _inicioDaTabela),
           const SizedBox(height: 24),
           _cartaoResumo(
             rotulo: 'ITENS MONITORADOS',
+            identificador: 'estoque-resumo-itens',
             valor: _numero(_indicadores?.totalItens),
             icone: Icons.inventory_2_outlined,
+            aoTocar: () => _aplicarSaldo(FiltroDeSaldo.todos),
           ),
           const SizedBox(height: 16),
           _cartaoResumo(
             rotulo: 'RUPTURAS CRÍTICAS',
+            identificador: 'estoque-resumo-rupturas',
             valor: _numero(_indicadores?.rupturasCriticas),
             icone: Icons.warning_rounded,
             alerta: true,
+            aoTocar: () => _aplicarSaldo(FiltroDeSaldo.zerado),
           ),
           const SizedBox(height: 16),
           _cartaoResumo(
             rotulo: 'ENTREGAS PENDENTES',
+            identificador: 'estoque-resumo-pendentes',
             valor: _numero(_indicadores?.requisicoesPendentes),
             icone: Icons.local_shipping_outlined,
+            aoTocar: () => Navigator.of(context).pushReplacementNamed(
+              AppRoute.requisicoes.caminho,
+              arguments: {'obra_id': _obraAtual},
+            ),
           ),
         ],
       ),
@@ -317,6 +377,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         Flexible(
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int?>(
+              dropdownColor: Colors.white,
               value: _obra,
               isDense: true,
               isExpanded: true,
@@ -340,7 +401,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                   _categoria = null;
                 });
                 unawaited(_carregarIndicadores());
-                _buscar();
+                _refazerBusca();
               },
             ),
           ),
@@ -349,31 +410,47 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     );
   }
 
-  Widget _acoes() => Row(
-    children: [
-      Expanded(
-        child: _botao(
-          rotulo: 'EXPORTAR',
-          icone: Icons.download,
-          aoTocar: () => _emBreve('A exportação'),
-        ),
-      ),
-      const SizedBox(width: 16),
-      Expanded(
-        child: _botao(
-          rotulo: 'NOVO ITEM',
-          icone: Icons.add,
-          destacado: true,
-          aoTocar: () => _emBreve('O cadastro de item'),
-        ),
-      ),
-    ],
+  Widget _acoes() => Semantics(
+    identifier: 'estoque-exportar',
+    button: true,
+    child: _botao(
+      rotulo: _exportando ? 'EXPORTANDO...' : 'EXPORTAR',
+      icone: Icons.download,
+      aoTocar: _exportando ? null : _exportar,
+    ),
   );
+
+  Future<void> _exportar() async {
+    if (_itens.isEmpty) {
+      _avisar('Não há itens para exportar.');
+      return;
+    }
+    setState(() => _exportando = true);
+    try {
+      final recado = await baixarTexto(
+        nomeDoArquivo(DateTime.now()),
+        csvDoEstoque(_itens),
+      );
+      if (!mounted) return;
+      setState(() => _exportando = false);
+      _avisar(recado);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _exportando = false);
+      _avisar('Não foi possível gerar a planilha.');
+    }
+  }
+
+  void _avisar(String texto) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(texto)));
+  }
 
   Widget _botao({
     required String rotulo,
     required IconData icone,
-    required VoidCallback aoTocar,
+    required VoidCallback? aoTocar,
     bool destacado = false,
   }) => SizedBox(
     height: 44,
@@ -415,7 +492,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     child: OutlinedButton.icon(
       onPressed: () async {
         await widget.aoCadastrar!(context);
-        if (mounted) await _buscar();
+        if (mounted) _refazerBusca();
       },
       icon: const Icon(Icons.add, size: 20),
       label: const Text(
@@ -450,7 +527,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
             child: TextField(
               controller: _busca,
               onChanged: _digitou,
-              onSubmitted: (_) => _buscar(),
+              onSubmitted: (_) => _refazerBusca(),
               style: const TextStyle(color: _tinta, fontSize: 13),
               decoration: const InputDecoration.collapsed(
                 hintText: 'Buscar SKU ou nome',
@@ -478,6 +555,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int?>(
+              dropdownColor: Colors.white,
               value: _categoria,
               isExpanded: true,
               icon: const Icon(Icons.expand_more, color: _tinta),
@@ -485,7 +563,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
               items: _categorias,
               onChanged: (valor) {
                 setState(() => _categoria = valor);
-                _buscar();
+                _refazerBusca();
               },
             ),
           ),
@@ -494,40 +572,46 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     ],
   );
 
-  Widget _caixaEstoqueBaixo() => Row(
+  Widget _filtroDeSaldo() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      SizedBox(
-        width: 20,
-        height: 20,
-        child: Checkbox(
-          value: _somenteBaixo,
-          onChanged: (valor) {
-            setState(() => _somenteBaixo = valor ?? false);
-            _buscar();
-          },
-          fillColor: WidgetStateProperty.resolveWith(
-            (estados) =>
-                estados.contains(WidgetState.selected) ? _tinta : Colors.white,
-          ),
-          checkColor: Colors.white,
-          side: const BorderSide(color: _tinta, width: 2),
-          shape: const RoundedRectangleBorder(),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-        ),
-      ),
-      const SizedBox(width: 11),
-      Flexible(
-        child: Text(
-          'SOMENTE ESTOQUE BAIXO',
-          overflow: TextOverflow.ellipsis,
-          style: _mini(_tinta),
-        ),
+      Text('SALDO:', style: _mini(_rotulo)),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final filtro in FiltroDeSaldo.values) _chipDeSaldo(filtro),
+        ],
       ),
     ],
   );
 
-  Widget _tabela() => Container(
+  Widget _chipDeSaldo(FiltroDeSaldo filtro) {
+    final ativo = _saldo == filtro;
+    return Semantics(
+      identifier: 'estoque-filtro-${filtro.name}',
+      button: true,
+      selected: ativo,
+      child: InkWell(
+        onTap: ativo ? null : () => _aplicarSaldo(filtro),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: ativo ? _tinta : Colors.white,
+            border: Border.all(color: _tinta, width: 2),
+          ),
+          child: Text(
+            filtro.rotulo,
+            style: _mini(ativo ? Colors.white : _tinta),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tabela({Key? key}) => Container(
+    key: key,
     decoration: BoxDecoration(
       color: Colors.white,
       border: Border.all(color: _tinta, width: 2),
@@ -546,7 +630,18 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                 width: 104,
                 child: Text('SKU / ID', style: _mini(_rotulo, 1)),
               ),
-              Expanded(child: Text('DESCRIÇÃO', style: _mini(_rotulo, 1))),
+              Expanded(
+                flex: 3,
+                child: Text('DESCRIÇÃO', style: _mini(_rotulo, 1)),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'SALDO',
+                  textAlign: TextAlign.right,
+                  style: _mini(_rotulo, 1),
+                ),
+              ),
             ],
           ),
         ),
@@ -570,8 +665,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           )
         else ...[
           for (var i = 0; i < _itens.length; i++) _linha(_itens[i], i.isOdd),
-          if (_erroPagina != null) _falhaDaPagina(),
-          if (_temMais && _erroPagina == null) _carregarMais(),
+          if (_temMais || _pagina > 0) _paginacao(),
         ],
       ],
     ),
@@ -585,12 +679,12 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         border: const Border(bottom: BorderSide(color: _separador)),
       ),
       child: SizedBox(
-        height: 56,
+        height: 64,
         child: Row(
           children: [
             Container(
               width: 4,
-              height: 40,
+              height: 48,
               color: item.baixo ? _perigo : _tinta,
             ),
             const SizedBox(width: 9),
@@ -621,6 +715,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
               ),
             ),
             Expanded(
+              flex: 3,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,20 +725,17 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: _tinta, fontSize: 13),
                   ),
-                  Text(
-                    _detalheDaLinha(item),
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: item.baixo ? _perigo : _apoio,
-                      fontSize: 11,
-                      fontWeight: item.baixo
-                          ? FontWeight.w700
-                          : FontWeight.w400,
+                  if (_detalheDaLinha(item).isNotEmpty)
+                    Text(
+                      _detalheDaLinha(item),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _apoio, fontSize: 11),
                     ),
-                  ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            _saldoDaLinha(item),
             const SizedBox(width: 12),
           ],
         ),
@@ -671,84 +763,101 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     ),
   );
 
-  Widget _falhaDaPagina() => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-    child: Column(
+  Widget _paginacao() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    decoration: const BoxDecoration(
+      border: Border(top: BorderSide(color: _tinta, width: 2)),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          _erroPagina!,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: _perigo, fontSize: 12, height: 1.4),
+        Semantics(
+          identifier: 'estoque-pagina-anterior',
+          button: true,
+          child: TextButton(
+            onPressed: _pagina == 0 ? null : () => _irParaPagina(_pagina - 1),
+            child: Text('ANTERIOR', style: _mini(_tinta)),
+          ),
         ),
-        TextButton(
-          onPressed: () => _buscar(continuando: true),
-          child: Text('TENTAR CARREGAR DE NOVO', style: _mini(_tinta)),
+        Text('PÁGINA ${_pagina + 1}', style: _mini(_rotulo)),
+        Semantics(
+          identifier: 'estoque-pagina-proxima',
+          button: true,
+          child: TextButton(
+            onPressed: !_temMais ? null : () => _irParaPagina(_pagina + 1),
+            child: Text('PRÓXIMA', style: _mini(_tinta)),
+          ),
         ),
       ],
     ),
-  );
-
-  Widget _carregarMais() => SizedBox(
-    height: 52,
-    child: _carregandoMais
-        ? const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                valueColor: AlwaysStoppedAnimation(_tinta),
-              ),
-            ),
-          )
-        : TextButton(
-            onPressed: () => _buscar(continuando: true),
-            child: Text('CARREGAR MAIS', style: _mini(_tinta)),
-          ),
   );
 
   Widget _cartaoResumo({
     required String rotulo,
     required String valor,
     required IconData icone,
+    required String identificador,
     bool alerta = false,
-  }) => Container(
-    decoration: BoxDecoration(
-      color: alerta ? _perigoFundo : _linhaPar,
-      border: Border.all(color: _separador),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(height: 4, color: alerta ? _perigo : _tinta),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(25, 22, 22, 22),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(rotulo, style: _mini(_rotulo)),
-                    const SizedBox(height: 10),
-                    Text(
-                      valor,
-                      style: TextStyle(
+    VoidCallback? aoTocar,
+  }) => Semantics(
+    identifier: identificador,
+    button: aoTocar != null,
+    child: InkWell(
+      onTap: aoTocar,
+      child: Container(
+        decoration: BoxDecoration(
+          color: alerta ? _perigoFundo : _linhaPar,
+          border: Border.all(color: _separador),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(height: 4, color: alerta ? _perigo : _tinta),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(25, 22, 22, 22),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(rotulo, style: _mini(_rotulo)),
+                        const SizedBox(height: 10),
+                        Text(
+                          valor,
+                          style: TextStyle(
+                            color: alerta ? _perigo : _tinta,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(icone, size: 20, color: alerta ? _perigo : _tinta),
+                  if (aoTocar != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 20,
                         color: alerta ? _perigo : _tinta,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-              Icon(icone, size: 20, color: alerta ? _perigo : _tinta),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     ),
   );
+
+  void _aplicarSaldo(FiltroDeSaldo filtro) {
+    if (_saldo == filtro) return;
+    setState(() => _saldo = filtro);
+    _refazerBusca();
+  }
 }

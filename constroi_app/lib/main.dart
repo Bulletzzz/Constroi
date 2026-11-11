@@ -107,7 +107,7 @@ class _ConstroiAppState extends State<ConstroiApp> {
         name: destino.caminho,
         arguments: settings.arguments,
       ),
-      builder: (_) => _areaAutenticada(destino),
+      builder: (_) => _areaAutenticada(destino, settings.arguments),
     );
   }
 
@@ -122,10 +122,10 @@ class _ConstroiAppState extends State<ConstroiApp> {
       return _ConfiguracaoAusente(detalhe: _erroDeConfiguracao!);
     }
 
-    return _areaAutenticada(AppRoute.painel);
+    return _areaAutenticada(AppRoute.painel, null);
   }
 
-  Widget _areaAutenticada(AppRoute solicitada) {
+  Widget _areaAutenticada(AppRoute solicitada, Object? argumentos) {
     final sessoes = _sessoes!;
     return ListenableBuilder(
       listenable: sessoes,
@@ -138,12 +138,16 @@ class _ConstroiAppState extends State<ConstroiApp> {
           return _SessaoSemPerfil(onSair: sessoes.signOut);
         }
 
-        return _telaDaRota(guarda.destinoPermitido(solicitada), perfil);
+        return _telaDaRota(
+          guarda.destinoPermitido(solicitada),
+          perfil,
+          argumentos is Map ? argumentos : const {},
+        );
       },
     );
   }
 
-  Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil) {
+  Widget _telaDaRota(AppRoute rota, PerfilUsuario perfil, Map argumentos) {
     if (rota == AppRoute.importacaoNfe) {
       return NfeScreen(
         service: NfeService(api: _api!),
@@ -151,7 +155,10 @@ class _ConstroiAppState extends State<ConstroiApp> {
       );
     }
     if (rota == AppRoute.custos) {
-      return CustosScreen(service: CustosService(api: _api!), perfil: perfil);
+      return CustosScreen(
+        service: CustosService(api: _api!),
+        perfil: perfil,
+      );
     }
     if (rota == AppRoute.painel) {
       return AppHome(
@@ -165,6 +172,13 @@ class _ConstroiAppState extends State<ConstroiApp> {
         service: EstoqueService(api: _api!),
         painel: PainelService(_api!),
         perfil: perfil,
+        obraInicial: argumentos['obra_id'] is int
+            ? argumentos['obra_id'] as int
+            : null,
+        buscaInicial: argumentos['busca'] is String
+            ? argumentos['busca'] as String
+            : null,
+        saldoInicial: FiltroDeSaldo.porNome(argumentos['saldo']),
         aoCadastrar: (contexto) => Navigator.of(contexto).push<void>(
           MaterialPageRoute(
             builder: (_) => CadastroScreen(
@@ -176,7 +190,10 @@ class _ConstroiAppState extends State<ConstroiApp> {
       );
     }
     if (rota == AppRoute.equipe) {
-      return EquipeScreen(service: EquipeService(api: _api!), perfil: perfil);
+      return EquipeScreen(
+        service: EquipeService(api: _api!),
+        perfil: perfil,
+      );
     }
     if (rota == AppRoute.administracao) {
       return AdministracaoScreen(

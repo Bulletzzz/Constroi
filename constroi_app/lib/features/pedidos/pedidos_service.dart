@@ -56,6 +56,17 @@ class ObraDisponivel {
 
 const limiteDaFila = 50;
 
+enum OrdemDoPedido {
+  urgencia('urgencia', 'Urgentes primeiro'),
+  recentes('recentes', 'Mais recentes'),
+  antigos('antigos', 'Mais antigos');
+
+  const OrdemDoPedido(this.valor, this.rotulo);
+
+  final String valor;
+  final String rotulo;
+}
+
 class PedidosService {
   PedidosService({required ApiClient api}) : _api = api;
 
@@ -109,13 +120,28 @@ class PedidosService {
     return criado;
   }
 
-  Future<List<Pedido>> pendentes({int? obraId}) async {
+  Future<List<Pedido>> pendentes({
+    int? obraId,
+    OrdemDoPedido ordem = OrdemDoPedido.urgencia,
+  }) => _listar(status: 'pendente', obraId: obraId, ordem: ordem);
+
+  Future<List<Pedido>> meusPedidos({
+    SituacaoPedido? situacao,
+    OrdemDoPedido ordem = OrdemDoPedido.recentes,
+  }) => _listar(status: situacao?.valor, ordem: ordem);
+
+  Future<List<Pedido>> _listar({
+    String? status,
+    int? obraId,
+    required OrdemDoPedido ordem,
+  }) async {
     final consulta = <String, String>{
-      'status': 'pendente',
       'com_itens': 'true',
       'limit': '$limiteDaFila',
+      'ordem': ordem.valor,
+      'status': ?status,
+      if (obraId != null) 'obra_id': '$obraId',
     };
-    if (obraId != null) consulta['obra_id'] = '$obraId';
     final resposta = await _api.get('pedidos', query: consulta);
     return _lista(resposta, 'pedidos')
         .map(Pedido.talvezDoJson)

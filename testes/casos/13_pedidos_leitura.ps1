@@ -39,6 +39,27 @@ Conferir (@($porProtocolo.pedidos).Count -eq 1) "filtro por protocolo traz 1 (ve
 $porObra = Chamar GET "/pedidos?obra_id=$($c.obra.id)" $c.engenheiro $null 200 'filtra por obra'
 Conferir (@($porObra.pedidos).Count -eq 2) "filtro por obra traz 2 (veio $(@($porObra.pedidos).Count))"
 
+$urgente = Chamar POST '/pedidos' $c.pedreiro @{
+    pedido = @{ obra_id = $c.obra.id; urgencia = 'urgente'
+        itens = @(@{ produto_id = $c.produto.id; quantidade = 3 }) }
+} 201 'pedido urgente'
+$maisNovo = Chamar POST '/pedidos' $c.pedreiro @{
+    pedido = @{ obra_id = $c.obra.id; itens = @(@{ produto_id = $c.produto.id; quantidade = 4 }) }
+} 201 'pedido normal criado depois do urgente'
+
+$porUrgencia = Chamar GET "/pedidos?obra_id=$($c.obra.id)&ordem=urgencia" $c.engenheiro $null 200 'ordena por urgencia'
+Conferir ($porUrgencia.pedidos[0].id -eq $urgente.id) 'urgente vem antes de um pedido mais novo'
+Conferir ($porUrgencia.pedidos[1].id -eq $maisNovo.id) 'entre os padrao, o mais novo vem primeiro'
+$recentes = Chamar GET "/pedidos?obra_id=$($c.obra.id)&ordem=recentes" $c.engenheiro $null 200 'ordena por recentes'
+Conferir ($recentes.pedidos[0].id -eq $maisNovo.id) 'recentes ignora a urgencia e traz o ultimo criado'
+$antigos = Chamar GET "/pedidos?obra_id=$($c.obra.id)&ordem=antigos" $c.engenheiro $null 200 'ordena por antigos'
+Conferir ($antigos.pedidos[0].id -eq $pedido.id) 'antigos traz o primeiro criado primeiro'
+Conferir ($antigos.pedidos[-1].id -eq $maisNovo.id) 'antigos deixa o mais novo por ultimo'
+$semOrdem = Chamar GET "/pedidos?obra_id=$($c.obra.id)" $c.engenheiro $null 200 'sem ordem mantem o padrao antigo'
+Conferir ($semOrdem.pedidos[0].id -eq $maisNovo.id) 'o padrao continua sendo recentes'
+Chamar GET '/pedidos?ordem=alfabetica' $c.engenheiro $null 400 'ordem desconhecida' | Out-Null
+Chamar GET '/pedidos?ordem=' $c.engenheiro $null 400 'ordem vazia' | Out-Null
+
 Chamar GET '/pedidos?limit=1' $c.engenheiro $null 200 'limit=1' | Out-Null
 Chamar GET '/pedidos?limit=0' $c.engenheiro $null 400 'limit=0' | Out-Null
 Chamar GET '/pedidos?limit=201' $c.engenheiro $null 400 'limit=201' | Out-Null

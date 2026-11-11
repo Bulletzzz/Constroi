@@ -85,6 +85,21 @@ class _CustosScreenState extends State<CustosScreen> {
     }
   }
 
+  Future<void> _abrirLancamento() async {
+    final lancou = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(),
+      builder: (_) => _FormularioDeDespesa(
+        service: widget.service,
+        obras: _obras,
+        obraEscolhida: _obra,
+      ),
+    );
+    if (lancou == true && mounted) await _carregar();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: _fundo,
@@ -116,6 +131,31 @@ class _CustosScreenState extends State<CustosScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    if (widget.perfil.possuiNivel(PerfilUsuario.engenheiro))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Semantics(
+                          identifier: 'custos-lancar',
+                          button: true,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _amarelo,
+                              foregroundColor: _tinta,
+                              elevation: 0,
+                              minimumSize: const Size(0, 48),
+                              shape: const RoundedRectangleBorder(
+                                side: BorderSide(color: _tinta, width: 2),
+                              ),
+                            ),
+                            onPressed: _obras.isEmpty ? null : _abrirLancamento,
+                            icon: const Icon(Icons.add),
+                            label: const Text(
+                              'LANÇAR DESPESA',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
                     Semantics(
                       identifier: 'custos-obra',
                       container: true,
@@ -434,6 +474,283 @@ class _CustosScreenState extends State<CustosScreen> {
             ),
           ),
       ],
+    ),
+  );
+}
+
+class _FormularioDeDespesa extends StatefulWidget {
+  const _FormularioDeDespesa({
+    required this.service,
+    required this.obras,
+    this.obraEscolhida,
+  });
+
+  final CustosService service;
+  final List<ObraCusto> obras;
+  final int? obraEscolhida;
+
+  @override
+  State<_FormularioDeDespesa> createState() => _FormularioDeDespesaState();
+}
+
+class _FormularioDeDespesaState extends State<_FormularioDeDespesa> {
+  final _formulario = GlobalKey<FormState>();
+  final _descricao = TextEditingController();
+  final _valor = TextEditingController();
+
+  late int? _obra = widget.obraEscolhida ?? widget.obras.first.id;
+  List<CategoriaDeCusto> _categorias = [];
+  int? _categoria;
+  bool _carregandoCategorias = true;
+  bool _salvando = false;
+  String? _erro;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarCategorias();
+  }
+
+  @override
+  void dispose() {
+    _descricao.dispose();
+    _valor.dispose();
+    super.dispose();
+  }
+
+  Future<void> _carregarCategorias() async {
+    try {
+      final lista = await widget.service.categorias();
+      if (!mounted) return;
+      setState(() {
+        _categorias = lista;
+        _categoria = lista.isEmpty ? null : lista.first.id;
+        _carregandoCategorias = false;
+      });
+    } catch (erro) {
+      if (!mounted) return;
+      setState(() {
+        _carregandoCategorias = false;
+        _erro = erro is ApiException
+            ? erro.message
+            : 'Não foi possível carregar as categorias.';
+      });
+    }
+  }
+
+  Future<void> _salvar() async {
+    if (_formulario.currentState?.validate() != true) return;
+    final obra = _obra;
+    final categoria = _categoria;
+    final valor = valorParaApi(_valor.text);
+    if (obra == null || categoria == null || valor == null) return;
+
+    setState(() {
+      _salvando = true;
+      _erro = null;
+    });
+    try {
+      await widget.service.lancarDespesa(
+        obraId: obra,
+        categoriaId: categoria,
+        descricao: _descricao.text.trim(),
+        valor: valor,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (erro) {
+      if (!mounted) return;
+      setState(() {
+        _salvando = false;
+        _erro = erro is ApiException
+            ? erro.message
+            : 'Não foi possível lançar a despesa. Confira a conexão.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(
+      20,
+      20,
+      20,
+      20 + MediaQuery.of(context).viewInsets.bottom,
+    ),
+    child: Semantics(
+      identifier: 'custos-formulario',
+      container: true,
+      child: Form(
+        key: _formulario,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'LANÇAR DESPESA',
+                style: TextStyle(
+                  color: _tinta,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Serviços e locações que não entram como material.',
+                style: TextStyle(color: _apoio, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              _rotulo('OBRA'),
+              Semantics(
+                identifier: 'despesa-obra',
+                container: true,
+                child: DropdownButton<int?>(
+                  value: _obra,
+                  isExpanded: true,
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: _tinta, fontSize: 14),
+                  iconEnabledColor: _tinta,
+                  items: [
+                    for (final obra in widget.obras)
+                      DropdownMenuItem(
+                        value: obra.id,
+                        child: Text(obra.nome, overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
+                  onChanged: (valor) => setState(() => _obra = valor),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _rotulo('CATEGORIA'),
+              if (_carregandoCategorias)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: LinearProgressIndicator(color: _tinta),
+                )
+              else
+                Semantics(
+                  identifier: 'despesa-categoria',
+                  container: true,
+                  child: DropdownButton<int?>(
+                    value: _categoria,
+                    isExpanded: true,
+                    dropdownColor: Colors.white,
+                    style: const TextStyle(color: _tinta, fontSize: 14),
+                    iconEnabledColor: _tinta,
+                    items: [
+                      for (final categoria in _categorias)
+                        DropdownMenuItem(
+                          value: categoria.id,
+                          child: Text(
+                            categoria.nome,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (valor) => setState(() => _categoria = valor),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              _rotulo('DESCRIÇÃO'),
+              TextFormField(
+                controller: _descricao,
+                maxLength: 255,
+                style: const TextStyle(color: _tinta),
+                decoration: _campo('Locação de bomba de concreto'),
+                validator: (valor) => (valor ?? '').trim().isEmpty
+                    ? 'Descreva o que foi pago.'
+                    : null,
+              ),
+              _rotulo('VALOR (R\$)'),
+              TextFormField(
+                controller: _valor,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: const TextStyle(color: _tinta),
+                decoration: _campo('6800,00'),
+                validator: (valor) => valorParaApi(valor ?? '') == null
+                    ? 'Informe um valor maior que zero, com até dois decimais.'
+                    : null,
+              ),
+              if (_erro != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _erro!,
+                  style: const TextStyle(color: _vermelho, fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Semantics(
+                identifier: 'despesa-salvar',
+                button: true,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _amarelo,
+                    foregroundColor: _tinta,
+                    elevation: 0,
+                    minimumSize: const Size(0, 48),
+                    shape: const RoundedRectangleBorder(
+                      side: BorderSide(color: _tinta, width: 2),
+                    ),
+                  ),
+                  onPressed:
+                      _salvando ||
+                          _carregandoCategorias ||
+                          _obra == null ||
+                          _categoria == null
+                      ? null
+                      : _salvar,
+                  child: Text(
+                    _salvando ? 'LANÇANDO...' : 'LANÇAR',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _salvando
+                    ? null
+                    : () => Navigator.pop(context, false),
+                child: const Text('CANCELAR', style: TextStyle(color: _tinta)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _rotulo(String texto) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Text(
+      texto,
+      style: const TextStyle(
+        color: _apoio,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
+    ),
+  );
+
+  InputDecoration _campo(String exemplo) => InputDecoration(
+    hintText: exemplo,
+    hintStyle: const TextStyle(color: _apoio),
+    filled: true,
+    fillColor: Colors.white,
+    border: const OutlineInputBorder(
+      borderRadius: BorderRadius.zero,
+      borderSide: BorderSide(color: _tinta, width: 2),
+    ),
+    enabledBorder: const OutlineInputBorder(
+      borderRadius: BorderRadius.zero,
+      borderSide: BorderSide(color: _tinta, width: 2),
+    ),
+    focusedBorder: const OutlineInputBorder(
+      borderRadius: BorderRadius.zero,
+      borderSide: BorderSide(color: _tinta, width: 2),
     ),
   );
 }

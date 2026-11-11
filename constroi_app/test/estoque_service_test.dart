@@ -47,13 +47,13 @@ void main() {
       obraId: 3,
       busca: '  cimento  ',
       categoriaId: 2,
-      somenteBaixo: true,
+      saldo: FiltroDeSaldo.baixo,
       limite: 20,
       deslocamento: 40,
     );
 
     expect(tudo.chamadas.single.queryParameters, {
-      'limit': '20',
+      'limit': '21',
       'offset': '40',
       'obra_id': '3',
       'categoria_id': '2',
@@ -62,13 +62,33 @@ void main() {
     });
   });
 
+  test('filtro de zerados vai como zerado, nunca como baixo', () async {
+    final tudo = montar((_) => _comItens([]));
+
+    await tudo.estoque.listar(saldo: FiltroDeSaldo.zerado);
+
+    expect(tudo.chamadas.single.queryParameters, {
+      'limit': '21',
+      'offset': '0',
+      'zerado': 'true',
+    });
+  });
+
+  test('nome invalido de filtro cai em todos', () {
+    expect(FiltroDeSaldo.porNome('zerado'), FiltroDeSaldo.zerado);
+    expect(FiltroDeSaldo.porNome('baixo'), FiltroDeSaldo.baixo);
+    expect(FiltroDeSaldo.porNome('inexistente'), FiltroDeSaldo.todos);
+    expect(FiltroDeSaldo.porNome(null), FiltroDeSaldo.todos);
+    expect(FiltroDeSaldo.porNome(7), FiltroDeSaldo.todos);
+  });
+
   test('omite filtros vazios e o baixo quando nao marcado', () async {
     final tudo = montar((_) => _comItens([]));
 
     await tudo.estoque.listar(busca: '   ');
 
     expect(tudo.chamadas.single.queryParameters, {
-      'limit': '50',
+      'limit': '21',
       'offset': '0',
     });
   });
@@ -87,9 +107,11 @@ void main() {
   });
 
   test('quantidade continua texto para nao perder centavo', () async {
-    final tudo = montar((_) => _comItens([
-      {..._umItem, 'quantidade': '1234567.89'},
-    ]));
+    final tudo = montar(
+      (_) => _comItens([
+        {..._umItem, 'quantidade': '1234567.89'},
+      ]),
+    );
 
     final pagina = await tudo.estoque.listar();
 
@@ -97,25 +119,48 @@ void main() {
   });
 
   test('item malformado e ignorado sem derrubar a lista', () async {
-    final tudo = montar((_) => _comItens([
-      _umItem,
-      {'id': null, 'obra_id': 'x'},
-      {..._umItem, 'id': 2},
-    ]));
+    final tudo = montar(
+      (_) => _comItens([
+        _umItem,
+        {'id': null, 'obra_id': 'x'},
+        {..._umItem, 'id': 2},
+      ]),
+    );
 
     final pagina = await tudo.estoque.listar();
 
     expect(pagina.itens.map((i) => i.id), [1, 2]);
   });
 
-  test('pagina cheia indica que pode ter mais', () async {
+  test('pede uma linha a mais para saber se existe proxima pagina', () async {
+    final tudo = montar((_) => _comItens([]));
+
+    await tudo.estoque.listar(limite: 5);
+
+    expect(tudo.chamadas.single.queryParameters['limit'], '6');
+  });
+
+  test('linha extra indica proxima pagina e nao aparece na lista', () async {
+    final tudo = montar(
+      (_) => _comItens(List.generate(6, (i) => {..._umItem, 'id': i + 1})),
+    );
+
+    final pagina = await tudo.estoque.listar(limite: 5);
+
+    expect(pagina.temMais, isTrue);
+    expect(pagina.itens, hasLength(5));
+    expect(pagina.itens.last.id, 5);
+  });
+
+  test('pagina cheia sem linha extra e o fim da lista', () async {
     final tudo = montar(
       (_) => _comItens(List.generate(5, (i) => {..._umItem, 'id': i + 1})),
     );
 
     final pagina = await tudo.estoque.listar(limite: 5);
 
-    expect(pagina.temMais, isTrue);
+    expect(pagina.temMais, isFalse);
+    expect(pagina.itens, hasLength(5));
   });
 
   test('pagina incompleta indica fim da lista', () async {
@@ -132,6 +177,7 @@ void main() {
     final tudo = montar((_) => _comItens([]));
 
     expect(() => tudo.estoque.listar(limite: 0), throwsArgumentError);
+    expect(() => tudo.estoque.listar(limite: 200), throwsArgumentError);
     expect(() => tudo.estoque.listar(limite: 201), throwsArgumentError);
     expect(() => tudo.estoque.listar(deslocamento: -1), throwsArgumentError);
   });
@@ -139,10 +185,7 @@ void main() {
   test('resposta fora do formato vira ApiException', () async {
     final tudo = montar((_) => http.Response(jsonEncode({'itens': []}), 200));
 
-    await expectLater(
-      tudo.estoque.listar(),
-      throwsA(isA<ApiException>()),
-    );
+    await expectLater(tudo.estoque.listar(), throwsA(isA<ApiException>()));
   });
 
   test('erro da API sobe para a tela tratar', () async {
@@ -153,7 +196,11 @@ void main() {
     await expectLater(
       tudo.estoque.listar(),
       throwsA(
-        isA<ApiException>().having((e) => e.message, 'mensagem', 'Obra invalida.'),
+        isA<ApiException>().having(
+          (e) => e.message,
+          'mensagem',
+          'Obra invalida.',
+        ),
       ),
     );
   });

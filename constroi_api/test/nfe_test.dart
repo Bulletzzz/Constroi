@@ -82,6 +82,47 @@ void main() {
       throwsA(isA<FalhaNfe>()),
     );
   });
+
+  test('preco unitario vem da nota arredondado para o centavo', () {
+    for (final caso in [
+      ('38.5000000000', '38.50'),
+      ('2.3456', '2.35'),
+      ('2.3444', '2.34'),
+      ('2.345', '2.35'),
+      ('0.005', '0.01'),
+      ('1', '1.00'),
+      ('999999999999.99', '999999999999.99'),
+      ('999999999999.994', '999999999999.99'),
+    ]) {
+      expect(dinheiroNfe(caso.$1), caso.$2, reason: caso.$1);
+    }
+    for (final invalido in [
+      '',
+      '0',
+      '0.004',
+      '-1',
+      '1,50',
+      'NaN',
+      '1e2',
+      '1234567890123',
+      '999999999999.995',
+      '999999999999.999',
+    ]) {
+      expect(dinheiroNfe(invalido), isNull, reason: invalido);
+    }
+  });
+
+  test('nota com vUnCom carrega o preco no material', () {
+    final nota = lerNfe(
+      utf8.encode(xmlNfe(itens: materialXml(valorUnitario: '38.5000000000'))),
+    );
+    expect(nota.itens.single.valorUnitario, '38.50');
+  });
+
+  test('nota sem vUnCom nao inventa preco', () {
+    final nota = lerNfe(utf8.encode(xmlNfe()));
+    expect(nota.itens.single.valorUnitario, isNull);
+  });
   test(
     'quantidades respeitam NUMERIC(12,2), nao arredondam nem aceitam NaN',
     () {

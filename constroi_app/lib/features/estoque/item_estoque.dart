@@ -25,9 +25,8 @@ class ItemEstoque {
   final int? categoriaId;
   final String? categoriaNome;
 
-  String get identificacao => sku?.trim().isNotEmpty ?? false
-      ? sku!.trim()
-      : 'ID-$produtoId';
+  String get identificacao =>
+      sku?.trim().isNotEmpty ?? false ? sku!.trim() : 'ID-$produtoId';
 
   static ItemEstoque? talvezDoJson(Object? dados) {
     if (dados is! Map) return null;

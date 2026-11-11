@@ -1,6 +1,8 @@
+import '../../core/catalogo/opcoes.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/app_header.dart';
+import '../estoque/estoque_service.dart';
 import '../../navigation/app_bottom_navigation.dart';
 import '../../navigation/app_route.dart';
 import '../../navigation/perfil_usuario.dart';
@@ -93,9 +95,19 @@ class _AppHomeState extends State<AppHome> {
     }
   }
 
-  void _abrirEstoque() => Navigator.of(context).pushReplacementNamed(
-    AppRoute.estoque.caminho,
-    arguments: {'busca': _busca.text.trim(), 'obra_id': _obraId},
+  void _abrirEstoque([FiltroDeSaldo saldo = FiltroDeSaldo.todos]) =>
+      Navigator.of(context).pushReplacementNamed(
+        AppRoute.estoque.caminho,
+        arguments: {
+          'busca': _busca.text.trim(),
+          'obra_id': _obraId,
+          'saldo': saldo.name,
+        },
+      );
+
+  void _abrirRequisicoes() => Navigator.of(context).pushReplacementNamed(
+    AppRoute.requisicoes.caminho,
+    arguments: {'obra_id': _obraId},
   );
 
   @override
@@ -227,6 +239,9 @@ class _AppHomeState extends State<AppHome> {
                                   ),
                                 ),
                               );
+                              final aprova = widget.perfil.possuiNivel(
+                                PerfilUsuario.engenheiro,
+                              );
                               final nova = ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _amarelo,
@@ -245,11 +260,17 @@ class _AppHomeState extends State<AppHome> {
                                       AppRoute.requisicoes.caminho,
                                       arguments: {'obra_id': _obraId},
                                     ),
-                                icon: const Icon(Icons.add),
-                                label: const Text(
-                                  'NOVA\nREQUISIÇÃO',
+                                icon: Icon(
+                                  aprova
+                                      ? Icons.fact_check_outlined
+                                      : Icons.add,
+                                ),
+                                label: Text(
+                                  aprova
+                                      ? 'VER\nREQUISIÇÕES'
+                                      : 'NOVA\nREQUISIÇÃO',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -335,6 +356,7 @@ class _AppHomeState extends State<AppHome> {
         valor: formatarNumero(indicadores.totalItens),
         apoio: 'Materiais distintos cadastrados no estoque',
         icone: Icons.inventory_2,
+        aoTocar: _abrirEstoque,
       ),
       _Indicador(
         titulo: 'RUPTURAS CRÍTICAS',
@@ -345,6 +367,7 @@ class _AppHomeState extends State<AppHome> {
             : 'Saldos zerados • requer atenção',
         icone: Icons.warning_amber_rounded,
         destaque: true,
+        aoTocar: () => _abrirEstoque(FiltroDeSaldo.zerado),
       ),
       _Indicador(
         titulo: 'ESTOQUE BAIXO',
@@ -354,6 +377,7 @@ class _AppHomeState extends State<AppHome> {
             ? 'Nenhum saldo no mínimo ou abaixo'
             : 'No mínimo ou abaixo, por obra • inclui zerados',
         icone: Icons.trending_down_rounded,
+        aoTocar: () => _abrirEstoque(FiltroDeSaldo.baixo),
       ),
       _Indicador(
         titulo: 'REQUISIÇÕES PENDENTES',
@@ -363,6 +387,7 @@ class _AppHomeState extends State<AppHome> {
             ? 'Suas requisições aguardando aprovação'
             : 'Aguardando aprovação nas obras selecionadas',
         icone: Icons.assignment_outlined,
+        aoTocar: _abrirRequisicoes,
       ),
       if (widget.perfil.possuiNivel(PerfilUsuario.engenheiro))
         _Indicador(
@@ -375,6 +400,7 @@ class _AppHomeState extends State<AppHome> {
               ? 'Parcial • ${indicadores.itensSemPreco} saldos sem preço informado'
               : 'Último preço registrado • ${indicadores.obrasAtivas} obras ativas',
           icone: Icons.payments_outlined,
+          aoTocar: _abrirEstoque,
         ),
       const SizedBox(height: 8),
       Container(
@@ -483,6 +509,7 @@ class _Indicador extends StatelessWidget {
     required this.icone,
     required this.identificador,
     this.destaque = false,
+    this.aoTocar,
   });
   final String titulo;
   final String valor;
@@ -490,61 +517,77 @@ class _Indicador extends StatelessWidget {
   final IconData icone;
   final String identificador;
   final bool destaque;
+  final VoidCallback? aoTocar;
 
   @override
   Widget build(BuildContext context) => Semantics(
     identifier: identificador,
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9F9F9),
-        border: Border(
-          top: BorderSide(color: destaque ? _amarelo : _tinta, width: 4),
-          left: const BorderSide(color: Color(0xFFE5E5E5)),
-          right: const BorderSide(color: Color(0xFFE5E5E5)),
-          bottom: const BorderSide(color: Color(0xFFE5E5E5)),
+    button: aoTocar != null,
+    child: InkWell(
+      onTap: aoTocar,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9F9F9),
+          border: Border(
+            top: BorderSide(color: destaque ? _amarelo : _tinta, width: 4),
+            left: const BorderSide(color: Color(0xFFE5E5E5)),
+            right: const BorderSide(color: Color(0xFFE5E5E5)),
+            bottom: const BorderSide(color: Color(0xFFE5E5E5)),
+          ),
         ),
-      ),
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  titulo,
-                  style: const TextStyle(
-                    color: Color(0xFF4D4732),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+        padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    titulo,
+                    style: const TextStyle(
+                      color: Color(0xFF4D4732),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              Icon(
-                icone,
-                color: destaque ? const Color(0xFF9B7200) : _tinta,
-                size: 22,
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              valor,
-              style: const TextStyle(
-                color: _tinta,
-                fontSize: 38,
-                height: 1.2,
-                fontWeight: FontWeight.w800,
+                Icon(
+                  icone,
+                  color: destaque ? const Color(0xFF9B7200) : _tinta,
+                  size: 22,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                valor,
+                style: const TextStyle(
+                  color: _tinta,
+                  fontSize: 38,
+                  height: 1.2,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(apoio, style: const TextStyle(color: _cinza, fontSize: 11)),
-        ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    apoio,
+                    style: const TextStyle(color: _cinza, fontSize: 11),
+                  ),
+                ),
+                if (aoTocar != null)
+                  const Icon(Icons.chevron_right, color: _cinza, size: 18),
+              ],
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -642,7 +685,10 @@ class _LinhaMovimento extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    movimento.unidade,
+                    unidadeParaQuantidade(
+                      movimento.unidade,
+                      movimento.quantidade.toString(),
+                    ),
                     style: const TextStyle(color: _cinza, fontSize: 9),
                   ),
                 ],

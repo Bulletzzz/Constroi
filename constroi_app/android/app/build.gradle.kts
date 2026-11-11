@@ -24,7 +24,7 @@ android {
         applicationId = "com.example.constroi_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23 // Necessário para o armazenamento seguro do token no Android.
+        minSdk = flutter.minSdkVersion // Piso do Flutter; o armazenamento seguro do token exige 23 ou mais.
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

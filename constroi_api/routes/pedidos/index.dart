@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:constroi_api/autenticacao.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/pedidos.dart';
+import 'package:constroi_api/quantidades.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -31,6 +32,14 @@ Future<Response> _listar(RequestContext context) async {
     );
   }
   final comItens = pedidoComItens == 'true';
+
+  final ordem = filtros['ordem'] ?? 'recentes';
+  if (!ordensAceitas.contains(ordem)) {
+    return _erro(
+      HttpStatus.badRequest,
+      'A ordem deve ser ${ordensAceitas.join(' ou ')}.',
+    );
+  }
 
   final usuario = context.usuario;
   final condicoes = <String>[
@@ -84,7 +93,7 @@ Future<Response> _listar(RequestContext context) async {
       JOIN obra o ON o.id = p.obra_id
       JOIN usuario u ON u.id = p.usuario_id
       WHERE ${condicoes.join(' AND ')}
-      ORDER BY p.data DESC, p.id DESC
+      ORDER BY ${ordenacaoDoPedido(ordem)}
       LIMIT @limit OFFSET @offset
     '''),
     parameters: parametros,
@@ -226,8 +235,9 @@ Future<Response> _criar(RequestContext context) async {
 
     final produtos = await transacao.execute(
       Sql.named('''
-        SELECT id FROM produto
+        SELECT id, unidade FROM produto
         WHERE empresa_id = @empresa AND id = ANY(@produtos::int[])
+        FOR SHARE
       '''),
       parameters: {
         'empresa': usuario.empresaId,
@@ -238,6 +248,21 @@ Future<Response> _criar(RequestContext context) async {
       return _erro(
         HttpStatus.badRequest,
         'Todos os produtos devem existir e pertencer a sua empresa.',
+      );
+    }
+
+    final unidades = {
+      for (final produto in produtos) produto[0]! as int: produto[1]! as String,
+    };
+    if (itens.any(
+      (item) => !quantidadeValidaParaUnidade(
+        unidades[item.produtoId]!,
+        item.quantidade,
+      ),
+    )) {
+      return _erro(
+        HttpStatus.badRequest,
+        'A quantidade de unidades e sacos deve ser inteira.',
       );
     }
 

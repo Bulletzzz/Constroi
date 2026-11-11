@@ -76,6 +76,7 @@ Future<void> abrir(
   WidgetTester tester,
   CustosService servico, {
   double escala = 1,
+  PerfilUsuario perfil = PerfilUsuario.engenheiro,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -86,7 +87,7 @@ Future<void> abrir(
         ).copyWith(textScaler: TextScaler.linear(escala)),
         child: child!,
       ),
-      home: CustosScreen(service: servico, perfil: PerfilUsuario.engenheiro),
+      home: CustosScreen(service: servico, perfil: perfil),
     ),
   );
   await tester.pumpAndSettle();
@@ -108,6 +109,171 @@ void main() {
       throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
     );
   });
+
+  group('lancamento de despesa', () {
+    for (final caso in [
+      ('1500', '1500.00'),
+      ('1500,5', '1500.50'),
+      ('18.500,00', '18500.00'),
+      ('1500.50', '1500.50'),
+      ('  0,01  ', '0.01'),
+    ]) {
+      test('valorParaApi aceita ${caso.$1}', () {
+        expect(valorParaApi(caso.$1), caso.$2);
+      });
+    }
+
+    for (final invalido in ['', '0', '0,00', '-5', '18.500', 'abc', '1,555']) {
+      test('valorParaApi recusa $invalido', () {
+        expect(valorParaApi(invalido), isNull);
+      });
+    }
+
+    testWidgets('pedreiro nao ve o botao de lancar', (tester) async {
+      await abrir(
+        tester,
+        service((_) async => resposta(dados())),
+        perfil: PerfilUsuario.pedreiro,
+      );
+
+      expect(find.text('LANÇAR DESPESA'), findsNothing);
+    });
+
+    testWidgets('engenheiro lanca a despesa e a tela recarrega', (
+      tester,
+    ) async {
+      final chamadas = <http.Request>[];
+      await abrir(
+        tester,
+        service((pedido) async {
+          chamadas.add(pedido);
+          if (pedido.url.path.endsWith('/categorias')) {
+            return resposta({
+              'categorias': [
+                {'id': 3, 'nome': 'Locação de equipamentos'},
+                {'id': 5, 'nome': 'EPI e consumíveis'},
+              ],
+            });
+          }
+          return resposta(dados());
+        }),
+      );
+
+      await tester.tap(find.text('LANÇAR DESPESA'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Locação de equipamentos'), findsOneWidget);
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        '  Locação de bomba  ',
+      );
+      await tester.enterText(find.byType(TextFormField).last, '6.800,00');
+      await tester.tap(find.text('LANÇAR'));
+      await tester.pumpAndSettle();
+
+      final enviado = chamadas.firstWhere((p) => p.method == 'POST');
+      expect(enviado.url.path, '/custos/despesas');
+      expect(jsonDecode(enviado.body), {
+        'despesa': {
+          'obra_id': 1,
+          'categoria_custo_id': 3,
+          'descricao': 'Locação de bomba',
+          'valor': '6800.00',
+        },
+      });
+      expect(find.text('LANÇAR DESPESA'), findsOneWidget);
+      expect(
+        chamadas.where((p) => p.url.path == '/custos').length,
+        greaterThan(1),
+      );
+    });
+
+    testWidgets('valor invalido nao chega na API', (tester) async {
+      final chamadas = <http.Request>[];
+      await abrir(
+        tester,
+        service((pedido) async {
+          chamadas.add(pedido);
+          if (pedido.url.path.endsWith('/categorias')) {
+            return resposta({
+              'categorias': [
+                {'id': 3, 'nome': 'Locação de equipamentos'},
+              ],
+            });
+          }
+          return resposta(dados());
+        }),
+      );
+
+      await tester.tap(find.text('LANÇAR DESPESA'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, 'Bomba');
+      await tester.enterText(find.byType(TextFormField).last, '0');
+      await tester.tap(find.text('LANÇAR'));
+      await tester.pumpAndSettle();
+
+      expect(chamadas.any((p) => p.method == 'POST'), isFalse);
+      expect(
+        find.text('Informe um valor maior que zero, com até dois decimais.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('falha da API aparece no formulario', (tester) async {
+      await abrir(
+        tester,
+        service((pedido) async {
+          if (pedido.url.path.endsWith('/categorias')) {
+            return resposta({
+              'categorias': [
+                {'id': 3, 'nome': 'Locação de equipamentos'},
+              ],
+            });
+          }
+          if (pedido.method == 'POST') {
+            return resposta({'erro': 'Obra nao encontrada.'}, 404);
+          }
+          return resposta(dados());
+        }),
+      );
+
+      await tester.tap(find.text('LANÇAR DESPESA'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, 'Bomba');
+      await tester.enterText(find.byType(TextFormField).last, '100');
+      await tester.tap(find.text('LANÇAR'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Obra nao encontrada.'), findsOneWidget);
+      expect(find.text('LANÇAR'), findsOneWidget);
+    });
+
+    testWidgets('categoria fora do ar bloqueia o lancamento', (tester) async {
+      await abrir(
+        tester,
+        service((pedido) async {
+          if (pedido.url.path.endsWith('/categorias')) {
+            return resposta({'erro': 'Indisponivel.'}, 503);
+          }
+          return resposta(dados());
+        }),
+      );
+
+      await tester.tap(find.text('LANÇAR DESPESA'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Indisponivel.'), findsOneWidget);
+      expect(
+        tester
+            .widget<ElevatedButton>(
+              find.widgetWithText(ElevatedButton, 'LANÇAR'),
+            )
+            .onPressed,
+        isNull,
+      );
+    });
+  });
+
   testWidgets('mostra valores, troca obra e periodo na API', (tester) async {
     final chamadas = <Uri>[];
     await abrir(
