@@ -179,17 +179,17 @@ do Pedro.
 | Camada | Na main | Com esta branch | Medido em |
 |---|---|---|---|
 | Unidade na API (`dart test test/`) | 251 | 300 | 11/11/2026 |
-| Widget no app (`flutter test`) | 209 | 279 | 11/11/2026 |
+| Widget no app (`flutter test`) | 209 | 282 | 11/11/2026 |
 | Integração Dart (`dart test integration_test/`) | — | 149 | 10/11/2026 |
-| Integração (`.\testes\executar.ps1`) | — | 23 casos, 659 verificações | 09/11/2026 |
+| Integração (`.\testes\executar.ps1`) | — | 23 casos, 659 verificações | 11/11/2026 |
 | Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 05/11/2026 |
 
 Números medidos, não deduzidos. A coluna "com esta branch" é a árvore do merge de
 `fix/ajustes-de-uso` com `origin/main`, não a branch isolada: `git merge-tree` não acusa
-conflito e as duas suítes passam inteiras nessa árvore. Isoladas, a branch tem 297 e 279 —
+conflito e as duas suítes passam inteiras nessa árvore. Isoladas, a branch tem 297 e 282 —
 os 3 que faltam são do `apoio_pool_test.dart`, que veio da PR #50 pela main.
 
-São 49 unitários novos na API e 70 widgets novos. Os dois arquivos novos respondem por
+São 49 unitários novos na API e 73 widgets novos. Os dois arquivos novos respondem por
 54: `test/routes/despesas_test.dart` com 39 e `test/evento_legivel_test.dart` com 15. O
 resto entrou em arquivos que já existiam — filtro de zerados, preço da NF-e, quantidade
 inteira por unidade, indicadores clicáveis, reativação de usuário, paginação do estoque e
@@ -198,18 +198,22 @@ lançamento de despesa.
 As 9 suítes de `integration_test/` rodaram em 1min47 contra um PostgreSQL 17 descartável
 com TLS. Depois da PR #50 não é mais preciso dimensionar o pool na URL: o
 `integration_test/apoio_pool.dart` já pede as conexões que os cenários de concorrência
-exigem. O runner de `testes/` e o Cypress não foram rodados depois do merge; valem a última
-medição, com a data ao lado.
+exigem. O runner de `testes/` passou inteiro em 11/11, 23 casos e 659 chamadas em 24
+minutos, contra a API em container construída da branch — o código de execução da API é
+igual na árvore do merge, porque a PR #50 só mexeu em teste e README. O Cypress não foi
+rodado depois do merge; vale a última medição.
 
 `constroi_api/integration_test/` roda fora do runner de `testes/` e ganhou dois casos de
 preço da NF-e nesta branch, os dois verdes contra banco. A cobertura dos logs também mora
 lá — vale um caso dentro do runner, e não há cartão para isso.
 
-O commit `fad194d`, do Andrew, quebrou 32 testes ao exigir quantidade inteira em `un` e
-`saco` sem atualizar as fixtures: 17 unitários da API (`SELECT id` virou `SELECT id,
-unidade` e as linhas falsas tinham uma coluna só), 10 de integração da NF-e (a fixture
-importava 1,25 saco) e 5 de widget. Todos corrigidos nesta branch, e a regra dele ganhou
-teste de rota, que não existia.
+O commit `fad194d`, do Andrew, quebrou 32 testes e o caso 19 do runner ao exigir
+quantidade inteira em `un` e `saco` sem atualizar as fixtures: 17 unitários da API
+(`SELECT id` virou `SELECT id, unidade` e as linhas falsas tinham uma coluna só), 10 de
+integração da NF-e e 5 de widget, mais a NF-e de 1,25 saco que o cenário compartilhado de
+`testes/comum/apoio.ps1` monta. Todos corrigidos nesta branch, e a regra dele ganhou teste
+de rota, que não existia. O runner não tinha sido rodado depois daquele commit — foi assim
+que a quebra chegou até aqui.
 
 A suíte de integração fala com a API e o banco reais e confere o resultado no banco, não só a
 resposta. Como rodar está em `testes/README.md`.

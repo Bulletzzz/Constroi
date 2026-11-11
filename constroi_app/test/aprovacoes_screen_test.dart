@@ -5,6 +5,7 @@ import 'package:constroi_app/core/api/api_client.dart';
 import 'package:constroi_app/core/api/api_config.dart';
 import 'package:constroi_app/core/auth/session_manager.dart';
 import 'package:constroi_app/features/pedidos/aprovacoes_screen.dart';
+import 'package:constroi_app/features/pedidos/pedido.dart';
 import 'package:constroi_app/features/pedidos/pedidos_service.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/theme/app_theme.dart';
@@ -28,11 +29,7 @@ Map<String, dynamic> pedido(int id, String produto) => {
   ],
 };
 
-({
-  PedidosService service,
-  List<Completer<String>> esperas,
-  List<Uri> consultas,
-})
+({PedidosService service, List<Completer<String>> esperas, List<Uri> consultas})
 montarLento() {
   final esperas = <Completer<String>>[];
   final consultas = <Uri>[];
@@ -65,6 +62,24 @@ montarLento() {
 }
 
 void main() {
+  test('situacao desconhecida nao conta como pendente', () {
+    final conhecido = Pedido.talvezDoJson(pedido(1, 'Cimento'))!;
+    final estranho = Pedido.talvezDoJson({
+      ...pedido(2, 'Cimento'),
+      'status': 'em_analise',
+    })!;
+
+    expect(conhecido.pendente, isTrue);
+    expect(estranho.pendente, isFalse);
+    expect(
+      Pedido.talvezDoJson({
+        ...pedido(3, 'Cimento'),
+        'status': ' PENDENTE ',
+      })!.pendente,
+      isTrue,
+    );
+  });
+
   testWidgets('a fila pede urgentes primeiro e aceita trocar a ordem', (
     tester,
   ) async {
@@ -129,7 +144,10 @@ void main() {
     await tester.tap(find.text('RECUSAR'));
     await tester.pumpAndSettle();
 
-    expect(find.bySemanticsIdentifier('aprovacoes-justificativa'), findsOneWidget);
+    expect(
+      find.bySemanticsIdentifier('aprovacoes-justificativa'),
+      findsOneWidget,
+    );
     conferirCamposLegiveis(tester);
   });
 
@@ -208,10 +226,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('0 PENDENTES'), findsOneWidget);
-    expect(
-      find.text('Nenhuma requisição aguardando decisão.'),
-      findsOneWidget,
-    );
+    expect(find.text('Nenhuma requisição aguardando decisão.'), findsOneWidget);
   });
 
   for (final tamanho in [

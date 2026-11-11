@@ -95,7 +95,8 @@ class Pedido {
   final String? obraNome;
   final DateTime? data;
 
-  bool get pendente => situacao == SituacaoPedido.pendente;
+  bool get pendente =>
+      status.trim().toLowerCase() == SituacaoPedido.pendente.valor;
 
   SituacaoPedido get situacao => SituacaoPedido.daApi(status);
 
