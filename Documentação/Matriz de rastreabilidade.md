@@ -176,24 +176,30 @@ do Pedro.
 
 ## Sobre os testes
 
-| Camada | Quantidade | Medido em |
-|---|---|---|
-| Unidade na API (`dart test test/`) | 294 | 10/11/2026 |
-| Widget no app (`flutter test`) | 279 | 10/11/2026 |
-| Integração Dart (`dart test integration_test/`) | 149 | 10/11/2026 |
-| Integração (`.\testes\executar.ps1`) | 23 casos, 659 verificações | 09/11/2026 |
-| Ponta a ponta (Cypress) | 7 casos, 9 testes | 05/11/2026 |
+| Camada | Na main | Com esta branch | Medido em |
+|---|---|---|---|
+| Unidade na API (`dart test test/`) | 251 | 300 | 11/11/2026 |
+| Widget no app (`flutter test`) | 209 | 279 | 11/11/2026 |
+| Integração Dart (`dart test integration_test/`) | — | 149 | 10/11/2026 |
+| Integração (`.\testes\executar.ps1`) | — | 23 casos, 659 verificações | 09/11/2026 |
+| Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 05/11/2026 |
 
-Números medidos, não deduzidos. Os de unidade, widget e integração Dart são da branch
-`fix/ajustes-de-uso` em 10/11; na main a unidade e o widget são 242 e 209. As 9 suítes de
-`integration_test/` rodaram em 1min47 contra um PostgreSQL 17 descartável com TLS, com o
-`max_connection_count=20` da PR #50 passado pela URL. O runner de `testes/` e o Cypress não
-foram rodados hoje; valem a última medição, com a data ao lado.
+Números medidos, não deduzidos. A coluna "com esta branch" é a árvore do merge de
+`fix/ajustes-de-uso` com `origin/main`, não a branch isolada: `git merge-tree` não acusa
+conflito e as duas suítes passam inteiras nessa árvore. Isoladas, a branch tem 297 e 279 —
+os 3 que faltam são do `apoio_pool_test.dart`, que veio da PR #50 pela main.
 
-A API cresceu 52 unitários nesta branch: 39 da rota de despesa, 8 do filtro de zerados e 5
-do preço da NF-e. O app cresceu 63: 15 do texto legível do evento, 2 da reativação de
-usuário, 2 dos nomes do catálogo nos eventos, 7 dos indicadores clicáveis, 2 do filtro de
-saldo e 12 do lançamento de despesa, mais os ajustes dos que já existiam.
+São 49 unitários novos na API e 70 widgets novos. Os dois arquivos novos respondem por
+54: `test/routes/despesas_test.dart` com 39 e `test/evento_legivel_test.dart` com 15. O
+resto entrou em arquivos que já existiam — filtro de zerados, preço da NF-e, quantidade
+inteira por unidade, indicadores clicáveis, reativação de usuário, paginação do estoque e
+lançamento de despesa.
+
+As 9 suítes de `integration_test/` rodaram em 1min47 contra um PostgreSQL 17 descartável
+com TLS. Depois da PR #50 não é mais preciso dimensionar o pool na URL: o
+`integration_test/apoio_pool.dart` já pede as conexões que os cenários de concorrência
+exigem. O runner de `testes/` e o Cypress não foram rodados depois do merge; valem a última
+medição, com a data ao lado.
 
 `constroi_api/integration_test/` roda fora do runner de `testes/` e ganhou dois casos de
 preço da NF-e nesta branch, os dois verdes contra banco. A cobertura dos logs também mora
