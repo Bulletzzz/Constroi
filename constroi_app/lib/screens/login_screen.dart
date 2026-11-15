@@ -42,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _focoSenha = FocusNode();
 
   bool _enviando = false;
+  bool _senhaVisivel = false;
   String? _erro;
 
   @override
@@ -295,45 +296,68 @@ class _LoginScreenState extends State<LoginScreen> {
     required String identificador,
     bool escondido = false,
     TextInputType teclado = TextInputType.text,
-  }) => Semantics(
-    identifier: identificador,
-    textField: true,
-    child: Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _tinta, width: 2),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 13),
-          Icon(icone, size: 20, color: _rotulo),
-          const SizedBox(width: 14),
-          Expanded(
-            child: TextField(
-              controller: controlador,
-              focusNode: foco,
-              obscureText: escondido,
-              keyboardType: teclado,
-              enabled: !_enviando,
-              onSubmitted: (_) => aoConcluir(),
-              textInputAction: escondido
-                  ? TextInputAction.done
-                  : TextInputAction.next,
-              style: TextStyle(
-                color: escondido ? _pontos : _tinta,
-                fontSize: 13,
-                letterSpacing: escondido ? 5 : 0,
-              ),
-              decoration: InputDecoration.collapsed(
-                hintText: dica,
-                hintStyle: const TextStyle(color: _dica, fontSize: 13),
+  }) {
+    final oculto = escondido && !_senhaVisivel;
+    return Semantics(
+      identifier: identificador,
+      textField: true,
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: _tinta, width: 2),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 13),
+            Icon(icone, size: 20, color: _rotulo),
+            const SizedBox(width: 14),
+            Expanded(
+              child: TextField(
+                controller: controlador,
+                focusNode: foco,
+                obscureText: oculto,
+                keyboardType: teclado,
+                enabled: !_enviando,
+                onSubmitted: (_) => aoConcluir(),
+                textInputAction: escondido
+                    ? TextInputAction.done
+                    : TextInputAction.next,
+                style: TextStyle(
+                  color: oculto ? _pontos : _tinta,
+                  fontSize: 13,
+                  letterSpacing: oculto ? 5 : 0,
+                ),
+                decoration: InputDecoration.collapsed(
+                  hintText: dica,
+                  hintStyle: const TextStyle(color: _dica, fontSize: 13),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-        ],
+            if (escondido) _olho() else const SizedBox(width: 12),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _olho() => Semantics(
+    identifier: 'login-ver-senha',
+    button: true,
+    toggled: _senhaVisivel,
+    child: IconButton(
+      tooltip: _senhaVisivel ? 'Ocultar senha' : 'Mostrar senha',
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+      icon: Icon(
+        _senhaVisivel ? Icons.visibility_off : Icons.visibility,
+        size: 20,
+        color: _rotulo,
+      ),
+      onPressed: _enviando
+          ? null
+          : () => setState(() => _senhaVisivel = !_senhaVisivel),
     ),
   );
 

@@ -72,7 +72,10 @@ Future<void> abrir(WidgetTester tester, AuthService auth) async {
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    MaterialApp(theme: AppTheme.dark, home: LoginScreen(auth: auth)),
+    MaterialApp(
+      theme: AppTheme.dark,
+      home: LoginScreen(auth: auth),
+    ),
   );
   await tester.pumpAndSettle();
 }
@@ -105,9 +108,43 @@ void main() {
     expect(find.text('REDEFINIR SENHA'), findsOneWidget);
     expect(find.byType(Checkbox), findsNothing);
     expect(find.text('ENTRAR'), findsOneWidget);
+    expect(find.textContaining('Sistema de acesso restrito'), findsOneWidget);
+  });
+
+  testWidgets('o olho mostra e esconde a senha digitada', (tester) async {
+    final tudo = montar((_) => http.Response('{}', 200));
+    await abrir(tester, tudo.auth);
+
+    TextField campoDaSenha() =>
+        tester.widget<TextField>(find.byType(TextField).at(1));
+
+    await preencher(tester, email: 'a@b.com', senha: 'Senha#Forte123');
+    expect(campoDaSenha().obscureText, isTrue);
+    expect(find.byIcon(Icons.visibility), findsOneWidget);
+
+    expect(campoDaSenha().style?.letterSpacing, 5);
+
+    await tocar(tester, find.byIcon(Icons.visibility));
+
+    expect(campoDaSenha().obscureText, isFalse);
+    expect(find.byIcon(Icons.visibility_off), findsOneWidget);
+    expect(find.byIcon(Icons.visibility), findsNothing);
+    expect(campoDaSenha().style?.letterSpacing, 0);
+    expect(campoDaSenha().style?.color, const Color(0xFF1A1C1C));
+
+    await tocar(tester, find.byIcon(Icons.visibility_off));
+
+    expect(campoDaSenha().obscureText, isTrue);
+  });
+
+  testWidgets('o e-mail nunca ganha o olho de senha', (tester) async {
+    final tudo = montar((_) => http.Response('{}', 200));
+    await abrir(tester, tudo.auth);
+
+    expect(find.byIcon(Icons.visibility), findsOneWidget);
     expect(
-      find.textContaining('Sistema de acesso restrito'),
-      findsOneWidget,
+      tester.widget<TextField>(find.byType(TextField).at(0)).obscureText,
+      isFalse,
     );
   });
 
@@ -129,10 +166,8 @@ void main() {
     tester,
   ) async {
     final tudo = montar(
-      (_) => http.Response(
-        jsonEncode({'erro': 'Email ou senha invalidos.'}),
-        401,
-      ),
+      (_) =>
+          http.Response(jsonEncode({'erro': 'Email ou senha invalidos.'}), 401),
     );
     await abrir(tester, tudo.auth);
 
@@ -145,10 +180,8 @@ void main() {
 
   testWidgets('erro interno do servidor nao vaza para a tela', (tester) async {
     final tudo = montar(
-      (_) => http.Response(
-        jsonEncode({'erro': 'Servidor sem JWT_SECRET.'}),
-        503,
-      ),
+      (_) =>
+          http.Response(jsonEncode({'erro': 'Servidor sem JWT_SECRET.'}), 503),
     );
     await abrir(tester, tudo.auth);
 
@@ -156,7 +189,10 @@ void main() {
     await tocar(tester, find.text('ENTRAR'));
 
     expect(find.text('Servidor sem JWT_SECRET.'), findsNothing);
-    expect(find.textContaining('Não foi possível entrar agora'), findsOneWidget);
+    expect(
+      find.textContaining('Não foi possível entrar agora'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('usuario inativo mostra o motivo real', (tester) async {
@@ -301,9 +337,6 @@ void main() {
 
     await tocar(tester, find.text('REDEFINIR SENHA'));
 
-    expect(
-      find.textContaining('administrador da empresa'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('administrador da empresa'), findsOneWidget);
   });
 }
