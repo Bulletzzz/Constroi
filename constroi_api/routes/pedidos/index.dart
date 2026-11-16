@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/campos.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/pedidos.dart';
 import 'package:constroi_api/quantidades.dart';
@@ -282,8 +283,8 @@ Future<Response> _criar(RequestContext context) async {
           'usuario': usuario.id,
           'obra': obraId,
           'protocolo': gerar(),
-          'justificativa': (justificativa as String?)?.trim(),
-          'local': (localObra as String?)?.trim(),
+          'justificativa': textoDoCorpo(justificativa)?.trim(),
+          'local': textoDoCorpo(localObra)?.trim(),
           'urgencia': urgencia,
         },
       );

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/ambiente.dart';
+import 'package:constroi_api/campos.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:constroi_api/token.dart';
@@ -24,8 +25,8 @@ Future<Response> onRequest(RequestContext context) async {
     return _erro(HttpStatus.badRequest, 'Envie um JSON com email e senha.');
   }
 
-  final email = (corpo['email'] as String?)?.trim() ?? '';
-  final senha = corpo['senha'] as String? ?? '';
+  final email = textoDoCorpo(corpo['email'])?.trim() ?? '';
+  final senha = textoDoCorpo(corpo['senha']) ?? '';
   if (email.isEmpty || senha.isEmpty) {
     return _erro(HttpStatus.badRequest, 'Informe email e senha.');
   }

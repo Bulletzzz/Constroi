@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/campos.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:constroi_api/usuarios.dart';
@@ -34,9 +35,9 @@ Future<Response> _listar(RequestContext context) async {
 
   final usuarios = linhas.map((linha) => linha.toColumnMap()).map((usuario) {
     final id = usuario['id'] as int?;
-    final nome = usuario['nome'] as String?;
-    final email = usuario['email'] as String?;
-    final tipo = usuario['tipo'] as String?;
+    final nome = textoDoCorpo(usuario['nome']);
+    final email = textoDoCorpo(usuario['email']);
+    final tipo = textoDoCorpo(usuario['tipo']);
     final ativo = usuario['ativo'] as bool?;
     final criadoEm = usuario['criado_em'] as DateTime?;
     final atualizadoEm = usuario['atualizado_em'] as DateTime?;
@@ -73,10 +74,10 @@ Future<Response> _criar(RequestContext context) async {
     );
   }
 
-  final nome = ((dados['nome'] as String?) ?? '').trim();
-  final email = ((dados['email'] as String?) ?? '').trim();
-  final senha = (dados['senha'] as String?) ?? '';
-  final tipo = validarTipoUsuario((dados['tipo'] as String?) ?? '');
+  final nome = ((textoDoCorpo(dados['nome'])) ?? '').trim();
+  final email = ((textoDoCorpo(dados['email'])) ?? '').trim();
+  final senha = (textoDoCorpo(dados['senha'])) ?? '';
+  final tipo = validarTipoUsuario((textoDoCorpo(dados['tipo'])) ?? '');
 
   if (nome.isEmpty || email.isEmpty || senha.isEmpty) {
     return _erro(

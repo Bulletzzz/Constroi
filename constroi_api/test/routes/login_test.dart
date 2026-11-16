@@ -140,6 +140,27 @@ void main() {
     },
   );
 
+  test('tipo errado no corpo responde 400 e nao toca o banco', () async {
+    for (final corpo in <Map<String, Object?>>[
+      {'email': 123, 'senha': 'x'},
+      {'email': 'a@b.c', 'senha': 456},
+      {'email': <String>[], 'senha': <String, String>{}},
+      {'email': true, 'senha': false},
+      {'email': null, 'senha': null},
+    ]) {
+      when(() => contexto.request).thenReturn(
+        Request.post(
+          Uri.parse('http://localhost/login'),
+          headers: {'x-forwarded-for': '127.0.0.1', 'user-agent': 'teste'},
+          body: jsonEncode(corpo),
+        ),
+      );
+      final resposta = await rota.onRequest(contexto);
+      expect(resposta.statusCode, HttpStatus.badRequest, reason: '$corpo');
+    }
+    expect(consultas, isEmpty);
+  });
+
   test('conta ativa com senha errada retorna o mesmo 401 generico', () async {
     await conferirFalhaGenerica(usuarioId: 7);
     expect(consultas[1], {'id': 7, 'tentativas': 1, 'bloqueadoAte': null});

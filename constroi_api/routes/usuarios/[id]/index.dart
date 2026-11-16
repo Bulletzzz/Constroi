@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/campos.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:constroi_api/usuarios.dart';
@@ -80,10 +81,10 @@ Future<Response> _editar(RequestContext context, int id) async {
     );
   }
 
-  final nome = (dados['nome'] as String?)?.trim();
-  final email = (dados['email'] as String?)?.trim();
-  final senha = dados['senha'] as String?;
-  final tipo = validarTipoUsuario(dados['tipo'] as String?);
+  final nome = textoDoCorpo(dados['nome'])?.trim();
+  final email = textoDoCorpo(dados['email'])?.trim();
+  final senha = textoDoCorpo(dados['senha']);
+  final tipo = validarTipoUsuario(textoDoCorpo(dados['tipo']));
   final ativo = dados['ativo'] is bool ? dados['ativo'] as bool : null;
 
   if (nome == null &&
