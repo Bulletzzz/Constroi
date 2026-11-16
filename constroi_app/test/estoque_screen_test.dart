@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:constroi_app/core/api/api_client.dart';
@@ -9,11 +10,13 @@ import 'package:constroi_app/features/painel/painel_service.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+import 'support/legibilidade.dart';
 
 Map<String, dynamic> item(
   int id, {
@@ -54,8 +57,8 @@ Map<String, dynamic> item(
   return (service: EstoqueService(api: api), chamadas: chamadas);
 }
 
-
-({EstoqueService estoque, PainelService painel, List<Uri> chamadas}) montarComPainel(
+({EstoqueService estoque, PainelService painel, List<Uri> chamadas})
+montarComPainel(
   List<Map<String, dynamic>> itens, {
   List<Map<String, dynamic>> obras = const [
     {'id': 7, 'nome': 'Obra Alpha'},
@@ -119,15 +122,17 @@ Future<void> abrir(
 }
 
 void main() {
+  testWidgets('os seletores abrem com fundo legivel', (tester) async {
+    final tudo = montar((_) => [item(1)]);
+    await abrir(tester, tudo.service);
+    conferirDropdownsLegiveis(tester);
+  });
+
   testWidgets('engenheiro ve o botao de novo item e o pedreiro nao', (
     tester,
   ) async {
     final tudo = montar((_) => [item(1)]);
-    await abrir(
-      tester,
-      tudo.service,
-      aoCadastrar: (_) async {},
-    );
+    await abrir(tester, tudo.service, aoCadastrar: (_) async {});
     expect(find.bySemanticsIdentifier('estoque-novo-item'), findsOneWidget);
 
     await abrir(
@@ -142,7 +147,11 @@ void main() {
   testWidgets('sem o callback o botao nao aparece nem para o master', (
     tester,
   ) async {
-    await abrir(tester, montar((_) => [item(1)]).service, perfil: PerfilUsuario.master);
+    await abrir(
+      tester,
+      montar((_) => [item(1)]).service,
+      perfil: PerfilUsuario.master,
+    );
     expect(find.bySemanticsIdentifier('estoque-novo-item'), findsNothing);
   });
 
@@ -167,17 +176,21 @@ void main() {
 
   testWidgets('desenha os elementos do Figma 03', (tester) async {
     final tudo = montar((_) => [item(1)]);
-    await abrir(tester, tudo.service);
+    await abrir(tester, tudo.service, aoCadastrar: (_) async {});
 
     expect(find.text('INVENTÁRIO DE MATERIAIS'), findsOneWidget);
     expect(find.text('EXPORTAR'), findsOneWidget);
     expect(find.text('NOVO ITEM'), findsOneWidget);
     expect(find.text('Buscar SKU ou nome'), findsOneWidget);
     expect(find.text('CATEGORIA:'), findsOneWidget);
-    expect(find.text('SOMENTE ESTOQUE BAIXO'), findsOneWidget);
+    expect(find.text('SALDO:'), findsOneWidget);
+    for (final filtro in FiltroDeSaldo.values) {
+      expect(find.text(filtro.rotulo), findsOneWidget);
+    }
     expect(find.text('STS'), findsOneWidget);
     expect(find.text('SKU / ID'), findsOneWidget);
     expect(find.text('DESCRIÇÃO'), findsOneWidget);
+    expect(find.text('SALDO'), findsOneWidget);
     expect(find.text('CIM-01'), findsOneWidget);
     expect(find.text('Cimento CP-II'), findsOneWidget);
   });
@@ -187,7 +200,7 @@ void main() {
     await abrir(tester, tudo.service);
 
     expect(tudo.chamadas.single.queryParameters, {
-      'limit': '50',
+      'limit': '21',
       'offset': '0',
     });
   });
@@ -206,21 +219,46 @@ void main() {
     expect(tudo.chamadas.last.queryParameters['busca'], 'cim');
   });
 
-  testWidgets('somente estoque baixo envia o filtro', (tester) async {
+  testWidgets('filtro de saldo troca entre baixo, zerado e todos', (
+    tester,
+  ) async {
     final tudo = montar((_) => [item(1, baixo: true)]);
     await abrir(tester, tudo.service);
 
-    await tester.tap(find.byType(Checkbox));
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text(FiltroDeSaldo.baixo.rotulo));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters['baixo'], 'true');
+    expect(tudo.chamadas.last.queryParameters.containsKey('zerado'), isFalse);
+
+    await tester.tap(find.text(FiltroDeSaldo.zerado.rotulo));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters['zerado'], 'true');
+    expect(tudo.chamadas.last.queryParameters.containsKey('baixo'), isFalse);
+
+    await tester.tap(find.text(FiltroDeSaldo.todos.rotulo));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters.containsKey('baixo'), isFalse);
+    expect(tudo.chamadas.last.queryParameters.containsKey('zerado'), isFalse);
+  });
+
+  testWidgets('a ruptura do resumo filtra a tabela nos zerados', (
+    tester,
+  ) async {
+    final tudo = montar((_) => [item(1, baixo: true)]);
+    await abrir(tester, tudo.service);
+
+    await tester.tap(find.text('RUPTURAS CRÍTICAS'));
     await tester.pumpAndSettle();
 
-    expect(tudo.chamadas.last.queryParameters['baixo'], 'true');
+    expect(tudo.chamadas.last.queryParameters['zerado'], 'true');
   });
 
   testWidgets('filtro de categoria usa as categorias carregadas', (
     tester,
   ) async {
-    final tudo = montar((_) => [item(1), item(2, categoria: 9, categoriaNome: 'Madeira')]);
+    final tudo = montar(
+      (_) => [item(1), item(2, categoria: 9, categoriaNome: 'Madeira')],
+    );
     await abrir(tester, tudo.service);
 
     await tester.tap(find.byType(DropdownButton<int?>));
@@ -231,23 +269,151 @@ void main() {
     expect(tudo.chamadas.last.queryParameters['categoria_id'], '9');
   });
 
-  testWidgets('carregar mais avanca o offset sem perder a pagina', (
+  testWidgets('exportar leva todas as paginas do filtro, nao so a visivel', (
+    tester,
+  ) async {
+    late List<Uri> chamadas;
+    final tudo = montar((chamada) {
+      final uri = chamadas[chamada - 1];
+      final offset = int.parse(uri.queryParameters['offset'] ?? '0');
+      final limite = int.parse(uri.queryParameters['limit'] ?? '1');
+      return [
+        for (var i = offset; i < 21 && i < offset + limite; i++)
+          item(i + 1, sku: 'SKU-$i'),
+      ];
+    });
+    chamadas = tudo.chamadas;
+
+    String? copiado;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (chamada) async {
+        if (chamada.method == 'Clipboard.setData') {
+          copiado = (chamada.arguments as Map)['text'] as String;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+
+    await abrir(tester, tudo.service);
+    expect(find.text('SKU-20'), findsNothing);
+
+    await tester.ensureVisible(find.text('EXPORTAR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('EXPORTAR'));
+    await tester.pumpAndSettle();
+
+    final linhas = copiado!.split('\r\n');
+    expect(linhas, hasLength(22));
+    expect(linhas.last, contains('SKU-20'));
+  });
+
+  testWidgets('exportar fica bloqueado enquanto a busca carrega', (
+    tester,
+  ) async {
+    final liberar = Completer<void>();
+    var chamadasFeitas = 0;
+    final api = ApiClient(
+      config: ApiConfig('https://api.constroi.test'),
+      sessions: SessionManager(MemoryTokenStorage()),
+      httpClient: MockClient((_) async {
+        chamadasFeitas++;
+        if (chamadasFeitas > 1) await liberar.future;
+        return http.Response(
+          jsonEncode({
+            'estoque': [item(1, sku: 'CIM-01')],
+          }),
+          200,
+        );
+      }),
+    );
+    await abrir(tester, EstoqueService(api: api));
+
+    await tester.tap(find.text(FiltroDeSaldo.zerado.rotulo));
+    await tester.pump();
+
+    final exportar = tester.widget<InkWell>(
+      find
+          .ancestor(of: find.text('EXPORTAR'), matching: find.byType(InkWell))
+          .first,
+    );
+    expect(exportar.onTap, isNull);
+
+    liberar.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('proxima pagina troca os itens e avanca o offset', (
     tester,
   ) async {
     final tudo = montar(
       (chamada) => chamada == 1
-          ? List.generate(50, (i) => item(i + 1, sku: 'SKU-$i'))
+          ? List.generate(21, (i) => item(i + 1, sku: 'SKU-$i'))
           : [item(999, sku: 'SKU-NOVO')],
     );
     await abrir(tester, tudo.service);
 
-    await tester.ensureVisible(find.text('CARREGAR MAIS'));
+    expect(find.text('SKU-20'), findsNothing);
+    expect(find.text('PÁGINA 1'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('CARREGAR MAIS'));
+    await tester.tap(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
 
-    expect(tudo.chamadas.last.queryParameters['offset'], '50');
-    expect(find.text('SKU-0'), findsOneWidget);
+    expect(tudo.chamadas.last.queryParameters['offset'], '20');
+    expect(find.text('SKU-0'), findsNothing);
+    expect(find.text('SKU-NOVO'), findsOneWidget);
+    expect(find.text('PÁGINA 2'), findsOneWidget);
+  });
+
+  testWidgets('anterior volta a pagina e o filtro reinicia na primeira', (
+    tester,
+  ) async {
+    final tudo = montar(
+      (chamada) =>
+          List.generate(21, (i) => item(i + 1, sku: 'SKU-$chamada-$i')),
+    );
+    await abrir(tester, tudo.service);
+
+    await tester.ensureVisible(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    expect(find.text('PÁGINA 2'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('ANTERIOR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ANTERIOR'));
+    await tester.pumpAndSettle();
+    expect(tudo.chamadas.last.queryParameters['offset'], '0');
+    expect(find.text('PÁGINA 1'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+    expect(find.text('PÁGINA 2'), findsOneWidget);
+
+    await tester.tap(find.text(FiltroDeSaldo.baixo.rotulo));
+    await tester.pumpAndSettle();
+
+    expect(tudo.chamadas.last.queryParameters['offset'], '0');
+    expect(find.text('PÁGINA 1'), findsOneWidget);
+  });
+
+  testWidgets('pagina unica nao mostra navegacao', (tester) async {
+    final tudo = montar((_) => [item(1)]);
+    await abrir(tester, tudo.service);
+
+    expect(find.text('PRÓXIMA'), findsNothing);
+    expect(find.text('PÁGINA 1'), findsNothing);
   });
 
   testWidgets('item abaixo do minimo aparece em vermelho', (tester) async {
@@ -301,7 +467,9 @@ void main() {
   });
 
   testWidgets('layout aguenta texto ampliado sem estourar', (tester) async {
-    final tudo = montar((_) => [item(1, nome: 'Vergalhao CA-50 (12m) nervurado')]);
+    final tudo = montar(
+      (_) => [item(1, nome: 'Vergalhao CA-50 (12m) nervurado')],
+    );
     tester.view.physicalSize = const Size(390, 2600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -477,11 +645,13 @@ void main() {
     await tester.fling(find.byType(ListView), const Offset(0, 320), 1000);
     await tester.pumpAndSettle();
 
-    final depois = tudo.chamadas.where((u) => u.path.endsWith('/painel')).length;
+    final depois = tudo.chamadas
+        .where((u) => u.path.endsWith('/painel'))
+        .length;
     expect(depois, antes + 1);
   });
 
-  testWidgets('falha ao carregar mais nao apaga o que ja estava na tela', (
+  testWidgets('falha ao trocar de pagina explica e deixa tentar de novo', (
     tester,
   ) async {
     final chamadas = <Uri>[];
@@ -493,7 +663,7 @@ void main() {
         if (chamadas.length == 1) {
           return http.Response(
             jsonEncode({
-              'estoque': List.generate(50, (i) => item(i + 1, sku: 'SKU-$i')),
+              'estoque': List.generate(21, (i) => item(i + 1, sku: 'SKU-$i')),
             }),
             200,
           );
@@ -503,14 +673,14 @@ void main() {
     );
     await abrir(tester, EstoqueService(api: api));
 
-    await tester.ensureVisible(find.text('CARREGAR MAIS'));
+    await tester.ensureVisible(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('CARREGAR MAIS'));
+    await tester.tap(find.text('PRÓXIMA'));
     await tester.pumpAndSettle();
 
     expect(find.text('Banco indisponivel.'), findsOneWidget);
-    expect(find.text('SKU-0'), findsOneWidget);
-    expect(find.text('TENTAR CARREGAR DE NOVO'), findsOneWidget);
+    expect(find.text('TENTAR DE NOVO'), findsOneWidget);
+    expect(chamadas.last.queryParameters['offset'], '20');
   });
 
   testWidgets('submeter a busca nao dispara duas consultas', (tester) async {

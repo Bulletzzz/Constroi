@@ -5,6 +5,7 @@ import 'package:constroi_app/core/api/api_client.dart';
 import 'package:constroi_app/core/api/api_config.dart';
 import 'package:constroi_app/core/auth/session_manager.dart';
 import 'package:constroi_app/features/pedidos/aprovacoes_screen.dart';
+import 'package:constroi_app/features/pedidos/pedido.dart';
 import 'package:constroi_app/features/pedidos/pedidos_service.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/theme/app_theme.dart';
@@ -14,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'login_screen_test.dart' show MemoryTokenStorage;
+import 'support/legibilidade.dart';
 
 Map<String, dynamic> pedido(int id, String produto) => {
   'id': id,
@@ -27,11 +29,7 @@ Map<String, dynamic> pedido(int id, String produto) => {
   ],
 };
 
-({
-  PedidosService service,
-  List<Completer<String>> esperas,
-  List<Uri> consultas,
-})
+({PedidosService service, List<Completer<String>> esperas, List<Uri> consultas})
 montarLento() {
   final esperas = <Completer<String>>[];
   final consultas = <Uri>[];
@@ -64,6 +62,95 @@ montarLento() {
 }
 
 void main() {
+  test('situacao desconhecida nao conta como pendente', () {
+    final conhecido = Pedido.talvezDoJson(pedido(1, 'Cimento'))!;
+    final estranho = Pedido.talvezDoJson({
+      ...pedido(2, 'Cimento'),
+      'status': 'em_analise',
+    })!;
+
+    expect(conhecido.pendente, isTrue);
+    expect(estranho.pendente, isFalse);
+    expect(
+      Pedido.talvezDoJson({
+        ...pedido(3, 'Cimento'),
+        'status': ' PENDENTE ',
+      })!.pendente,
+      isTrue,
+    );
+  });
+
+  testWidgets('a fila pede urgentes primeiro e aceita trocar a ordem', (
+    tester,
+  ) async {
+    final montagem = montarLento();
+    await tester.binding.setSurfaceSize(const Size(420, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: AprovacoesScreen(
+          service: montagem.service,
+          perfil: PerfilUsuario.engenheiro,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(montagem.consultas.single.queryParameters['ordem'], 'urgencia');
+    montagem.esperas[0].complete(
+      jsonEncode({
+        'pedidos': [pedido(1, 'Cimento')],
+      }),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsIdentifier('aprovacoes-ordem'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mais antigos').last);
+    await tester.pump();
+
+    expect(montagem.consultas.last.queryParameters['ordem'], 'antigos');
+    expect(montagem.consultas, hasLength(2));
+    montagem.esperas[1].complete(jsonEncode({'pedidos': const []}));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('o modal de recusa abre com fundo legivel', (tester) async {
+    final montagem = montarLento();
+    await tester.binding.setSurfaceSize(const Size(420, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: AprovacoesScreen(
+          service: montagem.service,
+          perfil: PerfilUsuario.engenheiro,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    montagem.esperas[0].complete(
+      jsonEncode({
+        'pedidos': [pedido(1, 'Cimento')],
+      }),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('RECUSAR'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.bySemanticsIdentifier('aprovacoes-justificativa'),
+      findsOneWidget,
+    );
+    conferirCamposLegiveis(tester);
+  });
+
   testWidgets('trocar de obra consulta a obra escolhida e troca a fila', (
     tester,
   ) async {
@@ -83,6 +170,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    conferirDropdownsLegiveis(tester);
     expect(montagem.esperas, hasLength(1));
     expect(montagem.consultas.single.queryParameters['obra_id'], isNull);
     expect(montagem.consultas.single.queryParameters['com_itens'], 'true');
@@ -138,10 +226,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('0 PENDENTES'), findsOneWidget);
-    expect(
-      find.text('Nenhuma requisição aguardando decisão.'),
-      findsOneWidget,
-    );
+    expect(find.text('Nenhuma requisição aguardando decisão.'), findsOneWidget);
   });
 
   for (final tamanho in [

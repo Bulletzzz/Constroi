@@ -188,7 +188,7 @@ function NovoCenario {
 
     if ($ComProduto) {
         $cenario.produto = Chamar POST '/produtos' $cenario.engenheiro @{
-            produto = @{ nome = "Cimento $marca"; unidade = 'saco' }
+            produto = @{ nome = "Cimento $marca"; unidade = 'kg' }
         } 201 'cenario: cria produto'
     }
 
@@ -243,7 +243,7 @@ function MontarNfe {
         [string]$Codigo = 'CIM-01',
         [string]$Nome = 'Cimento',
         [string]$Quantidade = '1.2500',
-        [string]$Unidade = 'saco'
+        [string]$Unidade = 'kg'
     )
 
     $item = "<det nItem=`"1`"><prod><cProd>$Codigo</cProd><xProd>$Nome</xProd>" +

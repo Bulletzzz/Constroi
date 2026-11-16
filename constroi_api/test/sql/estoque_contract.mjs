@@ -44,7 +44,7 @@ try {
   `);
   const pedreiro = {
     empresa:1, usuario:1, todas:false, obra:null, categoria:null,
-    busca:'', baixo:false, limite:50, offset:0,
+    busca:'', baixo:false, zerado:false, limite:50, offset:0,
   };
   const gestor = {...pedreiro, todas:true};
 
@@ -66,6 +66,9 @@ try {
   assert.deepEqual((await query(1,{...pedreiro,categoria:1})).map(x=>x.produto_id),[5]);
   assert.equal((await query(1,{...pedreiro,categoria:2147483647})).length,0);
   assert.deepEqual((await query(1,{...pedreiro,categoria:2,baixo:true})).map(x=>x.produto_id),[1]);
+  assert.deepEqual((await query(1,{...pedreiro,zerado:true})).map(x=>x.produto_id),[3]);
+  assert.deepEqual((await query(1,{...pedreiro,baixo:true,zerado:true})).map(x=>x.produto_id),[3]);
+  assert.deepEqual((await query(1,{...pedreiro,baixo:true})).map(x=>x.produto_id),[3,1]);
   assert.equal((await query(1,{...pedreiro,categoria:1,busca:'Cimento'})).length,0);
   assert.equal((await query(1,{...pedreiro,busca:'%_'}))[0].produto_id,5);
   assert.equal((await query(1,{...pedreiro,busca:"' OR 1=1 --"})).length,0);

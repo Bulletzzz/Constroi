@@ -71,4 +71,15 @@ void main() {
     }
     expect(validarIdPedido(2147483647), 2147483647);
   });
+
+  test('a ordenacao aceita apenas as chaves conhecidas', () {
+    expect(ordensAceitas, {'recentes', 'antigos', 'urgencia'});
+    expect(ordenacaoDoPedido('recentes'), 'p.data DESC, p.id DESC');
+    expect(ordenacaoDoPedido('antigos'), 'p.data ASC, p.id ASC');
+    expect(
+      ordenacaoDoPedido('urgencia'),
+      startsWith("(p.urgencia = 'urgente') DESC"),
+    );
+    expect(ordenacaoDoPedido('qualquer'), 'p.data DESC, p.id DESC');
+  });
 }

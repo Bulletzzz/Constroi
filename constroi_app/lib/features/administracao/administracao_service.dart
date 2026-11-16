@@ -1,5 +1,6 @@
 import '../../core/api/api_client.dart';
 import '../../navigation/perfil_usuario.dart';
+import 'evento_legivel.dart';
 
 class UsuarioAdmin {
   UsuarioAdmin.fromJson(Map dados)
@@ -34,12 +35,6 @@ class RegistroLog {
   final int usuarioId;
   final String acao;
   final DateTime quando;
-
-  String get evento => acao.split(' ').first;
-
-  String get detalhe => acao.length > evento.length
-      ? acao.substring(evento.length).trim()
-      : '';
 
   String get momento =>
       '${_doisDigitos(quando.day)}/${_doisDigitos(quando.month)}/'
@@ -113,6 +108,50 @@ class AdministracaoService {
         .timeout(const Duration(seconds: 20));
     return _usuarioDaResposta(resposta, 'inativar');
   }
+
+  Future<UsuarioAdmin> reativar(int id) async {
+    final resposta = await _api
+        .patch(
+          'usuarios/$id',
+          body: {
+            'usuario': {'ativo': true},
+          },
+        )
+        .timeout(const Duration(seconds: 20));
+    return _usuarioDaResposta(resposta, 'reativar');
+  }
+
+  Future<DicionarioDeNomes> nomesDeApoio() async {
+    final respostas = await Future.wait([
+      _lista('obras', 'obras'),
+      _lista('produtos', 'produtos'),
+      _lista('equipamentos', 'equipamentos'),
+    ]);
+    return DicionarioDeNomes(
+      obras: _porId(respostas[0]),
+      produtos: _porId(respostas[1]),
+      unidades: _porId(respostas[1], campo: 'unidade'),
+      equipamentos: _porId(respostas[2]),
+    );
+  }
+
+  Future<List<Map>> _lista(String caminho, String chave) async {
+    try {
+      final resposta = await _api
+          .get(caminho)
+          .timeout(const Duration(seconds: 15));
+      final itens = (resposta as Map)[chave];
+      return itens is List ? itens.whereType<Map>().toList() : const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Map<int, String> _porId(List<Map> itens, {String campo = 'nome'}) => {
+    for (final item in itens)
+      if (item['id'] is int && item[campo] is String)
+        item['id'] as int: item[campo] as String,
+  };
 
   Future<PaginaDeLogs> logs({
     int? usuarioId,

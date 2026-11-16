@@ -103,6 +103,7 @@ void main() {
           'todas': nivel != Nivel.pedreiro,
           'busca': '',
           'baixo': false,
+          'zerado': false,
           'limite': 50,
           'offset': 0,
         });
@@ -134,9 +135,16 @@ void main() {
       'todas': false,
       'busca': 'CIM%_',
       'baixo': true,
+      'zerado': false,
       'limite': 20,
       'offset': 40,
     });
+  });
+  test('zerado restringe aos saldos em ruptura', () async {
+    requisicao('obra_id=10&zerado=true');
+    expect((await rota.onRequest(contexto)).statusCode, HttpStatus.ok);
+    expect(parametros.last['zerado'], isTrue);
+    expect(parametros.last['baixo'], isFalse);
   });
   test('obra acessivel sem saldos retorna lista vazia', () async {
     resultados = [
@@ -162,6 +170,9 @@ void main() {
     'categoria_id=2147483648',
     'obra_id=10&baixo=1',
     'obra_id=10&baixo=',
+    'obra_id=10&zerado=1',
+    'obra_id=10&zerado=',
+    'obra_id=10&zerado=sim',
     'obra_id=10&limit=0',
     'obra_id=10&limit=201',
     'obra_id=10&limit=abc',
@@ -200,6 +211,7 @@ void main() {
           'todas': nivel != Nivel.pedreiro,
           'busca': '',
           'baixo': false,
+          'zerado': false,
           'limite': 50,
           'offset': 0,
         });

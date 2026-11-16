@@ -11,6 +11,12 @@ enum PerfilUsuario {
 
   final int nivel;
 
+  String get rotulo => switch (this) {
+    PerfilUsuario.master => 'Master',
+    PerfilUsuario.engenheiro => 'Engenheiro',
+    PerfilUsuario.pedreiro => 'Pedreiro',
+  };
+
   bool possuiNivel(PerfilUsuario minimo) => nivel >= minimo.nivel;
 
   static PerfilUsuario? porNome(Object? valor) {

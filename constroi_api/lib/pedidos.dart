@@ -4,6 +4,14 @@ typedef GeradorProtocolo = String Function();
 typedef ItemPedido = ({int produtoId, num quantidade});
 
 const urgenciasAceitas = {'padrao', 'urgente'};
+
+const ordensAceitas = {'recentes', 'antigos', 'urgencia'};
+
+String ordenacaoDoPedido(String ordem) => switch (ordem) {
+  'antigos' => 'p.data ASC, p.id ASC',
+  'urgencia' => "(p.urgencia = 'urgente') DESC, p.data DESC, p.id DESC",
+  _ => 'p.data DESC, p.id DESC',
+};
 const limiteLocalObra = 120;
 
 String gerarProtocolo() {

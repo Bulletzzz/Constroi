@@ -151,6 +151,9 @@ página. Valores de paginação inválidos retornam `400`.
 Os filtros opcionais `obra_id`, `status` e `protocolo` podem ser usados
 juntos, por exemplo: `/pedidos?obra_id=1&status=pendente` ou
 `/pedidos?protocolo=PED-0123456789ABCDEF0123456789ABCDEF`.
+O parâmetro `ordem` aceita `recentes` (padrão), `antigos` e `urgencia`, que põe
+os pedidos urgentes na frente e só depois ordena do mais novo para o mais antigo.
+Qualquer outro valor retorna `400`.
 Status e protocolo são comparados pelo valor completo, sem diferenciar maiúsculas
 de minúsculas. Uma busca sem resultados retorna uma lista vazia; filtros vazios,
 IDs inválidos ou textos maiores que os campos do banco retornam `400`.

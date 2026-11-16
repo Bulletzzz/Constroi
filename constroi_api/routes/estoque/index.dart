@@ -19,12 +19,14 @@ Future<Response> onRequest(RequestContext context) async {
       : null;
   final busca = (filtros['busca'] ?? '').trim();
   final baixo = filtros['baixo'] ?? 'false';
+  final zerado = filtros['zerado'] ?? 'false';
   final limite = int.tryParse(filtros['limit'] ?? '50');
   final offset = int.tryParse(filtros['offset'] ?? '0');
   if ((filtros.containsKey('obra_id') && obraId == null) ||
       (filtros.containsKey('categoria_id') && categoriaId == null) ||
       busca.length > 150 ||
       (baixo != 'true' && baixo != 'false') ||
+      (zerado != 'true' && zerado != 'false') ||
       limite == null ||
       limite < 1 ||
       limite > 200 ||
@@ -37,7 +39,8 @@ Future<Response> onRequest(RequestContext context) async {
         'erro':
             'Informe obra_id e categoria_id positivos quando enviados, '
             'busca de ate 150 caracteres, '
-            'baixo true/false, limit de 1 a 200 e offset de 0 a 10000.',
+            'baixo e zerado true/false, limit de 1 a 200 '
+            'e offset de 0 a 10000.',
       },
     );
   }
@@ -95,6 +98,7 @@ Future<Response> onRequest(RequestContext context) async {
         AND (STRPOS(LOWER(p.nome), LOWER(@busca)) > 0
              OR STRPOS(LOWER(COALESCE(p.sku, '')), LOWER(@busca)) > 0)
         AND (NOT @baixo OR e.quantidade <= p.estoque_minimo)
+        AND (NOT @zerado OR e.quantidade = 0)
       ORDER BY p.nome, p.id, e.obra_id, e.id
       LIMIT @limite OFFSET @offset
     '''),
@@ -106,6 +110,7 @@ Future<Response> onRequest(RequestContext context) async {
       'todas': usuario.nivel.alcanca(Nivel.engenheiro),
       'busca': busca,
       'baixo': baixo == 'true',
+      'zerado': zerado == 'true',
       'limite': limite,
       'offset': offset,
     },

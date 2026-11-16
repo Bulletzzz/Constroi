@@ -1,7 +1,7 @@
 # Matriz de rastreabilidade
 
-Responsável: Eduardo Sochodolak (QA) · Última verificação: 05/11/2026 · Base: `origin/main` em
-`6ee328b`, mais a tela de Administração desta branch onde indicado
+Responsável: Eduardo Sochodolak (QA) · Última verificação: 10/11/2026 · Base: `origin/main` em
+`0a86a1d`, mais a branch `fix/ajustes-de-uso` onde indicado
 
 OBS: Infelizmente tem q usar emoji q fica mais visual
 
@@ -28,7 +28,7 @@ dentro do aplicativo Flutter.
 | RF01 | Cadastro de empresa | ✅ `POST /empresas` | ❌ | ❌ | ✅ caso 02 |
 | RF02 | Autenticação | ✅ `POST /login` | ✅ 01_Login | ✅ Login | ✅ casos 02, 03, 09 + E2E 01, 02, 07 |
 | RF03 | Manutenção de usuários | ✅ `/usuarios` (4 rotas) | ❌ | ✅ Administração | ✅ caso 08 + unitário com mock |
-| RF04 | Consulta de estoque | ✅ `GET /estoque` | ✅ 03_Estoque | ✅ Estoque | ✅ caso 14 + E2E 05 |
+| RF04 | Consulta de estoque | ✅ `GET /estoque` | ✅ 03_Estoque | ✅ Estoque | ✅ caso 14 + E2E 05 + 31 widgets |
 | RF05 | Solicitação de produtos | ✅ `POST /pedidos` | ✅ 04_Requisição | ✅ Requisição | ✅ casos 11, 12, 13 |
 | RF06 | Avaliação de pedidos | ✅ `PATCH /pedidos/{id}` | ✅ 05_Aprovações | ✅ Aprovações | ✅ casos 15, 16, 17 |
 | RF07 | Entrada de estoque manual | ✅ `POST /entradas` | 🟡 dentro de 05_Aprovações | ❌ | ✅ caso 22 |
@@ -38,9 +38,9 @@ dentro do aplicativo Flutter.
 | RF11 | Manutenção de equipamentos | ✅ `/equipamentos` (4 rotas) | ✅ 07_Cadastro | 🟡 cria, não edita | ✅ caso 07 |
 | RF12 | Controle de empréstimos | ✅ `/emprestimos` (2 rotas) | ✅ 07_Cadastro | ❌ | ✅ caso 23 |
 | RF13 | Painel da obra | ✅ `GET /painel` | ✅ 02_Painel | ✅ Painel | ✅ caso 18 + E2E 03, 06 |
-| RF14 | Consulta de custos | ✅ `GET /custos` | ✅ 06_Custos | ✅ Custos | ✅ caso 21 + unitário com mock |
+| RF14 | Consulta e lançamento de custos | ✅ `GET /custos`, `POST /custos/despesas` | ✅ 06_Custos | ✅ Custos | ✅ caso 21 + 39 unitários + widget do formulário |
 | RF15 | Consulta de equipe | ✅ `GET /obras/{id}/equipe` | ✅ 08_Equipe | ✅ Equipe | ✅ caso 05 |
-| RF16 | Consulta de logs | ✅ `GET /logs` | 🟡 dentro de 08_Equipe | ✅ Administração, aba Logs | ✅ `integration_test/logs_test.dart` |
+| RF16 | Consulta de logs | ✅ `GET /logs` | 🟡 dentro de 08_Equipe | ✅ Administração, aba Logs | ✅ `integration_test/logs_test.dart` + 15 unitários do texto do evento |
 
 A tela de cadastro entrou na main pela PR #38. RF10 e RF11 criam pelo aplicativo; editar e
 inativar continuam só pela API.
@@ -52,12 +52,16 @@ telas de Painel, Custos, Equipe e a consulta de Logs, que já existiam sem requi
 
 ## Cobertura, em número
 
-| Camada | Cobertos | Total |
-|---|---|---|
-| Rota na API | 16 | 16 |
-| Tela desenhada no Figma | 10 | 16 |
-| Tela funcionando no aplicativo | 13 | 16 |
-| Teste automatizado | 16 | 16 |
+| Camada | ✅ completo | 🟡 parcial | ❌ ausente |
+|---|---|---|---|
+| Rota na API | 16 | 0 | 0 |
+| Tela desenhada no Figma | 10 | 2 | 4 |
+| Tela funcionando no aplicativo | 11 | 2 | 3 |
+| Teste automatizado | 16 | 0 | 0 |
+
+Até 05/11 esta tabela trazia uma coluna só de "cobertos", e eu contava com dois critérios
+diferentes: o Figma somava apenas ✅ (10 de 16) e o aplicativo somava ✅ mais 🟡 (13 de 16).
+Era erro meu de leitura, não mudança de escopo. Agora cada marca tem a sua coluna.
 
 Em 22/09 eram 5 rotas, 0 telas e 0 testes. O fluxo central — pedir, aprovar, baixar estoque —
 está inteiro, com rota, tela e teste de concorrência. A tela de Importação de NF-e atende o
@@ -107,8 +111,23 @@ empresas. Quatro mutações na consulta foram injetadas e todas quebraram o caso
 `'week'` por `'month'` no filtro de período, somar orçamento mesmo com obra sem orçamento,
 arredondar o percentual em duas casas e tirar o filtro de empresa de `obras_visiveis`.
 
-O que continua fora: não há rota para criar despesa nem para gravar preço na entrada, então
-o caso semeia `despesa_obra` e `item_entrada.valor_unitario` direto no banco.
+O que continuava fora era quem alimenta a tela: até 09/11 não havia rota para criar despesa
+nem caminho para gravar preço de material, e o caso 21 semeava `despesa_obra` e
+`item_entrada.valor_unitario` direto no banco. Fechou nesta branch, pelos dois lados:
+
+- `POST /custos/despesas` grava serviços e locações, restrito a engenheiro ou master, com o
+  evento `CRIACAO_DESPESA` na mesma transação. A tela de Custos ganhou o botão
+  **LANÇAR DESPESA** com obra, categoria, descrição e valor. 39 unitários na rota e 5
+  widgets no formulário.
+- O preço do material passou a vir da NF-e: o parser lê `vUnCom`, que antes era descartado,
+  e grava `item_entrada.valor_unitario` junto da categoria do produto. Produto sem categoria
+  entra sem preço, porque a constraint exige as duas colunas juntas.
+
+Uma decisão técnica a registrar: `valor_unitario` é `NUMERIC(14,2)` e a NF-e permite até dez
+decimais no preço unitário, então o valor é arredondado para o centavo com `BigInt`, nunca
+com `double`. O total do lançamento sai de quantidade × preço arredondado, com diferença
+máxima de meio centavo por unidade comprada. Guardar o preço com mais casas exigiria
+migration e é cartão à parte.
 
 ### 5. RF01 continua sem tela
 
@@ -136,7 +155,19 @@ alteração. O contrato e a cobertura estão em `constroi_api/README.md` e
 A consulta agora tem tela: é a segunda aba da Administração, com filtro por autor e por
 período. Virou o RF16 na Definição de requisitos, junto com Painel, Custos e Equipe.
 
-### 8. A tabela de RF do PDF continua quebrada
+### 8. ~~As telas abriam vazias porque o banco de demonstração não tinha dado~~ — corrigido em 10/11
+
+Painel sem movimentações, Custos sem lançamento e Estoque com quatro saldos: não era defeito
+de tela, era ausência de dado. `constroi_api/bin/semear.dart` preenche a empresa de teste com
+um histórico de 70 dias — 4 obras com orçamento, 18 produtos, 9 equipamentos, equipes,
+13 entradas com preço, 33 pedidos nos três estados, 42 baixas, 11 despesas, 7 empréstimos e
+252 eventos. É idempotente: roda duas vezes e o banco fica igual.
+
+Os saldos foram desenhados para exercitar os casos de borda das telas: 2 rupturas, 7 abaixo
+do mínimo, uma obra concluída com sobra, um empréstimo atrasado e uma obra de propósito
+acima do orçamento (108,4%). Dois usuários ficam inativos para a reativação ter alvo.
+
+### 9. A tabela de RF do PDF continua quebrada
 
 A numeração desta matriz é a minha leitura da ordem dos nomes. Segue pendente de confirmação
 do Pedro.
@@ -145,21 +176,44 @@ do Pedro.
 
 ## Sobre os testes
 
-| Camada | Quantidade |
-|---|---|
-| Unidade na API (`dart test test/`) | 242 |
-| Widget no app (`flutter test`) | 209 |
-| Integração (`.\testes\executar.ps1`) | 22 casos, 585 verificações |
-| Ponta a ponta (Cypress) | 7 casos, 9 testes |
+| Camada | Na main | Com esta branch | Medido em |
+|---|---|---|---|
+| Unidade na API (`dart test test/`) | 251 | 300 | 11/11/2026 |
+| Widget no app (`flutter test`) | 209 | 282 | 11/11/2026 |
+| Integração Dart (`dart test integration_test/`) | — | 149 | 10/11/2026 |
+| Integração (`.\testes\executar.ps1`) | — | 23 casos, 659 verificações | 11/11/2026 |
+| Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 05/11/2026 |
 
-Números medidos em 05/11/2026, não deduzidos, com a main já mesclada nesta branch. Os 22
-casos passaram inteiros em 21 minutos. Os 209 testes de widget incluem os 23 da tela de
-Administração desta branch; na main são 186.
+Números medidos, não deduzidos. A coluna "com esta branch" é a árvore do merge de
+`fix/ajustes-de-uso` com `origin/main`, não a branch isolada: `git merge-tree` não acusa
+conflito e as duas suítes passam inteiras nessa árvore. Isoladas, a branch tem 297 e 282 —
+os 3 que faltam são do `apoio_pool_test.dart`, que veio da PR #50 pela main.
 
-A integração cresceu 62 verificações desde 26/10, todas do caso 22 que veio com a PR #41. As
-PRs #40, #45 e #46 entraram sem caso novo: a cobertura dos logs mora em
-`constroi_api/integration_test/logs_test.dart`, que roda fora deste runner — vale um caso
-aqui dentro, e não há cartão para isso.
+São 49 unitários novos na API e 73 widgets novos. Os dois arquivos novos respondem por
+54: `test/routes/despesas_test.dart` com 39 e `test/evento_legivel_test.dart` com 15. O
+resto entrou em arquivos que já existiam — filtro de zerados, preço da NF-e, quantidade
+inteira por unidade, indicadores clicáveis, reativação de usuário, paginação do estoque e
+lançamento de despesa.
+
+As 9 suítes de `integration_test/` rodaram em 1min47 contra um PostgreSQL 17 descartável
+com TLS. Depois da PR #50 não é mais preciso dimensionar o pool na URL: o
+`integration_test/apoio_pool.dart` já pede as conexões que os cenários de concorrência
+exigem. O runner de `testes/` passou inteiro em 11/11, 23 casos e 659 chamadas em 24
+minutos, contra a API em container construída da branch — o código de execução da API é
+igual na árvore do merge, porque a PR #50 só mexeu em teste e README. O Cypress não foi
+rodado depois do merge; vale a última medição.
+
+`constroi_api/integration_test/` roda fora do runner de `testes/` e ganhou dois casos de
+preço da NF-e nesta branch, os dois verdes contra banco. A cobertura dos logs também mora
+lá — vale um caso dentro do runner, e não há cartão para isso.
+
+O commit `fad194d`, do Andrew, quebrou 32 testes e o caso 19 do runner ao exigir
+quantidade inteira em `un` e `saco` sem atualizar as fixtures: 17 unitários da API
+(`SELECT id` virou `SELECT id, unidade` e as linhas falsas tinham uma coluna só), 10 de
+integração da NF-e e 5 de widget, mais a NF-e de 1,25 saco que o cenário compartilhado de
+`testes/comum/apoio.ps1` monta. Todos corrigidos nesta branch, e a regra dele ganhou teste
+de rota, que não existia. O runner não tinha sido rodado depois daquele commit — foi assim
+que a quebra chegou até aqui.
 
 A suíte de integração fala com a API e o banco reais e confere o resultado no banco, não só a
 resposta. Como rodar está em `testes/README.md`.
@@ -180,8 +234,16 @@ A triagem completa dos 20 RNFs continua sendo outro cartão.
 
 ## O que fazer com este documento
 
-1. Descobrir como a migration 011 saiu do Neon e combinar quem mexe no banco compartilhado.
-2. Confirmar a numeração dos RF com o Pedro.
-3. Levar ao Johann o que sobrou de funcionalidade faltando: as telas do RF01, do RF07 e do
+1. Rodar o runner de integração e o Cypress nesta branch e trocar os números de 09/11 e
+   05/11 pelos de agora, inclusive os dois casos novos de preço da NF-e.
+2. Descobrir como a migration 011 saiu do Neon e combinar quem mexe no banco compartilhado.
+   Em 10/11 apareceu um segundo sinal de desvio: no Neon, `item_pedido_pedido_id_fkey` e
+   `item_entrada_entrada_id_fkey` estão sem `ON DELETE CASCADE`, embora a migration 001 e o
+   `Database/schema.sql` declarem o cascade. Aquelas tabelas não foram criadas pelo executor
+   de migrations.
+3. Confirmar a numeração dos RF com o Pedro.
+4. Levar ao Johann o que sobrou de funcionalidade faltando: as telas do RF01, do RF07 e do
    RF12, que hoje só funcionam por chamada direta à API.
-4. Reconferir ao fim de cada semana. A coluna **Teste** é a que mais envelhece.
+5. Decidir se `item_entrada.valor_unitario` passa a `NUMERIC(14,4)` para guardar o preço da
+   NF-e sem arredondar. Exige migration.
+6. Reconferir ao fim de cada semana. A coluna **Teste** é a que mais envelhece.
