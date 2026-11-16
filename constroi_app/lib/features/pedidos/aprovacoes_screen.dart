@@ -30,10 +30,12 @@ class AprovacoesScreen extends StatefulWidget {
     super.key,
     required this.service,
     required this.perfil,
+    this.obraInicial,
   });
 
   final PedidosService service;
   final PerfilUsuario perfil;
+  final int? obraInicial;
 
   @override
   State<AprovacoesScreen> createState() => _AprovacoesScreenState();
@@ -42,7 +44,7 @@ class AprovacoesScreen extends StatefulWidget {
 class _AprovacoesScreenState extends State<AprovacoesScreen> {
   List<Pedido> _pendentes = const [];
   List<ObraDisponivel> _obras = const [];
-  int? _obraId;
+  late int? _obraId = widget.obraInicial;
   OrdemDoPedido _ordem = OrdemDoPedido.urgencia;
   bool _carregando = true;
   String? _erro;

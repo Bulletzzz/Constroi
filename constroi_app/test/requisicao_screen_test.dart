@@ -64,9 +64,7 @@ montar({
         consultas.add(requisicao.url);
         return http.Response(jsonEncode({'pedidos': meus}), 200);
       }
-      enviados.add(
-        jsonDecode(requisicao.body) as Map<String, Object?>,
-      );
+      enviados.add(jsonDecode(requisicao.body) as Map<String, Object?>);
       if (statusDaCriacao != 201) {
         return http.Response(
           jsonEncode({'erro': erroDaCriacao}),
@@ -101,10 +99,7 @@ Future<void> abrir(WidgetTester tester, PedidosService service) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.dark,
-      home: RequisicaoScreen(
-        service: service,
-        perfil: PerfilUsuario.pedreiro,
-      ),
+      home: RequisicaoScreen(service: service, perfil: PerfilUsuario.pedreiro),
     ),
   );
   await tester.pumpAndSettle();
@@ -139,6 +134,74 @@ Future<void> escolherMaterial(
 }
 
 void main() {
+  testWidgets('historico pagina e nao esconde os pedidos mais antigos', (
+    tester,
+  ) async {
+    final consultas = <Uri>[];
+    Map<String, Object?> pedidoDe(int i) => {
+      'id': i,
+      'protocolo': 'PED-${i.toString().padLeft(3, '0')}',
+      'status': 'pendente',
+      'urgencia': 'padrao',
+      'obra_id': 7,
+      'itens': [
+        {'produto_id': 20, 'quantidade': '1.00', 'produto_nome': 'Cimento'},
+      ],
+    };
+    final api = ApiClient(
+      config: ApiConfig('https://api.constroi.test'),
+      sessions: SessionManager(MemoryTokenStorage()),
+      httpClient: MockClient((requisicao) async {
+        final caminho = requisicao.url.path;
+        if (caminho.endsWith('/obras')) {
+          return http.Response(jsonEncode({'obras': <Object?>[]}), 200);
+        }
+        if (caminho.endsWith('/produtos')) {
+          return http.Response(jsonEncode({'produtos': <Object?>[]}), 200);
+        }
+        consultas.add(requisicao.url);
+        final offset = int.parse(
+          requisicao.url.queryParameters['offset'] ?? '0',
+        );
+        final limite = int.parse(
+          requisicao.url.queryParameters['limit'] ?? '21',
+        );
+        final lote = [
+          for (var i = offset; i < 21 && i < offset + limite; i++)
+            pedidoDe(i + 1),
+        ];
+        return http.Response(jsonEncode({'pedidos': lote}), 200);
+      }),
+    );
+
+    await abrir(tester, PedidosService(api: api));
+    await tester.tap(find.text('MINHAS'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('#001'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('PRÓXIMA'), 400);
+    await tester.pumpAndSettle();
+    expect(find.text('PÁGINA 1'), findsOneWidget);
+    expect(find.text('#021'), findsNothing);
+
+    await tester.tap(find.text('PRÓXIMA'));
+    await tester.pumpAndSettle();
+
+    expect(consultas.last.queryParameters['offset'], '20');
+    expect(find.text('#021'), findsOneWidget);
+    expect(find.text('#001'), findsNothing);
+    expect(find.text('PÁGINA 2'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('Recusado'), -400);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Recusado'));
+    await tester.pumpAndSettle();
+
+    expect(consultas.last.queryParameters['offset'], '0');
+    expect(consultas.last.queryParameters['status'], 'recusado');
+  });
+
   Map<String, Object?> pedidoFeito(
     int id,
     String status, {
@@ -206,10 +269,7 @@ void main() {
 
     await tocar(tester, 'MINHAS');
 
-    expect(
-      find.text('Você ainda não fez nenhuma requisição.'),
-      findsOneWidget,
-    );
+    expect(find.text('Você ainda não fez nenhuma requisição.'), findsOneWidget);
   });
 
   testWidgets('enviar uma requisicao obriga a aba minhas a recarregar', (
@@ -325,8 +385,8 @@ void main() {
     await tocar(tester, 'ENVIAR');
 
     final pedido = montagem.enviados.single['pedido']! as Map<String, Object?>;
-    final item = (pedido['itens']! as List<Object?>).single!
-        as Map<String, Object?>;
+    final item =
+        (pedido['itens']! as List<Object?>).single! as Map<String, Object?>;
     expect(item['quantidade'], 2.5);
   });
 
@@ -372,10 +432,7 @@ void main() {
     expect(find.text('QUANTIDADE'), findsOneWidget);
   });
 
-  for (final tamanho in [
-    const Size(320, 900),
-    const Size(390, 900),
-  ]) {
+  for (final tamanho in [const Size(320, 900), const Size(390, 900)]) {
     testWidgets('requisicao sem overflow em $tamanho e texto ampliado', (
       tester,
     ) async {

@@ -107,7 +107,7 @@ class _AppHomeState extends State<AppHome> {
 
   void _abrirRequisicoes() => Navigator.of(context).pushReplacementNamed(
     AppRoute.requisicoes.caminho,
-    arguments: {'obra_id': _obraId},
+    arguments: {'obra_id': _obraId, 'aba': 'minhas'},
   );
 
   @override

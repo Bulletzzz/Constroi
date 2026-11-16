@@ -35,10 +35,12 @@ class RequisicaoScreen extends StatefulWidget {
     super.key,
     required this.service,
     required this.perfil,
+    this.abrirMinhas = false,
   });
 
   final PedidosService service;
   final PerfilUsuario perfil;
+  final bool abrirMinhas;
 
   @override
   State<RequisicaoScreen> createState() => _RequisicaoScreenState();
@@ -49,9 +51,11 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
   final _local = TextEditingController();
   final _especificacoes = TextEditingController();
 
-  _Aba _aba = _Aba.nova;
+  late _Aba _aba = widget.abrirMinhas ? _Aba.minhas : _Aba.nova;
   _Passo _passo = _Passo.dados;
   List<Pedido>? _meus;
+  bool _temMaisMeus = false;
+  int _paginaDoHistorico = 0;
   bool _carregandoMeus = false;
   String? _erroMeus;
   int _consultaMeus = 0;
@@ -71,6 +75,7 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
   void initState() {
     super.initState();
     _carregar();
+    if (_aba == _Aba.minhas) _carregarMeus();
   }
 
   @override
@@ -118,12 +123,14 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
       _erroMeus = null;
     });
     try {
-      final lista = await widget.service.meusPedidos(
+      final pagina = await widget.service.meusPedidos(
         situacao: _situacaoFiltrada,
+        pagina: _paginaDoHistorico,
       );
       if (!mounted || consulta != _consultaMeus) return;
       setState(() {
-        _meus = lista;
+        _meus = pagina.pedidos;
+        _temMaisMeus = pagina.temMais;
         _carregandoMeus = false;
       });
     } catch (erro) {
@@ -147,11 +154,21 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
 
   void _renovarMeus() {
     _meus = null;
+    _paginaDoHistorico = 0;
     if (_aba == _Aba.minhas) _carregarMeus();
   }
 
   void _filtrarPor(SituacaoPedido? situacao) {
-    setState(() => _situacaoFiltrada = situacao);
+    setState(() {
+      _situacaoFiltrada = situacao;
+      _paginaDoHistorico = 0;
+    });
+    _carregarMeus();
+  }
+
+  void _irParaPagina(int destino) {
+    if (destino < 0 || destino == _paginaDoHistorico) return;
+    setState(() => _paginaDoHistorico = destino);
     _carregarMeus();
   }
 
@@ -353,9 +370,48 @@ class _RequisicaoScreenState extends State<RequisicaoScreen> {
             ? 'Você ainda não fez nenhuma requisição.'
             : 'Nenhuma requisição ${_situacaoFiltrada!.rotulo.toLowerCase()}.',
       )
-    else
+    else ...[
       for (final pedido in _meus!) _cartaoDoPedido(pedido),
+      if (_temMaisMeus || _paginaDoHistorico > 0) _paginacaoDoHistorico(),
+    ],
   ];
+
+  Widget _paginacaoDoHistorico() => Container(
+    margin: const EdgeInsets.only(top: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+    decoration: const BoxDecoration(
+      border: Border(top: BorderSide(color: _tinta, width: 2)),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Semantics(
+          identifier: 'requisicao-pagina-anterior',
+          button: true,
+          child: TextButton(
+            onPressed: _paginaDoHistorico == 0
+                ? null
+                : () => _irParaPagina(_paginaDoHistorico - 1),
+            child: const Text('ANTERIOR', style: TextStyle(color: _tinta)),
+          ),
+        ),
+        Text(
+          'PÁGINA ${_paginaDoHistorico + 1}',
+          style: const TextStyle(color: _apoio, fontSize: 12),
+        ),
+        Semantics(
+          identifier: 'requisicao-pagina-proxima',
+          button: true,
+          child: TextButton(
+            onPressed: !_temMaisMeus
+                ? null
+                : () => _irParaPagina(_paginaDoHistorico + 1),
+            child: const Text('PRÓXIMA', style: TextStyle(color: _tinta)),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _filtroDeSituacao() => Semantics(
     identifier: 'requisicao-filtro-situacao',

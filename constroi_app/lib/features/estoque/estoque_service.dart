@@ -4,6 +4,7 @@ import 'item_estoque.dart';
 const limiteMinimo = 1;
 const limiteMaximo = 199;
 const limitePadrao = 20;
+const tetoDaExportacao = 2000;
 
 enum FiltroDeSaldo {
   todos('TODOS'),

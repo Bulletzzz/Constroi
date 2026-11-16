@@ -55,6 +55,14 @@ class ObraDisponivel {
 }
 
 const limiteDaFila = 50;
+const limiteDoHistorico = 20;
+
+class PaginaDePedidos {
+  const PaginaDePedidos({required this.pedidos, required this.temMais});
+
+  final List<Pedido> pedidos;
+  final bool temMais;
+}
 
 enum OrdemDoPedido {
   urgencia('urgencia', 'Urgentes primeiro'),
@@ -74,10 +82,10 @@ class PedidosService {
 
   Future<List<ObraDisponivel>> obras() async {
     final resposta = await _api.get('obras');
-    return _lista(resposta, 'obras')
-        .map(ObraDisponivel.talvezDoJson)
-        .whereType<ObraDisponivel>()
-        .toList();
+    return _lista(
+      resposta,
+      'obras',
+    ).map(ObraDisponivel.talvezDoJson).whereType<ObraDisponivel>().toList();
   }
 
   Future<List<ProdutoDoCatalogo>> catalogo() async {
@@ -123,30 +131,49 @@ class PedidosService {
   Future<List<Pedido>> pendentes({
     int? obraId,
     OrdemDoPedido ordem = OrdemDoPedido.urgencia,
-  }) => _listar(status: 'pendente', obraId: obraId, ordem: ordem);
+  }) async => (await _listar(
+    status: 'pendente',
+    obraId: obraId,
+    ordem: ordem,
+    limite: limiteDaFila,
+  )).pedidos;
 
-  Future<List<Pedido>> meusPedidos({
+  Future<PaginaDePedidos> meusPedidos({
     SituacaoPedido? situacao,
     OrdemDoPedido ordem = OrdemDoPedido.recentes,
-  }) => _listar(status: situacao?.valor, ordem: ordem);
+    int pagina = 0,
+  }) => _listar(
+    status: situacao?.valor,
+    ordem: ordem,
+    limite: limiteDoHistorico,
+    deslocamento: pagina * limiteDoHistorico,
+  );
 
-  Future<List<Pedido>> _listar({
+  Future<PaginaDePedidos> _listar({
     String? status,
     int? obraId,
     required OrdemDoPedido ordem,
+    required int limite,
+    int deslocamento = 0,
   }) async {
     final consulta = <String, String>{
       'com_itens': 'true',
-      'limit': '$limiteDaFila',
+      'limit': '${limite + 1}',
+      'offset': '$deslocamento',
       'ordem': ordem.valor,
       'status': ?status,
       if (obraId != null) 'obra_id': '$obraId',
     };
     final resposta = await _api.get('pedidos', query: consulta);
-    return _lista(resposta, 'pedidos')
+    final recebidos = _lista(resposta, 'pedidos');
+    final pedidos = recebidos
         .map(Pedido.talvezDoJson)
         .whereType<Pedido>()
         .toList();
+    return PaginaDePedidos(
+      pedidos: pedidos.take(limite).toList(),
+      temMais: recebidos.length > limite,
+    );
   }
 
   Future<Pedido> aprovar(int id) => _decidir(id, 'aprovado', null);

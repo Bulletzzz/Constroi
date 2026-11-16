@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:constroi_app/core/api/api_client.dart';
@@ -9,6 +10,7 @@ import 'package:constroi_app/features/painel/painel_service.dart';
 import 'package:constroi_app/navigation/perfil_usuario.dart';
 import 'package:constroi_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -265,6 +267,86 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tudo.chamadas.last.queryParameters['categoria_id'], '9');
+  });
+
+  testWidgets('exportar leva todas as paginas do filtro, nao so a visivel', (
+    tester,
+  ) async {
+    late List<Uri> chamadas;
+    final tudo = montar((chamada) {
+      final uri = chamadas[chamada - 1];
+      final offset = int.parse(uri.queryParameters['offset'] ?? '0');
+      final limite = int.parse(uri.queryParameters['limit'] ?? '1');
+      return [
+        for (var i = offset; i < 21 && i < offset + limite; i++)
+          item(i + 1, sku: 'SKU-$i'),
+      ];
+    });
+    chamadas = tudo.chamadas;
+
+    String? copiado;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (chamada) async {
+        if (chamada.method == 'Clipboard.setData') {
+          copiado = (chamada.arguments as Map)['text'] as String;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+
+    await abrir(tester, tudo.service);
+    expect(find.text('SKU-20'), findsNothing);
+
+    await tester.ensureVisible(find.text('EXPORTAR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('EXPORTAR'));
+    await tester.pumpAndSettle();
+
+    final linhas = copiado!.split('\r\n');
+    expect(linhas, hasLength(22));
+    expect(linhas.last, contains('SKU-20'));
+  });
+
+  testWidgets('exportar fica bloqueado enquanto a busca carrega', (
+    tester,
+  ) async {
+    final liberar = Completer<void>();
+    var chamadasFeitas = 0;
+    final api = ApiClient(
+      config: ApiConfig('https://api.constroi.test'),
+      sessions: SessionManager(MemoryTokenStorage()),
+      httpClient: MockClient((_) async {
+        chamadasFeitas++;
+        if (chamadasFeitas > 1) await liberar.future;
+        return http.Response(
+          jsonEncode({
+            'estoque': [item(1, sku: 'CIM-01')],
+          }),
+          200,
+        );
+      }),
+    );
+    await abrir(tester, EstoqueService(api: api));
+
+    await tester.tap(find.text(FiltroDeSaldo.zerado.rotulo));
+    await tester.pump();
+
+    final exportar = tester.widget<InkWell>(
+      find
+          .ancestor(of: find.text('EXPORTAR'), matching: find.byType(InkWell))
+          .first,
+    );
+    expect(exportar.onTap, isNull);
+
+    liberar.complete();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('proxima pagina troca os itens e avanca o offset', (

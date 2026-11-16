@@ -416,29 +416,59 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
     child: _botao(
       rotulo: _exportando ? 'EXPORTANDO...' : 'EXPORTAR',
       icone: Icons.download,
-      aoTocar: _exportando ? null : _exportar,
+      aoTocar: _exportando || _carregando ? null : _exportar,
     ),
   );
 
   Future<void> _exportar() async {
-    if (_itens.isEmpty) {
-      _avisar('Não há itens para exportar.');
-      return;
-    }
     setState(() => _exportando = true);
     try {
+      final todos = await _itensDoFiltro();
+      if (!mounted) return;
+      if (todos.itens.isEmpty) {
+        setState(() => _exportando = false);
+        _avisar('Não há itens para exportar.');
+        return;
+      }
       final recado = await baixarTexto(
         nomeDoArquivo(DateTime.now()),
-        csvDoEstoque(_itens),
+        csvDoEstoque(todos.itens),
       );
       if (!mounted) return;
       setState(() => _exportando = false);
-      _avisar(recado);
+      _avisar(
+        todos.completo
+            ? recado
+            : '$recado Parcial: o filtro tem mais de $tetoDaExportacao itens.',
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _exportando = false);
       _avisar('Não foi possível gerar a planilha.');
     }
+  }
+
+  Future<({List<ItemEstoque> itens, bool completo})> _itensDoFiltro() async {
+    final obra = _obraAtual;
+    final busca = _busca.text;
+    final categoria = _categoria;
+    final saldo = _saldo;
+    final todos = <ItemEstoque>[];
+    while (todos.length < tetoDaExportacao) {
+      final pagina = await widget.service.listar(
+        obraId: obra,
+        busca: busca,
+        categoriaId: categoria,
+        saldo: saldo,
+        limite: limiteMaximo,
+        deslocamento: todos.length,
+      );
+      todos.addAll(pagina.itens);
+      if (!pagina.temMais || pagina.itens.isEmpty) {
+        return (itens: todos, completo: true);
+      }
+    }
+    return (itens: todos, completo: false);
   }
 
   void _avisar(String texto) {

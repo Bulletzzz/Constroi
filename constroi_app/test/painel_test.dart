@@ -234,6 +234,86 @@ void main() {
       expect(find.byType(DropdownButton<int?>), findsWidgets);
     });
 
+    testWidgets('engenheiro leva a obra escolhida para as aprovacoes', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(400, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final consultas = <Uri>[];
+      await tester.pumpWidget(
+        ConstroiApp(
+          config: ApiConfig('https://api.constroi.test'),
+          storage: MemoryTokenStorage()..token = tokenPerfil('engenheiro'),
+          httpClient: MockClient((request) async {
+            consultas.add(request.url);
+            if (request.url.path == '/pedidos') {
+              return ok({'pedidos': <Object?>[]});
+            }
+            if (request.url.path == '/obras') {
+              return ok({'obras': <Object?>[]});
+            }
+            final obra = int.tryParse(
+              request.url.queryParameters['obra_id'] ?? '',
+            );
+            return ok(respostaPainel(obraId: obra));
+          }),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButtonFormField<int>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Segunda obra').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('REQUISIÇÕES PENDENTES'));
+      await tester.pumpAndSettle();
+
+      final fila = consultas.lastWhere((uri) => uri.path == '/pedidos');
+      expect(fila.queryParameters['obra_id'], '11');
+      expect(fila.queryParameters['status'], 'pendente');
+    });
+
+    testWidgets(
+      'pedreiro cai na aba das proprias requisicoes, ja consultadas',
+      (tester) async {
+        tester.view.physicalSize = const Size(400, 2400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final consultas = <Uri>[];
+        await tester.pumpWidget(
+          ConstroiApp(
+            config: ApiConfig('https://api.constroi.test'),
+            storage: MemoryTokenStorage()..token = tokenPerfil('pedreiro'),
+            httpClient: MockClient((request) async {
+              consultas.add(request.url);
+              if (request.url.path == '/pedidos') {
+                return ok({'pedidos': <Object?>[]});
+              }
+              if (request.url.path == '/obras') {
+                return ok({'obras': <Object?>[]});
+              }
+              if (request.url.path == '/produtos') {
+                return ok({'produtos': <Object?>[]});
+              }
+              return ok(respostaPainel());
+            }),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('REQUISIÇÕES PENDENTES'));
+        await tester.pumpAndSettle();
+
+        expect(consultas.any((uri) => uri.path == '/pedidos'), isTrue);
+        expect(
+          find.text('Você ainda não fez nenhuma requisição.'),
+          findsOneWidget,
+        );
+      },
+    );
+
     testWidgets('pedreiro nao ve valor estimado e os demais seguem clicaveis', (
       tester,
     ) async {

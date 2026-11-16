@@ -205,8 +205,18 @@ class _ConstroiAppState extends State<ConstroiApp> {
     if (rota == AppRoute.requisicoes) {
       final service = PedidosService(api: _api!);
       return perfil.possuiNivel(PerfilUsuario.engenheiro)
-          ? AprovacoesScreen(service: service, perfil: perfil)
-          : RequisicaoScreen(service: service, perfil: perfil);
+          ? AprovacoesScreen(
+              service: service,
+              perfil: perfil,
+              obraInicial: argumentos['obra_id'] is int
+                  ? argumentos['obra_id'] as int
+                  : null,
+            )
+          : RequisicaoScreen(
+              service: service,
+              perfil: perfil,
+              abrirMinhas: argumentos['aba'] == 'minhas',
+            );
     }
     return ModuleScreen(rota: rota, perfil: perfil);
   }
