@@ -182,10 +182,10 @@ do Pedro.
 
 | Camada | Na main | Com esta branch | Medido em |
 |---|---|---|---|
-| Unidade na API (`dart test test/`) | 251 | 313 | 16/11/2026 |
-| Widget no app (`flutter test`) | 209 | 289 | 16/11/2026 |
-| Integração Dart (`dart test integration_test/`) | — | 149 | 10/11/2026 |
-| Integração (`.\testes\executar.ps1`) | — | 23 casos, 706 chamadas | 16/11/2026 |
+| Unidade na API (`dart test test/`) | 251 | 324 | 17/11/2026 |
+| Widget no app (`flutter test`) | 209 | 289 | 17/11/2026 |
+| Integração Dart (`dart test integration_test/`) | — | 149 | 17/11/2026 |
+| Integração (`.\testes\executar.ps1`) | — | 23 casos, 722 chamadas | 17/11/2026 |
 | Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 05/11/2026 |
 
 Números medidos, não deduzidos. A coluna "com esta branch" é a árvore do merge de

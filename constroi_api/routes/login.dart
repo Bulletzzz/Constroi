@@ -33,10 +33,8 @@ Future<Response> onRequest(RequestContext context) async {
 
   final banco = context.read<Pool<void>>();
   final emailResumido = resumir(email.toLowerCase());
-  final ip = context.request.headers['x-forwarded-for']
-      ?.split(',')
-      .first
-      .trim();
+  final ip = enderecoDeOrigem(context.request.headers['x-forwarded-for']);
+  final agente = agenteLimitado(context.request.headers['user-agent']);
 
   final encontrados = await banco.execute(
     Sql.named('''
@@ -56,14 +54,12 @@ Future<Response> onRequest(RequestContext context) async {
 
   final usuario = encontrados.first.toColumnMap();
   final usuarioId = usuario['id'] as int;
-  // So revelar o estado da conta depois de validar a senha.
   final senhaValida = senhaConfere(senha, usuario['senha_hash'] as String);
   final agora = DateTime.now().toUtc();
   final bloqueadoAte = usuario['bloqueado_ate'] as DateTime?;
   final bloqueado = bloqueadoAte != null && bloqueadoAte.isAfter(agora);
 
   if (!senhaValida) {
-    // Uma tentativa durante o bloqueio nao pode limpa-lo nem prolonga-lo.
     if (usuario['ativo'] != false && !bloqueado) {
       final bloqueadoExpirou =
           bloqueadoAte != null && !bloqueadoAte.isAfter(agora);
@@ -136,7 +132,7 @@ Future<Response> onRequest(RequestContext context) async {
         'hash': resumir(refreshToken),
         'expira': expiraEm,
         'ip': ip,
-        'agente': context.request.headers['user-agent'],
+        'agente': agente,
       },
     );
     await registrarLog(
@@ -190,10 +186,20 @@ Future<void> _registrarTentativa(
   );
 }
 
-/// Mesma resposta para email inexistente e senha errada, para nao entregar
-/// quais emails estao cadastrados.
 Response _credenciaisInvalidas() =>
     _erro(HttpStatus.unauthorized, 'Email ou senha invalidos.');
+
+String? enderecoDeOrigem(String? cabecalho) {
+  final primeiro = cabecalho?.split(',').first.trim();
+  if (primeiro == null || primeiro.isEmpty) return null;
+  return InternetAddress.tryParse(primeiro) == null ? null : primeiro;
+}
+
+String? agenteLimitado(String? cabecalho) {
+  final texto = cabecalho?.trim();
+  if (texto == null || texto.isEmpty) return null;
+  return texto.length <= 500 ? texto : texto.substring(0, 500);
+}
 
 Response _erro(int status, String mensagem) =>
     Response.json(statusCode: status, body: {'erro': mensagem});

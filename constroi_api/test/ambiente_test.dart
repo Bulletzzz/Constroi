@@ -84,4 +84,29 @@ void main() {
       throwsA(isA<FormatException>()),
     );
   });
+
+  group('escolherVariavel', () {
+    test('o ambiente do sistema vence o .env', () {
+      expect(
+        escolherVariavel('postgresql://teste', 'postgresql://producao'),
+        equals('postgresql://teste'),
+      );
+    });
+
+    test('cai para o .env quando o sistema nao define', () {
+      expect(escolherVariavel(null, 'do-arquivo'), equals('do-arquivo'));
+      expect(escolherVariavel('', 'do-arquivo'), equals('do-arquivo'));
+      expect(escolherVariavel('   ', 'do-arquivo'), equals('do-arquivo'));
+    });
+
+    test('devolve nulo quando nenhum dos dois define', () {
+      expect(escolherVariavel(null, null), isNull);
+      expect(escolherVariavel('', '  '), isNull);
+    });
+
+    test('remove espacos nas bordas dos dois lados', () {
+      expect(escolherVariavel(' do-sistema ', null), equals('do-sistema'));
+      expect(escolherVariavel(null, ' do-arquivo '), equals('do-arquivo'));
+    });
+  });
 }

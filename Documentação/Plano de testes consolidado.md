@@ -1,6 +1,6 @@
 # Plano de testes consolidado
 
-Responsável: Eduardo Sochodolak (QA) · Fechamento: 16/11/2026 · Base: `origin/main`
+Responsável: Eduardo Sochodolak (QA) · Fechamento: 17/11/2026 · Base: `origin/main`
 em `41faa50`, mais a branch `qa/plano-de-testes-final`
 
 Este documento é a entrega de QA do semestre. Diz o que foi testado, como, o que
@@ -14,10 +14,10 @@ Números são medidos, nunca estimados. Onde não medi, está escrito que não m
 
 | Camada | Quantidade | Onde roda | Medido em |
 |---|---|---|---|
-| Unidade na API | 313 | `cd constroi_api && dart test` | 16/11/2026 |
-| Widget no aplicativo | 289 | `cd constroi_app && flutter test` | 16/11/2026 |
-| Integração Dart | 149 | `dart test integration_test/` | 16/11/2026 |
-| Integração ponta a ponta | 23 casos, 706 chamadas | `.\testes\executar.ps1` | 16/11/2026 |
+| Unidade na API | 324 | `cd constroi_api && dart test` | 17/11/2026 |
+| Widget no aplicativo | 289 | `cd constroi_app && flutter test` | 17/11/2026 |
+| Integração Dart | 149 | `dart test integration_test/` | 17/11/2026 |
+| Integração ponta a ponta | 23 casos, 722 chamadas | `.\testes\executar.ps1` | 17/11/2026 |
 | Interface ponta a ponta | 7 casos, 9 testes | Cypress, `e2e/` | 05/11/2026 |
 
 As quatro primeiras passaram inteiras nesta data. O Cypress não foi reexecutado
@@ -55,10 +55,11 @@ Sondagem de todas as rotas sem token, contra a API publicada.
 
 | Rota | Sem token | Avaliação |
 |---|---|---|
-| `GET /health` | 200 | Esperado; expõe apenas disponibilidade do banco |
+| `GET /health` | 200 | Público por projeto; **vazava a exceção** — ver defeito 7 |
 | `POST /login` | 400 | Precisa ser público |
 | `POST /empresas` e `/empresa` | 400 | **Era falha** — ver defeito 1 |
-| Outras 14 rotas | 401 | Correto |
+| `GET /` | 200 | **Anunciava o framework** — ver defeito 8 |
+| Outras 14 rotas | 401 | Correto; as 11 principais ficaram no caso 01 |
 
 ### Autenticação
 
@@ -154,22 +155,112 @@ tomava 401.
 Correção: senha gerada sem caracteres que o `.env` interpreta, e a regra escrita
 no `.env.example`. Os três perfis foram verificados entrando depois da troca.
 
+### Defeito 5 — cabeçalho do cliente derrubava o login público
+
+O `/login` grava a tentativa em `tentativa_login` com o IP e o navegador de
+quem chamou. O IP ia direto do cabeçalho `X-Forwarded-For` para uma coluna
+`INET`, e o `User-Agent` para uma coluna de 500 caracteres, sem conferir nada.
+Qualquer um podia mandar texto no lugar do IP, ou um `User-Agent` longo, e
+receber 500 de uma rota que não exige token.
+
+| Cabeçalho enviado | Antes | Depois |
+|---|---|---|
+| `X-Forwarded-For: nao-e-ip` | 500 | 200 |
+| `X-Forwarded-For: 1.2.3.4, 5.6.7.8` | 200 | 200 |
+| `User-Agent` com 2000 caracteres | 500 | 200 |
+
+Correção: o IP só entra na coluna se o Dart conseguir interpretá-lo como
+endereço; o `User-Agent` é cortado em 500. Valor inválido virou campo nulo, não
+erro. Cinco casos verificados, todos 200.
+
+### Defeito 6 — token assinado e malformado estourava em toda requisição
+
+`autenticar` roda em cada chamada da API. Ela convertia o conteúdo do token com
+`as Map<String, dynamic>`, `as int?` e `as String?`, protegida por um `catch`
+de `JWTException`. Só que tipo errado não lança `JWTException`, lança
+`TypeError` — que passava direto. Um token **assinado com o segredo correto**
+mas com `empresa_id` em texto, ou com conteúdo que não fosse objeto, virava 500
+na função mais executada do sistema.
+
+Exige o segredo, então não é porta de entrada; é negação de serviço por quem já
+tem conta, e mancha de confiabilidade no ponto pior possível.
+
+Correção: as três conversões passaram a ser verificações (`is Map`, `is int`,
+`is String`). Conteúdo inesperado agora devolve "não autenticado", não exceção.
+Dois testes novos em `permissao_test.dart` mandam payloads hostis assinados.
+
+### Defeito 7 — `/health` devolvia a exceção crua para quem não tem token
+
+`GET /health` é público e sem autenticação. Na falha de conexão ele respondia
+`{"status":"erro","detalhe":"<exceção>"}`. A exceção do driver do PostgreSQL
+carrega a string de conexão, ou seja a `DATABASE_URL` com a senha do Neon.
+
+O curioso é que o projeto já conhecia esse risco: `/categorias` apaga a URL da
+mensagem antes de registrar, com comentário explicando o porquê. A defesa existia
+na rota autenticada e faltava na pública.
+
+Correção: a limpeza virou `lib/diagnostico.dart`, usada nos dois lugares. O
+`/health` registra o diagnóstico no servidor e devolve apenas `{"status":"erro"}`.
+Três testes cobrem o helper, inclusive URL no meio da pilha. O caso 01 passou a
+conferir que a resposta não traz `detalhe` nem a palavra `postgres`.
+
+### Defeito 8 — a raiz anunciava o framework
+
+`GET /` respondia `Welcome to Dart Frog!`, texto que veio do gerador do projeto
+e nunca foi trocado. É a primeira URL que qualquer um abre, e entregava a
+tecnologia do servidor de graça. Baixa gravidade, custo de correção nenhum.
+
+Correção: `{"servico":"constroi-api","status":"ok"}`. Segue 200, que é o que o
+health check do Fly espera nessa rota.
+
+### Defeito 9 — o `.env` vencia a variavel de ambiente
+
+`lib/ambiente.dart` carregava o `.env` com `includePlatformEnvironment: true`,
+e nessa biblioteca **o arquivo sobrepoe o ambiente**. Quem exportasse
+`DATABASE_URL` apontando para um banco de teste era ignorado em silencio: o
+servidor subia e conectava no banco do `.env`, que e o de producao.
+
+O proprio projeto já tinha a ordem certa em outro lugar. `bin/testar_banco.dart`
+le o ambiente primeiro e só depois o arquivo, com um comentario dizendo que o
+`-DatabaseUrl` do runner deve prevalecer. A ordem estava invertida na biblioteca
+que o servidor usa.
+
+Encontrado do pior jeito: ao preparar a execucao ponta a ponta contra um
+PostgreSQL descartavel, subi o servidor com `DATABASE_URL` apontando para ele e
+a suite escreveu no Neon. O `dart_frog build` copia o `.env` para dentro de
+`build/`, então rodar o servidor de lá reabilita o arquivo. Vinte e duas
+empresas de teste foram criadas na base real e removidas depois.
+
+Não é vazamento: `.dockerignore` exclui `.env`, `.env*` e `build/`, e a imagem
+de producao só contém `/app/servidor` — conferido rodando a imagem. O `.env`
+também está no `.gitignore`, assim como `build/`. O risco era escrita acidental
+em producao, não exposicao de credencial.
+
+Correção: a decisao virou `escolherVariavel(doSistema, doArquivo)`, com o
+ambiente vencendo, e 4 testes a cobrem. Como a imagem de producao não tem
+`.env`, o comportamento do que está publicado não muda.
+
+Lição de processo, que vale mais que a correção: **provar o alvo antes de rodar
+a suite**. A execucao definitiva criou uma empresa pela API e confirmou que ela
+aparecia no banco descartavel e não aparecia no Neon, antes de disparar os 23
+casos.
+
 ### Defeitos corrigidos antes deste fechamento
 
 Registrados aqui porque compõem o semestre:
 
 | # | Defeito | Origem |
 |---|---|---|
-| 5 | Exportação do estoque levava só a página visível | Paginação introduzida na PR #48 |
-| 6 | Exportação permitida durante o carregamento, com dado do filtro anterior | PR #48 |
-| 7 | Atalho de requisições perdia a obra escolhida | Argumentos de rota descartados no `main.dart` |
-| 8 | Histórico limitado a 50 pedidos, sem próxima página | PR #48 |
-| 9 | Situação desconhecida de pedido contava como pendente | PR #48 |
-| 10 | Preço da NF-e podia estourar `NUMERIC(14,2)` e virar 500 | PR #48 |
-| 11 | Nome de produto com `=` virava fórmula no CSV exportado | Exportação |
-| 12 | 32 testes e o caso 19 quebrados por regra de quantidade inteira | Commit `fad194d` |
+| 10 | Exportação do estoque levava só a página visível | Paginação introduzida na PR #48 |
+| 11 | Exportação permitida durante o carregamento, com dado do filtro anterior | PR #48 |
+| 12 | Atalho de requisições perdia a obra escolhida | Argumentos de rota descartados no `main.dart` |
+| 13 | Histórico limitado a 50 pedidos, sem próxima página | PR #48 |
+| 14 | Situação desconhecida de pedido contava como pendente | PR #48 |
+| 15 | Preço da NF-e podia estourar `NUMERIC(14,2)` e virar 500 | PR #48 |
+| 16 | Nome de produto com `=` virava fórmula no CSV exportado | Exportação |
+| 17 | 32 testes e o caso 19 quebrados por regra de quantidade inteira | Commit `fad194d` |
 
-Os de 5 a 8 vieram da revisão do Bernardo na PR #48; os demais, de revisão
+Os de 10 a 13 vieram da revisão do Bernardo na PR #48; os demais, de revisão
 própria.
 
 ---
@@ -258,6 +349,15 @@ Ponta a ponta, com a API e o banco de pé:
 ```powershell
 .\testes\executar.ps1
 ```
+
+Sem argumento, o runner usa `http://localhost:8080` e a `DATABASE_URL` do
+ambiente — que em desenvolvimento é a base real. Para rodar contra um banco
+descartável, suba o servidor com `DATABASE_URL` apontando para ele e passe as
+duas coisas ao runner, com `-BaseUrl` e `-DatabaseUrl`.
+
+E confirme o alvo antes: crie uma empresa pela API e veja se ela aparece no
+banco descartável e **não** aparece no banco real. O defeito 9 existiu porque
+essa confirmação não foi feita.
 
 O detalhe de cada caso está em `testes/README.md`; o contrato de cada rota, em
 `constroi_api/README.md`.
