@@ -186,7 +186,7 @@ do Pedro.
 | Widget no app (`flutter test`) | 209 | 289 | 17/11/2026 |
 | Integração Dart (`dart test integration_test/`) | — | 149 | 17/11/2026 |
 | Integração (`.\testes\executar.ps1`) | — | 23 casos, 722 chamadas | 17/11/2026 |
-| Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 05/11/2026 |
+| Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 17/11/2026 |
 
 Números medidos, não deduzidos. A coluna "com esta branch" é a árvore do merge de
 `fix/ajustes-de-uso` com `origin/main`, não a branch isolada: `git merge-tree` não acusa

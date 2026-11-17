@@ -18,10 +18,12 @@ Números são medidos, nunca estimados. Onde não medi, está escrito que não m
 | Widget no aplicativo | 289 | `cd constroi_app && flutter test` | 17/11/2026 |
 | Integração Dart | 149 | `dart test integration_test/` | 17/11/2026 |
 | Integração ponta a ponta | 23 casos, 722 chamadas | `.\testes\executar.ps1` | 17/11/2026 |
-| Interface ponta a ponta | 7 casos, 9 testes | Cypress, `e2e/` | 05/11/2026 |
+| Interface ponta a ponta | 7 casos, 9 testes | Cypress, `e2e/` | 17/11/2026 |
 
-As quatro primeiras passaram inteiras nesta data. O Cypress não foi reexecutado
-no fechamento; vale a última medição, com a data ao lado.
+As cinco camadas passaram inteiras nesta data. O Cypress rodou contra a pilha
+completa em container, apontada para um PostgreSQL descartável — o alvo foi
+confirmado antes, criando uma empresa pela API e verificando que ela aparecia no
+banco descartável e não no banco real.
 
 **Unidade** cobre validadores, consultas montadas e respostas de rota com banco
 simulado. **Widget** cobre tela: estados de carga, erro, vazio, filtros,
