@@ -103,6 +103,39 @@ void main() {
       expect(usuario.nivel, equals(Nivel.engenheiro));
     });
 
+    test('token assinado com formato inesperado devolve null, nao estoura', () {
+      String assinar(Object payload) =>
+          JWT(payload, subject: '7').sign(SecretKey(_segredo));
+
+      final estranhos = <Object>[
+        {'empresa_id': '3', 'tipo': 'master'},
+        {'empresa_id': 3, 'tipo': 9},
+        {'empresa_id': null, 'tipo': 'master'},
+        {'empresa_id': 3.5, 'tipo': 'master'},
+        {'empresa_id': 3, 'tipo': 'dono-do-sistema'},
+        {
+          'empresa_id': <int>[3],
+          'tipo': 'master',
+        },
+        <String, Object?>{},
+      ];
+      for (final payload in estranhos) {
+        expect(
+          autenticar('Bearer ${assinar(payload)}', _segredo),
+          isNull,
+          reason: '$payload',
+        );
+      }
+    });
+
+    test('o nivel do token e lido sem diferenciar caixa nem espaco', () {
+      final token = JWT({
+        'empresa_id': 3,
+        'tipo': 'MASTER ',
+      }, subject: '7').sign(SecretKey(_segredo));
+      expect(autenticar('Bearer $token', _segredo)?.nivel, Nivel.master);
+    });
+
     test('sem cabecalho devolve null', () {
       expect(autenticar(null, _segredo), isNull);
     });

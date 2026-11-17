@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/campos.dart';
 import 'package:constroi_api/equipamentos.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -78,9 +79,9 @@ Future<Response> _editar(RequestContext context, int id) async {
     );
   }
 
-  final nome = validarNomeEquipamento(dados['nome'] as String?);
-  final patrimonio = validarPatrimonio(dados['patrimonio'] as String?);
-  final status = validarStatusEquipamento(dados['status'] as String?);
+  final nome = validarNomeEquipamento(textoDoCorpo(dados['nome']));
+  final patrimonio = validarPatrimonio(textoDoCorpo(dados['patrimonio']));
+  final status = validarStatusEquipamento(textoDoCorpo(dados['status']));
 
   if (nome == null && patrimonio == null && status == null) {
     return _erro(

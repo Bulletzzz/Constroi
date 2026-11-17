@@ -42,13 +42,15 @@ UsuarioAutenticado? autenticar(String? autorizacao, String segredo) {
 
   try {
     final jwt = JWT.verify(partes[1], SecretKey(segredo));
-    final dados = jwt.payload as Map<String, dynamic>;
+    final dados = jwt.payload;
+    if (dados is! Map) return null;
 
     final id = int.tryParse(jwt.subject ?? '${dados['sub']}');
-    final empresaId = dados['empresa_id'] as int?;
-    final nivel = Nivel.porNome(dados['tipo'] as String?);
+    final empresaId = dados['empresa_id'];
+    final tipo = dados['tipo'];
+    final nivel = Nivel.porNome(tipo is String ? tipo : null);
 
-    if (id == null || empresaId == null || nivel == null) return null;
+    if (id == null || empresaId is! int || nivel == null) return null;
     return UsuarioAutenticado(id: id, empresaId: empresaId, nivel: nivel);
   } on JWTException {
     return null;

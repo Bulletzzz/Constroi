@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:constroi_api/ambiente.dart';
 import 'package:constroi_api/autenticacao.dart';
+import 'package:constroi_api/campos.dart';
 import 'package:constroi_api/logs.dart';
 import 'package:constroi_api/senha.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -9,6 +11,15 @@ import 'package:postgres/postgres.dart';
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != HttpMethod.post) {
     return Response(statusCode: HttpStatus.methodNotAllowed);
+  }
+
+  final exigida = variavel('CHAVE_DE_CADASTRO');
+  if (exigida != null &&
+      context.request.headers['x-chave-de-cadastro'] != exigida) {
+    return _erro(
+      HttpStatus.unauthorized,
+      'Cadastro de empresa fechado neste ambiente.',
+    );
   }
 
   final Map<String, dynamic> corpo;
@@ -26,41 +37,42 @@ Future<Response> onRequest(RequestContext context) async {
       : null;
 
   final nomeEmpresa =
-      ((dadosEmpresa?['nome'] ??
-                  corpo['nome_empresa'] ??
-                  corpo['empresa_nome'] ??
-                  (dadosUsuario != null ? corpo['nome'] : null))
-              as String?)
-          ?.trim() ??
+      textoDoCorpo(
+        dadosEmpresa?['nome'] ??
+            corpo['nome_empresa'] ??
+            corpo['empresa_nome'] ??
+            (dadosUsuario != null ? corpo['nome'] : null),
+      )?.trim() ??
       '';
 
   final cnpj =
-      ((dadosEmpresa?['cnpj'] ?? corpo['cnpj']) as String?)?.trim() ?? '';
+      textoDoCorpo(dadosEmpresa?['cnpj'] ?? corpo['cnpj'])?.trim() ?? '';
 
   final nomeUsuario =
-      ((dadosUsuario?['nome'] ??
-                  corpo['nome_usuario'] ??
-                  corpo['usuario_nome'] ??
-                  corpo['nome'])
-              as String?)
-          ?.trim() ??
+      textoDoCorpo(
+        dadosUsuario?['nome'] ??
+            corpo['nome_usuario'] ??
+            corpo['usuario_nome'] ??
+            corpo['nome'],
+      )?.trim() ??
       '';
 
   final email =
-      ((dadosUsuario?['email'] ??
-                  corpo['email_usuario'] ??
-                  corpo['usuario_email'] ??
-                  corpo['email'])
-              as String?)
-          ?.trim() ??
+      textoDoCorpo(
+        dadosUsuario?['email'] ??
+            corpo['email_usuario'] ??
+            corpo['usuario_email'] ??
+            corpo['email'],
+      )?.trim() ??
       '';
 
   final senha =
-      ((dadosUsuario?['senha'] ??
-              corpo['senha_usuario'] ??
-              corpo['usuario_senha'] ??
-              corpo['senha'])
-          as String?) ??
+      textoDoCorpo(
+        dadosUsuario?['senha'] ??
+            corpo['senha_usuario'] ??
+            corpo['usuario_senha'] ??
+            corpo['senha'],
+      ) ??
       '';
 
   if (nomeEmpresa.isEmpty || cnpj.isEmpty) {

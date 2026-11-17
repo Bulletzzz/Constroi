@@ -1,7 +1,11 @@
 # Matriz de rastreabilidade
 
-Responsável: Eduardo Sochodolak (QA) · Última verificação: 10/11/2026 · Base: `origin/main` em
-`0a86a1d`, mais a branch `fix/ajustes-de-uso` onde indicado
+Responsável: Eduardo Sochodolak (QA) · Última verificação: 16/11/2026 · Base: `origin/main` em
+`41faa50`, mais a branch `qa/plano-de-testes-final` onde indicado
+
+O fechamento de QA do semestre está em `Plano de testes consolidado.md`: varredura
+adversarial, relatório de defeitos e a triagem dos 20 RNFs. Esta matriz segue sendo a
+ligação requisito a requisito.
 
 OBS: Infelizmente tem q usar emoji q fica mais visual
 
@@ -178,11 +182,11 @@ do Pedro.
 
 | Camada | Na main | Com esta branch | Medido em |
 |---|---|---|---|
-| Unidade na API (`dart test test/`) | 251 | 300 | 11/11/2026 |
-| Widget no app (`flutter test`) | 209 | 282 | 11/11/2026 |
-| Integração Dart (`dart test integration_test/`) | — | 149 | 10/11/2026 |
-| Integração (`.\testes\executar.ps1`) | — | 23 casos, 659 verificações | 11/11/2026 |
-| Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 05/11/2026 |
+| Unidade na API (`dart test test/`) | 251 | 324 | 17/11/2026 |
+| Widget no app (`flutter test`) | 209 | 289 | 17/11/2026 |
+| Integração Dart (`dart test integration_test/`) | — | 149 | 17/11/2026 |
+| Integração (`.\testes\executar.ps1`) | — | 23 casos, 722 chamadas | 17/11/2026 |
+| Ponta a ponta (Cypress) | — | 7 casos, 9 testes | 17/11/2026 |
 
 Números medidos, não deduzidos. A coluna "com esta branch" é a árvore do merge de
 `fix/ajustes-de-uso` com `origin/main`, não a branch isolada: `git merge-tree` não acusa

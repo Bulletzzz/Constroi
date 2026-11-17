@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:constroi_api/diagnostico.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:postgres/postgres.dart';
 
@@ -10,10 +11,14 @@ Future<Response> onRequest(RequestContext context) async {
     return Response.json(
       body: {'status': 'ok', 'banco': resultado.first.first},
     );
-  } catch (erro) {
+  } catch (erro, pilha) {
+    // ignore: avoid_print
+    print(
+      'Falha no health (${erro.runtimeType}): ${semCredenciais(erro, pilha)}',
+    );
     return Response.json(
       statusCode: HttpStatus.serviceUnavailable,
-      body: {'status': 'erro', 'detalhe': '$erro'},
+      body: {'status': 'erro'},
     );
   }
 }

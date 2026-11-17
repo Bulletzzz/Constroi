@@ -140,6 +140,47 @@ void main() {
     },
   );
 
+  test('endereco de origem invalido nao chega na coluna INET', () {
+    expect(rota.enderecoDeOrigem('nao-e-ip'), isNull);
+    expect(rota.enderecoDeOrigem("'; DROP TABLE usuario; --"), isNull);
+    expect(rota.enderecoDeOrigem('999.999.999.999'), isNull);
+    expect(rota.enderecoDeOrigem('<script>'), isNull);
+    expect(rota.enderecoDeOrigem(''), isNull);
+    expect(rota.enderecoDeOrigem(null), isNull);
+    expect(rota.enderecoDeOrigem('203.0.113.7'), '203.0.113.7');
+    expect(rota.enderecoDeOrigem(' 203.0.113.7 , 10.0.0.1'), '203.0.113.7');
+    expect(rota.enderecoDeOrigem('::1'), '::1');
+  });
+
+  test('user agent acima do limite da coluna e cortado', () {
+    expect(rota.agenteLimitado('A' * 600)?.length, 500);
+    expect(rota.agenteLimitado('A' * 500)?.length, 500);
+    expect(rota.agenteLimitado('curl/8.0'), 'curl/8.0');
+    expect(rota.agenteLimitado('   '), isNull);
+    expect(rota.agenteLimitado(null), isNull);
+  });
+
+  test('tipo errado no corpo responde 400 e nao toca o banco', () async {
+    for (final corpo in <Map<String, Object?>>[
+      {'email': 123, 'senha': 'x'},
+      {'email': 'a@b.c', 'senha': 456},
+      {'email': <String>[], 'senha': <String, String>{}},
+      {'email': true, 'senha': false},
+      {'email': null, 'senha': null},
+    ]) {
+      when(() => contexto.request).thenReturn(
+        Request.post(
+          Uri.parse('http://localhost/login'),
+          headers: {'x-forwarded-for': '127.0.0.1', 'user-agent': 'teste'},
+          body: jsonEncode(corpo),
+        ),
+      );
+      final resposta = await rota.onRequest(contexto);
+      expect(resposta.statusCode, HttpStatus.badRequest, reason: '$corpo');
+    }
+    expect(consultas, isEmpty);
+  });
+
   test('conta ativa com senha errada retorna o mesmo 401 generico', () async {
     await conferirFalhaGenerica(usuarioId: 7);
     expect(consultas[1], {'id': 7, 'tentativas': 1, 'bloqueadoAte': null});
